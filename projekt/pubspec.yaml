@@ -1,0 +1,29 @@
+name: meetcute
+description: MeetCute - Location-based social meetup app
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  geolocator: ^11.0.0
+  image_picker: ^1.0.7
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/profile_1.png
+    - assets/images/profile_2.png
+    - assets/images/profile_3.png
+    - assets/images/logo.png
