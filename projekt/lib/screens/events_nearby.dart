@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
+import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -1009,10 +1010,18 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward();
     await _btnCtrl.reverse();
+    final wasJoined = _joined;
     setState(() {
-      _attendanceState[widget.event.title] = !_joined;
+      _attendanceState[widget.event.title] = !wasJoined;
     });
     _countCtrl.forward(from: 0);
+    // Fire notification
+    NotificationState.instance.onAttendanceChanged(
+      widget.event.title,
+      widget.event.location,
+      widget.event.cardColor,
+      !wasJoined,
+    );
   }
 
   void _toggleMap() {
@@ -1182,7 +1191,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                 const SizedBox(width: 6),
                                                 Text(event.time,
                                                     style: const TextStyle(
-                                                      color: _bordoDark , fontSize: 17,
+                                                      color: _bordoDark, fontSize: 17,
                                                       fontWeight: FontWeight.w800,
                                                     )),
                                               ]),
@@ -1194,7 +1203,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                 Expanded(
                                                   child: Text(event.location,
                                                       style: const TextStyle(
-                                                        color: _bordoDark , fontSize: 17,
+                                                        color: _bordoDark, fontSize: 17,
                                                         fontWeight: FontWeight.w700,
                                                       )),
                                                 ),

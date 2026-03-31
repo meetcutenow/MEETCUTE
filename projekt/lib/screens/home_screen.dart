@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
 import 'events_nearby.dart';
+import 'notifications_screen.dart' show NotificationsScreen, seedStaticNotifications;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DESIGN TOKENS
@@ -32,6 +33,7 @@ const double kToggleH      = 24.0;
 const double kToggleKnob   = 18.0;
 const double kContentPadH  = 16.0;
 const double kHeaderFontSize = 20.0;
+const double kHeaderIconSize = 22.0;
 const double kHeaderPadH   = 20.0;
 const double kHeaderPadV   = 12.0;
 
@@ -93,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initAnims();
     _runEntry();
     _fetchLocation();
+    seedStaticNotifications();
   }
 
   void _initAnims() {
@@ -867,11 +870,7 @@ class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderSta
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLACEHOLDER SCREENS
 // ═══════════════════════════════════════════════════════════════════════════════
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
-  @override Widget build(BuildContext context) =>
-      const _PlaceholderScreen(title: 'Obavijesti', icon: Icons.notifications_none_rounded);
-}
+// NotificationsScreen imported from notifications_screen.dart
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
