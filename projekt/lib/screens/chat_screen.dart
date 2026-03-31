@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'home_screen.dart';
+import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems,
+kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
 import 'profile_screen.dart';
-import 'notifications_screen.dart' show NotificationsScreen;
+import 'notifications_screen.dart' show NotificationsScreen, NotificationState;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DATA MODELS
@@ -14,19 +15,16 @@ class ChatMessage {
   final String? imagePath;
   final bool isMe;
   final String? timeDivider;
-  const ChatMessage({this.text, this.imagePath, required this.isMe, this.timeDivider});
+  final DateTime? sentAt;
+  const ChatMessage({this.text, this.imagePath, required this.isMe,
+    this.timeDivider, this.sentAt});
 }
 
 class ChatConversation {
   final String id;
   final String name;
   final List<ChatMessage> messages;
-
-  const ChatConversation({
-    required this.id,
-    required this.name,
-    required this.messages,
-  });
+  const ChatConversation({required this.id, required this.name, required this.messages});
 
   ChatMessage? get lastMessage {
     for (int i = messages.length - 1; i >= 0; i--) {
@@ -42,8 +40,21 @@ class ChatConversation {
     return msg.text ?? '';
   }
 
+  String get lastMessageTime {
+    final t = lastMessage?.sentAt;
+    if (t == null) return '';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
   bool get hasUnread => lastMessage != null && !lastMessage!.isMe;
 }
+
+String _fmt(DateTime? dt) {
+  if (dt == null) return '';
+  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+}
+
+double _lerp(double a, double b, double t) => a + (b - a) * t;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLOBAL STATE
@@ -53,37 +64,34 @@ class ChatState extends ChangeNotifier {
   ChatState._();
 
   final List<ChatConversation> conversations = [
-    ChatConversation(
-      id: '1',
-      name: 'Luka',
-      messages: const [
-        ChatMessage(text: 'Hej! Vidio sam da si i ti na ovom eventu 😄', isMe: true),
-        ChatMessage(text: 'Haha jaa, idem svake godine!', isMe: false),
-        ChatMessage(text: 'Super! Možda se vidimo tamo?', isMe: true),
-        ChatMessage(timeDivider: 'Danas, 9:41', isMe: false),
-        ChatMessage(text: 'Gdje ćeš bit otprilike?', isMe: false),
-        ChatMessage(text: 'Bit ću kod glavne pozornice 🎶', isMe: true),
-        ChatMessage(text: 'Ok savršeno, i ja tamo!', isMe: false),
-        ChatMessage(text: 'Haha ok, vidimo se onda 😄', isMe: true),
-      ],
-    ),
-    ChatConversation(
-      id: '2',
-      name: 'Matej',
-      messages: const [
-        ChatMessage(text: 'Hej, kako si?', isMe: true),
-        ChatMessage(timeDivider: 'Danas, 11:45', isMe: false),
-        ChatMessage(text: 'Hej, gdje si večeras?', isMe: false),
-      ],
-    ),
-    ChatConversation(
-      id: '3',
-      name: 'Ivan',
-      messages: const [
-        ChatMessage(text: 'Vidimo se na eventu!', isMe: false),
-        ChatMessage(text: 'Super, čujemo se! 👋', isMe: true),
-      ],
-    ),
+    ChatConversation(id: '1', name: 'Luka', messages: [
+      ChatMessage(text: 'Hej! Vidio sam da si i ti na ovom eventu 😄', isMe: true,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 42))),
+      ChatMessage(text: 'Haha jaa, idem svake godine!', isMe: false,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 40))),
+      ChatMessage(timeDivider: 'Danas', isMe: false),
+      ChatMessage(text: 'Gdje ćeš bit otprilike?', isMe: false,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 15))),
+      ChatMessage(text: 'Bit ću kod glavne pozornice 🎶', isMe: true,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 12))),
+      ChatMessage(text: 'Ok savršeno, i ja tamo!', isMe: false,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 8))),
+      ChatMessage(text: 'Haha ok, vidimo se onda 😄', isMe: true,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 5))),
+    ]),
+    ChatConversation(id: '2', name: 'Matej', messages: [
+      ChatMessage(text: 'Hej, kako si?', isMe: true,
+          sentAt: DateTime.now().subtract(const Duration(hours: 2))),
+      ChatMessage(timeDivider: 'Danas', isMe: false),
+      ChatMessage(text: 'Hej, gdje si večeras?', isMe: false,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 20))),
+    ]),
+    ChatConversation(id: '3', name: 'Ivan', messages: [
+      ChatMessage(text: 'Vidimo se na eventu!', isMe: false,
+          sentAt: DateTime.now().subtract(const Duration(hours: 1))),
+      ChatMessage(text: 'Super, čujemo se! 👋', isMe: true,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 55))),
+    ]),
   ];
 
   int get totalUnread => conversations.where((c) => c.hasUnread).length;
@@ -92,8 +100,14 @@ class ChatState extends ChangeNotifier {
     final idx = conversations.indexWhere((c) => c.id == conversationId);
     if (idx == -1) return;
     final old = conversations[idx];
-    final newMsgs = List<ChatMessage>.from(old.messages)..add(msg);
-    conversations[idx] = ChatConversation(id: old.id, name: old.name, messages: newMsgs);
+    conversations[idx] = ChatConversation(
+        id: old.id, name: old.name,
+        messages: List<ChatMessage>.from(old.messages)..add(msg));
+    notifyListeners();
+  }
+
+  void deleteConversation(String id) {
+    conversations.removeWhere((c) => c.id == id);
     notifyListeners();
   }
 }
@@ -103,17 +117,25 @@ class ChatState extends ChangeNotifier {
 // ═══════════════════════════════════════════════════════════════════════════════
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  @override State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
-  late AnimationController _fadeCtrl;
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  late AnimationController _entryCtrl;
   late AnimationController _navBarCtrl;
+  late AnimationController _headerCtrl;
+  late AnimationController _listCtrl;
   late List<AnimationController> _navTapCtrls;
 
-  late Animation<double> _fade;
+  late Animation<double> _entryFade;
   late Animation<double> _navBarSlide;
+  late Animation<double> _headerFade;
+  late Animation<Offset> _headerSlide;
+  late Animation<double> _listFade;
+  late Animation<Offset> _listSlide;
 
   int _selectedNavIndex = 1;
 
@@ -121,56 +143,81 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     ChatState.instance.addListener(_onStateChanged);
+    NotificationState.instance.addListener(_onStateChanged);
+    _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text.toLowerCase()));
 
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+
+    _headerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _headerFade = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
+    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+
+    _listCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _listFade = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
+    _listSlide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _listCtrl, curve: Curves.easeOutCubic));
 
     _navBarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _navBarSlide = Tween<double>(begin: 70, end: 0)
+    _navBarSlide = Tween<double>(begin: 90, end: 0)
         .animate(CurvedAnimation(parent: _navBarCtrl, curve: Curves.easeOutBack));
 
     _navTapCtrls = List.generate(5, (_) =>
         AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
     _navTapCtrls[1].value = 1.0;
 
-    _fadeCtrl.forward();
+    _start();
+  }
+
+  Future<void> _start() async {
+    _entryCtrl.forward();
+    _headerCtrl.forward();
+    await Future.delayed(const Duration(milliseconds: 100));
+    _listCtrl.forward();
+    await Future.delayed(const Duration(milliseconds: 100));
     _navBarCtrl.forward();
   }
 
-  void _onStateChanged() => setState(() {});
+  void _onStateChanged() { if (mounted) setState(() {}); }
 
   @override
   void dispose() {
     ChatState.instance.removeListener(_onStateChanged);
-    _fadeCtrl.dispose();
-    _navBarCtrl.dispose();
+    NotificationState.instance.removeListener(_onStateChanged);
+    _searchCtrl.dispose();
+    _entryCtrl.dispose(); _headerCtrl.dispose(); _listCtrl.dispose(); _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     super.dispose();
+  }
+
+  List<ChatConversation> get _filtered {
+    if (_searchQuery.isEmpty) return ChatState.instance.conversations;
+    return ChatState.instance.conversations
+        .where((c) => c.name.toLowerCase().contains(_searchQuery) ||
+        c.lastMessageText.toLowerCase().contains(_searchQuery))
+        .toList();
   }
 
   void _onNavTap(int index) {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
-
     if (index == 0) { Navigator.pop(context); return; }
-
     _navTapCtrls[_selectedNavIndex].reverse();
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
     Widget? screen;
     switch (index) {
-      case 3: screen = const ProfileScreen(); break;
       case 2: screen = const NotificationsScreen(); break;
-      case 4: screen = const SettingsScreen(); break;
+      case 3: screen = const ProfileScreen(); break;
+      case 4: screen = const _SettingsPlaceholder(); break;
       default: screen = null;
     }
-
     if (screen != null) {
       Navigator.push(context, PageRouteBuilder(
         pageBuilder: (_, a, __) => screen!,
-        transitionsBuilder: (_, a, __, child) => FadeTransition(
-          opacity: a,
+        transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
           child: SlideTransition(
             position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
                 .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
@@ -189,82 +236,162 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final convos = ChatState.instance.conversations;
+    final filtered = _filtered;
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            stops: [0.13, 0.97], colors: [kGradientStart, kGradientEnd],
+      backgroundColor: kSurface,
+      body: FadeTransition(
+        opacity: _entryFade,
+        child: Column(children: [
+          _buildHeader(mq),
+          Expanded(
+            child: FadeTransition(
+              opacity: _listFade,
+              child: SlideTransition(
+                position: _listSlide,
+                child: filtered.isEmpty ? _buildEmpty() : _buildList(filtered),
+              ),
+            ),
           ),
-        ),
-        child: FadeTransition(
-          opacity: _fade,
+          _buildNavBar(mq),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildHeader(MediaQueryData mq) {
+    final unread = ChatState.instance.totalUnread;
+    return FadeTransition(
+      opacity: _headerFade,
+      child: SlideTransition(
+        position: _headerSlide,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
+            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 22, offset: const Offset(0, 5))],
+          ),
+          padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 18),
           child: Column(children: [
-            _buildHeader(mq),
-            Expanded(child: convos.isEmpty ? _buildEmpty() : _buildChatList(convos)),
-            _buildNavBar(mq),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Text('Poruke',
+                        style: TextStyle(color: kPrimaryDark, fontSize: 28,
+                            fontWeight: FontWeight.w900, letterSpacing: -0.8)),
+                    const SizedBox(width: 10),
+                    if (unread > 0)
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOutBack,
+                        builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: kPrimaryDark,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('$unread',
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                  ]),
+                  const SizedBox(height: 3),
+                  Text('${ChatState.instance.conversations.length} razgovora',
+                      style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+              GestureDetector(
+                onTap: () {},
+                child: Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: kPrimaryDark,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 5))],
+                  ),
+                  child: const Icon(Icons.edit_rounded, color: Colors.white, size: 19),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: kSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1.2),
+              ),
+              child: Row(children: [
+                const SizedBox(width: 13),
+                Icon(Icons.search_rounded, color: kPrimaryDark.withOpacity(0.32), size: 19),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: TextStyle(color: kPrimaryDark, fontSize: 14, fontWeight: FontWeight.w400),
+                    decoration: InputDecoration(
+                      hintText: 'Pretraži razgovore...',
+                      hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 14),
+                      border: InputBorder.none, isDense: true,
+                    ),
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () { _searchCtrl.clear(); FocusScope.of(context).unfocus(); },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: Icon(Icons.close_rounded, color: kPrimaryDark.withOpacity(0.45), size: 18),
+                    ),
+                  ),
+              ]),
+            ),
           ]),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(MediaQueryData mq) {
-    return Container(
-      color: kPrimaryLight,
-      padding: EdgeInsets.only(
-        top: mq.padding.top + kHeaderPadV,
-        left: kHeaderPadH, right: kHeaderPadH, bottom: kHeaderPadV,
-      ),
-      child: const Row(children: [
-        Icon(Icons.person_pin, color: kPrimaryDark, size: kHeaderIconSize),
-        SizedBox(width: 6),
-        Text('MeetCute',
-            style: TextStyle(color: kPrimaryDark, fontSize: kHeaderFontSize,
-                fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-      ]),
-    );
-  }
-
   Widget _buildEmpty() {
-    return Center(
-      child: Container(
-        width: 200, height: 200,
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(width: 96, height: 96,
         decoration: BoxDecoration(
-          color: kPrimaryLight, shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 30, offset: const Offset(0, 6))],
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.10)]),
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.12), blurRadius: 28, offset: const Offset(0, 10))],
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.group_outlined, color: kPrimaryDark, size: 38),
-          const SizedBox(height: 10),
-          const Text('Nema chata još...', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w700, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text('Izađi i upoznaj svog Cutieja! 💘',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 11, fontStyle: FontStyle.italic)),
-        ]),
+        child: Icon(Icons.chat_bubble_outline_rounded, color: kPrimaryDark, size: 38),
       ),
-    );
+      const SizedBox(height: 22),
+      Text(_searchQuery.isEmpty ? 'Nema poruka' : 'Nema rezultata',
+          style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 18)),
+      const SizedBox(height: 7),
+      Text(_searchQuery.isEmpty ? 'Izađi i upoznaj svog Cutieja! 💘' : 'Pokušaj drugi pojam',
+          style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 13.5)),
+    ]));
   }
 
-  Widget _buildChatList(List<ChatConversation> convos) {
+  Widget _buildList(List<ChatConversation> convos) {
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: kContentPadH, vertical: 12),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       itemCount: convos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final convo = convos[i];
-        return _ChatTile(
+        return _DismissibleTile(
+          key: ValueKey(convo.id),
           convo: convo,
+          onDelete: () { HapticFeedback.mediumImpact(); ChatState.instance.deleteConversation(convo.id); },
           onTap: () => Navigator.push(context, PageRouteBuilder(
-            pageBuilder: (_, anim, __) => ChatConversationScreen(convo: convo),
-            transitionsBuilder: (_, anim, __, child) => FadeTransition(
-              opacity: anim,
+            pageBuilder: (_, a, __) => ChatConversationScreen(convo: convo),
+            transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
               child: SlideTransition(
                 position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
-                    .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                    .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
                 child: child,
               ),
             ),
@@ -275,16 +402,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ── NAV BAR ─────────────────────────────────────────────────────────────────
   Widget _buildNavBar(MediaQueryData mq) {
     return AnimatedBuilder(
       animation: _navBarSlide,
       builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
       child: Container(
         decoration: BoxDecoration(
-          color: kPrimaryLight,
-          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 16, offset: const Offset(0, -3))],
+          color: Colors.white,
+          border: Border(top: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
+          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, -5))],
         ),
-        padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 6),
+        padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: List.generate(5, (i) => _buildNavItem(i)),
@@ -296,7 +425,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
-    final showBadge = index == 1 && !isSelected && ChatState.instance.totalUnread > 0;
+    final chatUnread  = ChatState.instance.totalUnread;
+    final notifUnread = NotificationState.instance.unreadCount;
+    final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
+    final showNotifBadge = index == 2 && !isSelected && notifUnread > 0;
 
     return GestureDetector(
       onTap: () => _onNavTap(index),
@@ -305,50 +437,33 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         builder: (_, __) {
           final t = _navTapCtrls[index].value;
           final scale = isSelected
-              ? 1.0 + 0.18 * Curves.elasticOut.transform(t.clamp(0.0, 1.0))
+              ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0))
               : 1.0;
           return Column(mainAxisSize: MainAxisSize.min, children: [
-            Transform.scale(
-              scale: scale,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
-                    decoration: BoxDecoration(
-                      color: isSelected ? kPrimaryDark.withOpacity(0.10) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isSelected ? item.selected : item.unselected,
-                      color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.35),
-                      size: kNavIconSize,
-                    ),
+            Transform.scale(scale: scale,
+              child: Stack(clipBehavior: Clip.none, children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
+                  decoration: BoxDecoration(
+                    color: isSelected ? kPrimaryDark.withOpacity(0.09) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  if (showBadge)
-                    Positioned(
-                      top: 2, right: 4,
-                      child: Container(
-                        width: 16, height: 16,
-                        decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-                        child: Center(
-                          child: Text('${ChatState.instance.totalUnread}',
-                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                  child: Icon(isSelected ? item.selected : item.unselected,
+                      color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
+                      size: kNavIconSize),
+                ),
+                if (showChatBadge) Positioned(top: 2, right: 4,
+                    child: NavBadge(count: chatUnread)),
+                if (showNotifBadge) Positioned(top: 2, right: 4,
+                    child: NavBadge(count: notifUnread)),
+              ]),
             ),
-            AnimatedOpacity(
-              opacity: isSelected ? t.clamp(0.0, 1.0) : 0.0,
+            AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              child: Container(
-                width: kNavDotSize, height: kNavDotSize,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-              ),
+              width: isSelected ? kNavDotSize : 0, height: isSelected ? kNavDotSize : 0,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
             ),
           ]);
         },
@@ -358,88 +473,169 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CHAT TILE
+// DISMISSIBLE TILE
 // ═══════════════════════════════════════════════════════════════════════════════
-class _ChatTile extends StatefulWidget {
+class _DismissibleTile extends StatefulWidget {
   final ChatConversation convo;
   final VoidCallback onTap;
-  const _ChatTile({required this.convo, required this.onTap});
-  @override
-  State<_ChatTile> createState() => _ChatTileState();
+  final VoidCallback onDelete;
+  const _DismissibleTile({super.key, required this.convo, required this.onTap, required this.onDelete});
+  @override State<_DismissibleTile> createState() => _DismissibleTileState();
 }
 
-class _ChatTileState extends State<_ChatTile> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
+class _DismissibleTileState extends State<_DismissibleTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _tap;
+  late Animation<double> _tapScale;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _scale = Tween<double>(begin: 1.0, end: 0.97)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _tap = AnimationController(vsync: this, duration: const Duration(milliseconds: 110));
+    _tapScale = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _tap, curve: Curves.easeIn));
   }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override void dispose() { _tap.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     final convo = widget.convo;
     final hasUnread = convo.hasUnread;
-    final lastMsg = convo.lastMessageText;
 
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
-      onTapCancel: () => _ctrl.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: kPrimaryLight,
-            borderRadius: BorderRadius.circular(kCardRadius),
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 2))],
-          ),
-          child: Row(children: [
-            Container(
-              width: 44, height: 44,
+    return Dismissible(
+      key: Key(convo.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        HapticFeedback.mediumImpact();
+        return await showDialog<bool>(
+          context: context,
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(26),
               decoration: BoxDecoration(
-                shape: BoxShape.circle, color: kPrimaryDark,
-                border: Border.all(color: kPrimaryDark, width: 2),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.18), blurRadius: 36, offset: const Offset(0, 14))],
               ),
-              child: const ClipOval(child: Icon(Icons.person, color: Colors.white, size: 26)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 54, height: 54,
+                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.10), shape: BoxShape.circle),
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 27)),
+                const SizedBox(height: 14),
+                const Text('Obriši razgovor?',
+                    style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 17)),
+                const SizedBox(height: 8),
+                Text('Ova radnja se ne može poništiti.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kPrimaryDark.withOpacity(0.45), fontSize: 13.5)),
+                const SizedBox(height: 22),
+                Row(children: [
+                  Expanded(child: TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: kPrimaryDark.withOpacity(0.15))),
+                    ),
+                    child: Text('Odustani', style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14)),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent, foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Obriši', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  )),
+                ]),
+              ]),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(convo.name, style: TextStyle(
-                  color: kPrimaryDark,
-                  fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
-                  fontSize: 14,
-                )),
-                const SizedBox(height: 2),
-                Text(lastMsg,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: kPrimaryDark.withOpacity(hasUnread ? 0.9 : 0.55),
-                      fontSize: 12,
-                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
-                    )),
+          ),
+        ) ?? false;
+      },
+      onDismissed: (_) => widget.onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 22),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.withOpacity(0.15)),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 23),
+          const SizedBox(height: 3),
+          const Text('Obriši', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+      child: GestureDetector(
+        onTapDown: (_) => _tap.forward(),
+        onTapUp: (_) { _tap.reverse(); widget.onTap(); },
+        onTapCancel: () => _tap.reverse(),
+        child: ScaleTransition(
+          scale: _tapScale,
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: kPrimaryDark.withOpacity(hasUnread ? 0.12 : 0.05), width: 1),
+              boxShadow: [
+                BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 18, offset: const Offset(0, 5)),
               ],
-            )),
-            const SizedBox(width: 8),
-            if (hasUnread)
-              Container(
-                width: 20, height: 20,
-                decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-                child: const Center(
-                  child: Text('1', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+            ),
+            child: Row(children: [
+              Container(width: 52, height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.14)]),
+                  border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 2),
                 ),
+                child: Icon(Icons.person_rounded, color: kPrimaryDark, size: 26),
               ),
-          ]),
+              const SizedBox(width: 13),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Text(convo.name, style: TextStyle(
+                    color: kPrimaryDark,
+                    fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
+                    fontSize: 15.5,
+                  )),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: hasUnread ? kPrimaryDark.withOpacity(0.08) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Text(convo.lastMessageTime, style: TextStyle(
+                      color: hasUnread ? kPrimaryDark : kPrimaryDark.withOpacity(0.30),
+                      fontSize: 12, fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
+                    )),
+                  ),
+                ]),
+                const SizedBox(height: 5),
+                Row(children: [
+                  Expanded(child: Text(convo.lastMessageText,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: kPrimaryDark.withOpacity(hasUnread ? 0.75 : 0.35),
+                        fontSize: 13.5,
+                        fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                      ))),
+                  if (hasUnread) ...[
+                    const SizedBox(width: 8),
+                    Container(width: 9, height: 9,
+                        decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle)),
+                  ],
+                ]),
+              ])),
+            ]),
+          ),
         ),
       ),
     );
@@ -452,15 +648,18 @@ class _ChatTileState extends State<_ChatTile> with SingleTickerProviderStateMixi
 class ChatConversationScreen extends StatefulWidget {
   final ChatConversation convo;
   const ChatConversationScreen({super.key, required this.convo});
-  @override
-  State<ChatConversationScreen> createState() => _ChatConversationScreenState();
+  @override State<ChatConversationScreen> createState() => _ConvoState();
 }
 
-class _ChatConversationScreenState extends State<ChatConversationScreen> {
+class _ConvoState extends State<ChatConversationScreen> with TickerProviderStateMixin {
   final TextEditingController _textCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final ImagePicker _picker = ImagePicker();
+
+  late AnimationController _headerCtrl;
+  late Animation<double> _headerFade;
+  late Animation<Offset> _headerSlide;
 
   List<ChatMessage> get _messages {
     final convo = ChatState.instance.conversations
@@ -471,29 +670,29 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
   @override
   void initState() {
     super.initState();
-    ChatState.instance.addListener(_onStateChanged);
+    ChatState.instance.addListener(_rebuild);
+    _headerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _headerFade = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
+    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
+    _headerCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
-  void _onStateChanged() => setState(() {});
+  void _rebuild() { if (mounted) setState(() {}); }
 
   @override
   void dispose() {
-    ChatState.instance.removeListener(_onStateChanged);
-    _textCtrl.dispose();
-    _scrollCtrl.dispose();
-    _focusNode.dispose();
+    ChatState.instance.removeListener(_rebuild);
+    _headerCtrl.dispose();
+    _textCtrl.dispose(); _scrollCtrl.dispose(); _focusNode.dispose();
     super.dispose();
   }
 
   void _scrollToBottom() {
-    if (_scrollCtrl.hasClients) {
-      _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    if (!_scrollCtrl.hasClients) return;
+    _scrollCtrl.animateTo(_scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   void _sendMessage() {
@@ -503,16 +702,14 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     _textCtrl.clear();
     final convo = ChatState.instance.conversations
         .firstWhere((c) => c.id == widget.convo.id, orElse: () => widget.convo);
-    final newMsgs = List<ChatMessage>.from(convo.messages)
-      ..add(ChatMessage(text: text, isMe: true));
     final idx = ChatState.instance.conversations.indexWhere((c) => c.id == widget.convo.id);
-    if (idx != -1) {
-      ChatState.instance.conversations[idx] =
-          ChatConversation(id: convo.id, name: convo.name, messages: newMsgs);
-    }
+    if (idx != -1) ChatState.instance.conversations[idx] = ChatConversation(
+        id: convo.id, name: convo.name,
+        messages: List<ChatMessage>.from(convo.messages)
+          ..add(ChatMessage(text: text, isMe: true, sentAt: DateTime.now())));
     setState(() {});
     ChatState.instance.notifyListeners();
-    Future.delayed(const Duration(milliseconds: 50), _scrollToBottom);
+    Future.delayed(const Duration(milliseconds: 60), _scrollToBottom);
   }
 
   Future<void> _pickImage() async {
@@ -521,219 +718,381 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
     HapticFeedback.lightImpact();
     final convo = ChatState.instance.conversations
         .firstWhere((c) => c.id == widget.convo.id, orElse: () => widget.convo);
-    final newMsgs = List<ChatMessage>.from(convo.messages)
-      ..add(ChatMessage(imagePath: picked.path, isMe: true));
     final idx = ChatState.instance.conversations.indexWhere((c) => c.id == widget.convo.id);
-    if (idx != -1) {
-      ChatState.instance.conversations[idx] =
-          ChatConversation(id: convo.id, name: convo.name, messages: newMsgs);
-    }
+    if (idx != -1) ChatState.instance.conversations[idx] = ChatConversation(
+        id: convo.id, name: convo.name,
+        messages: List<ChatMessage>.from(convo.messages)
+          ..add(ChatMessage(imagePath: picked.path, isMe: true, sentAt: DateTime.now())));
     setState(() {});
     ChatState.instance.notifyListeners();
-    Future.delayed(const Duration(milliseconds: 50), _scrollToBottom);
+    Future.delayed(const Duration(milliseconds: 60), _scrollToBottom);
   }
 
-  void _onAvatarTap() {
-    Navigator.push(context, PageRouteBuilder(
-      pageBuilder: (_, a, __) => const ProfileScreen(),
-      transitionsBuilder: (_, a, __, child) => FadeTransition(
-        opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.94, end: 1.0)
-              .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
+  void _onAvatarTap() => Navigator.push(context, PageRouteBuilder(
+    pageBuilder: (_, a, __) => const ProfileScreen(),
+    transitionsBuilder: (_, a, __, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.94, end: 1.0)
+            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: child,
       ),
-      transitionDuration: const Duration(milliseconds: 320),
-    ));
-  }
+    ),
+    transitionDuration: const Duration(milliseconds: 320),
+  ));
 
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            stops: [0.13, 0.97], colors: [kGradientStart, kGradientEnd],
-          ),
-        ),
-        child: Column(children: [
-          _buildHeader(mq),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: ListView.builder(
-                controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                itemCount: _messages.length,
-                itemBuilder: (_, i) => _buildBubble(_messages[i]),
-              ),
+      backgroundColor: kSurface,
+      body: Column(children: [
+        _buildHeader(mq),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              itemCount: _messages.length,
+              itemBuilder: (_, i) => _buildBubble(_messages[i]),
             ),
           ),
-          _buildInputBar(mq),
-        ]),
-      ),
+        ),
+        _buildInput(mq),
+      ]),
     );
   }
 
   Widget _buildHeader(MediaQueryData mq) {
-    return Container(
-      color: kPrimaryLight,
-      padding: EdgeInsets.only(
-        top: mq.padding.top + kHeaderPadV,
-        left: 4, right: kHeaderPadH, bottom: kHeaderPadV,
-      ),
-      child: Row(children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 18),
-          onPressed: () => Navigator.pop(context),
-          padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
-        ),
-        GestureDetector(
-          onTap: _onAvatarTap,
-          child: Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle, color: kPrimaryDark,
-              border: Border.all(color: kPrimaryDark, width: 2),
-            ),
-            child: const ClipOval(child: Icon(Icons.person, color: Colors.white, size: 20)),
+    return FadeTransition(
+      opacity: _headerFade,
+      child: SlideTransition(
+        position: _headerSlide,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
+            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 18, offset: const Offset(0, 4))],
           ),
+          padding: EdgeInsets.only(top: mq.padding.top + 10, left: 10, right: 16, bottom: 14),
+          child: Row(children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 16),
+              ),
+            ),
+            const SizedBox(width: 11),
+            GestureDetector(
+              onTap: _onAvatarTap,
+              child: Container(
+                width: 46, height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.14)]),
+                  border: Border.all(color: kPrimaryDark.withOpacity(0.14), width: 2),
+                  boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.14), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Icon(Icons.person_rounded, color: kPrimaryDark, size: 23),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: _onAvatarTap,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(widget.convo.name,
+                      style: const TextStyle(color: kPrimaryDark, fontSize: 17,
+                          fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                  Text('Klikni za profil',
+                      style: TextStyle(color: kPrimaryDark.withOpacity(0.32), fontSize: 12, fontWeight: FontWeight.w400)),
+                ]),
+              ),
+            ),
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(13)),
+              child: Icon(Icons.more_horiz_rounded, color: kPrimaryDark, size: 20),
+            ),
+          ]),
         ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: _onAvatarTap,
-          child: Text(widget.convo.name,
-              style: const TextStyle(color: kPrimaryDark, fontSize: kHeaderFontSize,
-                  fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-        ),
-      ]),
+      ),
     );
   }
 
   Widget _buildBubble(ChatMessage msg) {
     if (msg.timeDivider != null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(children: [
-          Expanded(child: Divider(color: kPrimaryDark.withOpacity(0.15), thickness: 0.5)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(msg.timeDivider!, style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 11)),
+          Expanded(child: Container(height: 1,
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [
+                Colors.transparent, kPrimaryDark.withOpacity(0.10), Colors.transparent,
+              ])))),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: kPrimaryDark.withOpacity(0.08)),
+              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.04), blurRadius: 6)],
+            ),
+            child: Text(msg.timeDivider!,
+                style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 12, fontWeight: FontWeight.w500)),
           ),
-          Expanded(child: Divider(color: kPrimaryDark.withOpacity(0.15), thickness: 0.5)),
+          Expanded(child: Container(height: 1,
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [
+                Colors.transparent, kPrimaryDark.withOpacity(0.10), Colors.transparent,
+              ])))),
         ]),
       );
     }
 
     final isMe = msg.isMe;
+    final timeStr = _fmt(msg.sentAt);
 
+    Widget bubble;
     if (msg.imagePath != null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
+      bubble = Padding(
+        padding: const EdgeInsets.only(bottom: 7),
         child: Row(
           mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
-            if (!isMe) _otherAvatar(),
+            if (!isMe) _avatar(),
             ClipRRect(
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 16),
+                topLeft: const Radius.circular(18), topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isMe ? 18 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 18),
               ),
-              child: Image.file(File(msg.imagePath!), width: 180, height: 200, fit: BoxFit.cover),
+              child: Image.file(File(msg.imagePath!), width: 195, height: 215, fit: BoxFit.cover),
+            ),
+          ],
+        ),
+      );
+    } else {
+      bubble = Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Row(
+          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isMe) _avatar(),
+            Flexible(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 268),
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isMe ? kPrimaryDark : Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(18), topRight: const Radius.circular(18),
+                    bottomLeft: Radius.circular(isMe ? 18 : 4),
+                    bottomRight: Radius.circular(isMe ? 4 : 18),
+                  ),
+                  border: isMe ? null : Border.all(color: kPrimaryDark.withOpacity(0.07)),
+                  boxShadow: [BoxShadow(
+                    color: isMe ? kPrimaryDark.withOpacity(0.22) : kPrimaryDark.withOpacity(0.06),
+                    blurRadius: 12, offset: const Offset(0, 4),
+                  )],
+                ),
+                child: Text(msg.text ?? '',
+                    style: TextStyle(
+                      color: isMe ? Colors.white : kPrimaryDark,
+                      fontSize: 14, height: 1.4, fontWeight: FontWeight.w400,
+                    )),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe) _otherAvatar(),
-          Flexible(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 250),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                color: isMe ? kPrimaryDark : kPrimaryLight,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18), topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMe ? 18 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 18),
-                ),
-                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2))],
-              ),
-              child: Text(msg.text ?? '',
-                  style: TextStyle(color: isMe ? Colors.white : kPrimaryDark, fontSize: 13, height: 1.4)),
-            ),
-          ),
-        ],
-      ),
-    );
+    return _SwipeRevealTime(isMe: isMe, timeStr: timeStr, child: bubble);
   }
 
-  Widget _otherAvatar() {
+  Widget _avatar() {
     return GestureDetector(
       onTap: _onAvatarTap,
       child: Container(
-        width: 26, height: 26,
-        margin: const EdgeInsets.only(right: 6, bottom: 2),
+        width: 30, height: 30,
+        margin: const EdgeInsets.only(right: 7, bottom: 2),
         decoration: BoxDecoration(
-          shape: BoxShape.circle, color: kPrimaryDark,
-          border: Border.all(color: kPrimaryDark, width: 1.5),
+          shape: BoxShape.circle,
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.12)]),
+          border: Border.all(color: kPrimaryDark.withOpacity(0.12), width: 1.5),
         ),
-        child: const ClipOval(child: Icon(Icons.person, color: Colors.white, size: 15)),
+        child: Icon(Icons.person_rounded, color: kPrimaryDark, size: 16),
       ),
     );
   }
 
-  Widget _buildInputBar(MediaQueryData mq) {
+  Widget _buildInput(MediaQueryData mq) {
     return Container(
-      color: kPrimaryLight,
-      padding: EdgeInsets.only(left: 12, right: 12, top: 8, bottom: mq.padding.bottom + 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: kPrimaryDark.withOpacity(0.07), width: 1)),
+        boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))],
+      ),
+      padding: EdgeInsets.only(left: 14, right: 14, top: 11, bottom: mq.padding.bottom + 11),
       child: Row(children: [
         GestureDetector(
           onTap: _pickImage,
           child: Container(
-            width: 36, height: 36,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(color: kPrimaryDark.withOpacity(0.08), shape: BoxShape.circle),
-            child: Icon(Icons.image_outlined, color: kPrimaryDark.withOpacity(0.6), size: 20),
+            width: 42, height: 42, margin: const EdgeInsets.only(right: 9),
+            decoration: BoxDecoration(
+              color: kPrimaryLight, borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: kPrimaryDark.withOpacity(0.10)),
+            ),
+            child: Icon(Icons.add_photo_alternate_rounded, color: kPrimaryDark, size: 19),
           ),
         ),
         Expanded(
-          child: TextField(
-            controller: _textCtrl,
-            focusNode: _focusNode,
-            style: const TextStyle(color: kPrimaryDark, fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Napiši poruku...',
-              hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.35), fontSize: 13),
-              filled: true, fillColor: const Color(0xFFEBD9DC),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+          child: Container(
+            decoration: BoxDecoration(
+              color: kSurface, borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1.2),
             ),
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _sendMessage(),
+            child: TextField(
+              controller: _textCtrl, focusNode: _focusNode,
+              style: const TextStyle(color: kPrimaryDark, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Napiši poruku...',
+                hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.28), fontSize: 14),
+                filled: false,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                border: InputBorder.none,
+              ),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+            ),
           ),
         ),
         GestureDetector(
           onTap: _sendMessage,
           child: Container(
-            width: 36, height: 36,
-            margin: const EdgeInsets.only(left: 8),
-            decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
+            width: 42, height: 42, margin: const EdgeInsets.only(left: 9),
+            decoration: BoxDecoration(
+              color: kPrimaryDark,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 5))],
+            ),
             child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
           ),
         ),
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SWIPE TO REVEAL TIME
+// ═══════════════════════════════════════════════════════════════════════════════
+class _SwipeRevealTime extends StatefulWidget {
+  final Widget child;
+  final bool isMe;
+  final String timeStr;
+  const _SwipeRevealTime({required this.child, required this.isMe, required this.timeStr});
+  @override State<_SwipeRevealTime> createState() => _SwipeRevealTimeState();
+}
+
+class _SwipeRevealTimeState extends State<_SwipeRevealTime>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _snap;
+  double _offset = 0;
+  static const double _max = 64;
+
+  @override
+  void initState() {
+    super.initState();
+    _snap = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
+  }
+  @override void dispose() { _snap.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragUpdate: (d) {
+        setState(() => _offset = (_offset + d.primaryDelta!).clamp(-_max, 0));
+      },
+      onHorizontalDragEnd: (_) {
+        final from = _offset;
+        _snap.reset();
+        _snap.addListener(() => setState(() =>
+        _offset = _lerp(from, 0, Curves.easeOut.transform(_snap.value))));
+        _snap.forward();
+      },
+      child: Stack(children: [
+        Positioned.fill(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: AnimatedOpacity(
+                opacity: (-_offset / _max).clamp(0.0, 1.0),
+                duration: Duration.zero,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: kPrimaryDark.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(widget.timeStr,
+                      style: TextStyle(color: kPrimaryDark.withOpacity(0.50),
+                          fontSize: 11.5, fontWeight: FontWeight.w500)),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Transform.translate(
+          offset: Offset(_offset, 0),
+          child: widget.child,
+        ),
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SETTINGS PLACEHOLDER
+// ═══════════════════════════════════════════════════════════════════════════════
+class _SettingsPlaceholder extends StatelessWidget {
+  const _SettingsPlaceholder();
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    return Scaffold(
+      backgroundColor: kSurface,
+      body: Column(children: [
+        Container(
+          color: Colors.white,
+          padding: EdgeInsets.only(top: mq.padding.top + 14, left: 8, right: 18, bottom: 14),
+          child: Row(children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const Text('Postavke', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 20)),
+          ]),
+        ),
+        Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(color: kPrimaryLight, shape: BoxShape.circle),
+            child: Icon(Icons.settings_rounded, color: kPrimaryDark, size: 36),
+          ),
+          const SizedBox(height: 18),
+          const Text('Postavke', style: TextStyle(color: kPrimaryDark, fontSize: 20, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text('Uskoro dostupno! 🚀', style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 14)),
+        ]))),
       ]),
     );
   }

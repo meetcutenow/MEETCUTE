@@ -610,7 +610,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
           const SizedBox(height: 16),
           Text(
             cityEmpty
-                ? 'Nema događanja u\n odabranom gradu!'
+                ? 'Nema događanja u\n${_cities[_cityIndex].name}u'
                 : 'Nema rezultata',
             textAlign: TextAlign.center,
             style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 15,
@@ -1191,7 +1191,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                 const SizedBox(width: 6),
                                                 Text(event.time,
                                                     style: const TextStyle(
-                                                      color: _bordoDark, fontSize: 17,
+                                                      color: Colors.white, fontSize: 17,
                                                       fontWeight: FontWeight.w800,
                                                     )),
                                               ]),
@@ -1203,7 +1203,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                 Expanded(
                                                   child: Text(event.location,
                                                       style: const TextStyle(
-                                                        color: _bordoDark, fontSize: 17,
+                                                        color: Colors.white, fontSize: 17,
                                                         fontWeight: FontWeight.w700,
                                                       )),
                                                 ),

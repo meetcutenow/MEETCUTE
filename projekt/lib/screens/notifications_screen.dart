@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems, kNavIconSize, kNavPadH, kNavPadV, kNavDotSize;
+import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems, kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
+import 'chat_screen.dart' show ChatState;
 import 'events_nearby.dart' show _attendanceState, _eventsByCity;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -203,6 +204,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     super.initState();
     seedStaticNotifications();
     NotificationState.instance.addListener(_rebuild);
+    ChatState.instance.addListener(_rebuild);
 
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
@@ -245,6 +247,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   @override
   void dispose() {
     NotificationState.instance.removeListener(_rebuild);
+    ChatState.instance.removeListener(_rebuild);
     _entryCtrl.dispose(); _headerCtrl.dispose(); _listCtrl.dispose();
     _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
@@ -530,6 +533,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget _buildNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
+    final chatUnread  = ChatState.instance.totalUnread;
+    final notifUnread = NotificationState.instance.unreadCount;
+    final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
+    final showNotifBadge = index == 2 && !isSelected && notifUnread > 0;
     return GestureDetector(
       onTap: () => _onNavTap(index),
       child: AnimatedBuilder(
@@ -539,17 +546,23 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           final scale = isSelected ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0)) : 1.0;
           return Column(mainAxisSize: MainAxisSize.min, children: [
             Transform.scale(scale: scale,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
-                decoration: BoxDecoration(
-                  color: isSelected ? kPrimaryDark.withOpacity(0.09) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
+              child: Stack(clipBehavior: Clip.none, children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
+                  decoration: BoxDecoration(
+                    color: isSelected ? kPrimaryDark.withOpacity(0.09) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(isSelected ? item.selected : item.unselected,
+                      color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
+                      size: kNavIconSize),
                 ),
-                child: Icon(isSelected ? item.selected : item.unselected,
-                    color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
-                    size: kNavIconSize),
-              ),
+                if (showChatBadge) Positioned(top: 2, right: 4,
+                    child: NavBadge(count: chatUnread)),
+                if (showNotifBadge) Positioned(top: 2, right: 4,
+                    child: NavBadge(count: notifUnread)),
+              ]),
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),

@@ -5,10 +5,10 @@ import 'dart:math' as math;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'chat_screen.dart';
+import 'chat_screen.dart' show ChatScreen, ChatState;
 import 'profile_screen.dart';
 import 'events_nearby.dart';
-import 'notifications_screen.dart' show NotificationsScreen, seedStaticNotifications;
+import 'notifications_screen.dart' show NotificationsScreen, NotificationState, seedStaticNotifications;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DESIGN TOKENS
@@ -96,6 +96,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _runEntry();
     _fetchLocation();
     seedStaticNotifications();
+    NotificationState.instance.addListener(_onBadgeChanged);
+    ChatState.instance.addListener(_onBadgeChanged);
+  }
+
+  void _onBadgeChanged() {
+    if (mounted) setState(() {});
   }
 
   void _initAnims() {
@@ -287,6 +293,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    NotificationState.instance.removeListener(_onBadgeChanged);
+    ChatState.instance.removeListener(_onBadgeChanged);
     _entryCtrl.dispose(); _navBarCtrl.dispose(); _blurCtrl.dispose();
     _avatarCtrl.dispose(); _menuCtrl.dispose();
     _markerRingCtrl.dispose(); _markerBobCtrl.dispose(); _logoGlowCtrl.dispose();
@@ -426,7 +434,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               left: 16,
               child: _AnimatedLogo(glowAnim: _logoGlow),
             ),
-
+            Positioned(
+              top: mq.padding.top + 16,
+              right: 16,
+              child: Row(children: [
+                _GlassMapBtn(icon: Icons.notifications_none_rounded, onTap: () => _onNavTap(2)),
+                const SizedBox(width: 8),
+                _GlassMapBtn(icon: Icons.settings_outlined, onTap: () => _onNavTap(4)),
+              ]),
+            ),
             Positioned(
               bottom: 0, left: 0, right: 0, height: 72,
               child: DecoratedBox(
@@ -696,8 +712,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
-    final unread = ChatState.instance.totalUnread;
-    final showBadge = index == 1 && !isSelected && unread > 0;
+    final chatUnread  = ChatState.instance.totalUnread;
+    final notifUnread = NotificationState.instance.unreadCount;
+    final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
+    final showNotifBadge = index == 2 && !isSelected && notifUnread > 0;
     return GestureDetector(
       onTap: () => _onNavTap(index),
       child: AnimatedBuilder(
@@ -719,12 +737,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
                       size: kNavIconSize),
                 ),
-                if (showBadge) Positioned(top: 2, right: 4,
-                  child: Container(width: 17, height: 17,
-                    decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-                    child: Center(child: Text('$unread',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
-                  ),
+                if (showChatBadge) Positioned(top: 2, right: 4,
+                  child: NavBadge(count: chatUnread),
+                ),
+                if (showNotifBadge) Positioned(top: 2, right: 4,
+                  child: NavBadge(count: notifUnread),
                 ),
               ]),
             ),
@@ -916,6 +933,24 @@ class _PlaceholderScreen extends StatelessWidget {
           Text('Uskoro dostupno! 🚀', style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 14)),
         ]))),
       ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAV BADGE  — public so chat_screen & notifications_screen can import it
+// ═══════════════════════════════════════════════════════════════════════════════
+class NavBadge extends StatelessWidget {
+  final int count;
+  const NavBadge({super.key, required this.count});
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 9 ? '9+' : '$count';
+    return Container(
+      width: 17, height: 17,
+      decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
+      child: Center(child: Text(label,
+          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
     );
   }
 }
