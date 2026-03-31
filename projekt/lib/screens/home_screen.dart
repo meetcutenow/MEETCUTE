@@ -426,15 +426,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               left: 16,
               child: _AnimatedLogo(glowAnim: _logoGlow),
             ),
-            Positioned(
-              top: mq.padding.top + 16,
-              right: 16,
-              child: Row(children: [
-                _GlassMapBtn(icon: Icons.notifications_none_rounded, onTap: () => _onNavTap(2)),
-                const SizedBox(width: 8),
-                _GlassMapBtn(icon: Icons.settings_outlined, onTap: () => _onNavTap(4)),
-              ]),
-            ),
+
             Positioned(
               bottom: 0, left: 0, right: 0, height: 72,
               child: DecoratedBox(

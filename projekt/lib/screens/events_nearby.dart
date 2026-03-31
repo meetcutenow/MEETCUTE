@@ -610,7 +610,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
           const SizedBox(height: 16),
           Text(
             cityEmpty
-                ? 'Nema događanja u\n${_cities[_cityIndex].name}u'
+                ? 'Nema događanja u\n odabranom gradu!'
                 : 'Nema rezultata',
             textAlign: TextAlign.center,
             style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 15,
