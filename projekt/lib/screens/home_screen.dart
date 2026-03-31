@@ -9,6 +9,8 @@ import 'chat_screen.dart' show ChatScreen, ChatState;
 import 'profile_screen.dart';
 import 'events_nearby.dart';
 import 'notifications_screen.dart' show NotificationsScreen, NotificationState, seedStaticNotifications;
+import 'settings_screen.dart' show SettingsScreen;
+import 'theme_state.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DESIGN TOKENS
@@ -98,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     seedStaticNotifications();
     NotificationState.instance.addListener(_onBadgeChanged);
     ChatState.instance.addListener(_onBadgeChanged);
+    ThemeState.instance.addListener(_onBadgeChanged);
   }
 
   void _onBadgeChanged() {
@@ -295,6 +298,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     NotificationState.instance.removeListener(_onBadgeChanged);
     ChatState.instance.removeListener(_onBadgeChanged);
+    ThemeState.instance.removeListener(_onBadgeChanged);
     _entryCtrl.dispose(); _navBarCtrl.dispose(); _blurCtrl.dispose();
     _avatarCtrl.dispose(); _menuCtrl.dispose();
     _markerRingCtrl.dispose(); _markerBobCtrl.dispose(); _logoGlowCtrl.dispose();
@@ -309,79 +313,85 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final screenH = mq.size.height;
     final mapH = screenH * 0.50;
     const avatarD = 80.0;
+    final isDark = ThemeState.instance.isDark;
+    final bgColor = isDark ? kDarkBg : kSurface;
 
-    return Scaffold(
-      backgroundColor: kSurface,
-      body: FadeTransition(
-        opacity: _entryFade,
-        child: Stack(children: [
-          Positioned(
-            top: 0, left: 0, right: 0,
-            height: mapH,
-            child: _buildMapCard(mq, mapH),
-          ),
-          Positioned(
-            top: mapH + avatarD / 2 + 6,
-            left: 0, right: 0, bottom: 0,
-            child: FadeTransition(
-              opacity: _menuFade,
-              child: SlideTransition(
-                position: _menuSlide,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(kContentPadH, 10, kContentPadH, mq.padding.bottom + 90),
-                  child: Column(children: [
-                    _buildLocationToggle(),
-                    const SizedBox(height: 18),
-                    _buildSectionLabel('Plan za danas?'),
-                    const SizedBox(height: 10),
-                    _buildMenuCard(),
-                  ]),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: bgColor,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: FadeTransition(
+          opacity: _entryFade,
+          child: Stack(children: [
+            Positioned(
+              top: 0, left: 0, right: 0,
+              height: mapH,
+              child: _buildMapCard(mq, mapH),
+            ),
+            Positioned(
+              top: mapH + avatarD / 2 + 6,
+              left: 0, right: 0, bottom: 0,
+              child: FadeTransition(
+                opacity: _menuFade,
+                child: SlideTransition(
+                  position: _menuSlide,
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(kContentPadH, 10, kContentPadH, mq.padding.bottom + 90),
+                    child: Column(children: [
+                      _buildLocationToggle(),
+                      const SizedBox(height: 18),
+                      _buildSectionLabel('Plan za danas?'),
+                      const SizedBox(height: 10),
+                      _buildMenuCard(),
+                    ]),
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: mapH - avatarD / 2,
-            left: 0, right: 0,
-            child: Center(
-              child: ScaleTransition(
-                scale: _avatarScale,
-                child: GestureDetector(
-                  onTap: () => _onNavTap(3),
-                  child: Stack(alignment: Alignment.center, children: [
-                    Container(
-                      width: avatarD + 12, height: avatarD + 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: kPrimaryDark.withOpacity(0.08),
+            Positioned(
+              top: mapH - avatarD / 2,
+              left: 0, right: 0,
+              child: Center(
+                child: ScaleTransition(
+                  scale: _avatarScale,
+                  child: GestureDetector(
+                    onTap: () => _onNavTap(3),
+                    child: Stack(alignment: Alignment.center, children: [
+                      Container(
+                        width: avatarD + 12, height: avatarD + 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: kPrimaryDark.withOpacity(0.08),
+                        ),
                       ),
-                    ),
-                    Container(
-                      width: avatarD + 6, height: avatarD + 6,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                    ),
-                    Container(
-                      width: avatarD, height: avatarD,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: kPrimaryLight,
-                        boxShadow: [
-                          BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8)),
-                        ],
+                      Container(
+                        width: avatarD + 6, height: avatarD + 6,
+                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
                       ),
-                      child: const Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
-                    ),
-                  ]),
+                      Container(
+                        width: avatarD, height: avatarD,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: kPrimaryLight,
+                          boxShadow: [
+                            BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8)),
+                          ],
+                        ),
+                        child: const Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
+                      ),
+                    ]),
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: _buildNavBar(mq),
-          ),
-        ]),
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: _buildNavBar(mq),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -528,16 +538,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildLocationToggle() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: [
       GestureDetector(
         onTap: _toggleLocation,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 340),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1),
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 14, offset: const Offset(0, 4))],
+            border: Border.all(color: primary.withOpacity(0.10), width: 1),
+            boxShadow: [BoxShadow(color: primary.withOpacity(0.10), blurRadius: 14, offset: const Offset(0, 4))],
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             AnimatedSwitcher(
@@ -545,32 +559,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Icon(
                 _locationEnabled ? Icons.location_on_rounded : Icons.location_off_rounded,
                 key: ValueKey(_locationEnabled),
-                color: _locationEnabled ? kPrimaryDark : kPrimaryDark.withOpacity(0.28),
+                color: _locationEnabled ? primary : primary.withOpacity(0.28),
                 size: 15,
               ),
             ),
             const SizedBox(width: 7),
-            Text('Lokacija', style: TextStyle(
-                color: kPrimaryDark, fontWeight: FontWeight.w700, fontSize: 13)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: primary, fontWeight: FontWeight.w700, fontSize: 13),
+              child: const Text('Lokacija'),
+            ),
             const SizedBox(width: 10),
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               width: kToggleW, height: kToggleH,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(kToggleH / 2),
-                color: _locationEnabled ? kPrimaryDark : kPrimaryDark.withOpacity(0.10),
-                border: Border.all(color: kPrimaryDark.withOpacity(0.18)),
+                color: _locationEnabled ? primary : primary.withOpacity(0.10),
+                border: Border.all(color: primary.withOpacity(0.18)),
               ),
               child: Stack(children: [
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 300), curve: Curves.easeInOutBack,
                   left: _locationEnabled ? kToggleW - kToggleKnob - 3 : 3,
                   top: (kToggleH - kToggleKnob) / 2,
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
                     width: kToggleKnob, height: kToggleKnob,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _locationEnabled ? Colors.white : kPrimaryDark.withOpacity(0.28),
+                      color: _locationEnabled
+                          ? (isDark ? kDarkBg : Colors.white)
+                          : primary.withOpacity(0.28),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)],
                     ),
                   ),
@@ -584,23 +604,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSectionLabel(String text) {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
     return Row(children: [
-      Container(width: 4, height: 16,
-          decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(2))),
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
+        width: 4, height: 16,
+        decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2)),
+      ),
       const SizedBox(width: 8),
-      Text(text, style: const TextStyle(color: kPrimaryDark, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+      AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 300),
+        style: TextStyle(color: primary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+        child: Text(text),
+      ),
     ]);
   }
 
   Widget _buildMenuCard() {
-    return Container(
+    final isDark = ThemeState.instance.isDark;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(kCardRadius),
-        border: Border.all(color: kPrimaryDark.withOpacity(0.06), width: 1),
+        border: Border.all(color: primary.withOpacity(0.06), width: 1),
         boxShadow: [
-          BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, 8)),
-          BoxShadow(color: kPrimaryDark.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(color: primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, 8)),
+          BoxShadow(color: primary.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(children: [
@@ -622,6 +655,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String subtitle, required bool isLocked,
     required VoidCallback onTap, required bool showDivider,
   }) {
+    final isDark   = ThemeState.instance.isDark;
+    final primary  = isDark ? kDarkPrimary : kLightPrimary;
+    final accent   = isDark ? kPrimaryDark  : kPrimaryLight;
     return Column(children: [
       GestureDetector(
         onTapDown: (_) => _menuItemCtrls[index].forward(),
@@ -634,23 +670,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: kMenuPadH, vertical: kMenuPadV),
               child: Row(children: [
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 340),
                   width: 48, height: 48,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.12)],
+                      colors: [accent, primary.withOpacity(0.12)],
                     ),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kPrimaryDark.withOpacity(0.08)),
+                    border: Border.all(color: primary.withOpacity(0.08)),
                   ),
-                  child: Icon(icon, color: kPrimaryDark, size: 22),
+                  child: Icon(icon, color: primary, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(label, style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w700, fontSize: 14.5)),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 300),
+                    style: TextStyle(color: primary, fontWeight: FontWeight.w700, fontSize: 14.5),
+                    child: Text(label),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 12)),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 300),
+                    style: TextStyle(color: primary.withOpacity(0.40), fontSize: 12),
+                    child: Text(subtitle),
+                  ),
                 ])),
                 if (isLocked) Container(
                   margin: const EdgeInsets.only(right: 10),
@@ -666,10 +711,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text('PRO', style: TextStyle(color: kGoldLock, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                   ]),
                 ),
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 340),
                   width: 30, height: 30,
-                  decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-                  child: const Icon(Icons.chevron_right, color: Colors.white, size: 18),
+                  decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+                  child: Icon(Icons.chevron_right, color: accent, size: 18),
                 ),
               ]),
             ),
@@ -682,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [
             Colors.transparent,
-            kPrimaryDark.withOpacity(0.08),
+            primary.withOpacity(0.08),
             Colors.transparent,
           ]),
         ),
@@ -691,14 +737,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNavBar(MediaQueryData mq) {
+    final isDark = ThemeState.instance.isDark;
+    final navBg  = isDark ? kDarkCard : Colors.white;
+    final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     return AnimatedBuilder(
       animation: _navBarSlide,
       builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 380),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
-          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 30, offset: const Offset(0, -6))],
+          color: navBg,
+          border: Border(top: BorderSide(color: navPrimary.withOpacity(0.06), width: 1)),
+          boxShadow: [BoxShadow(color: navPrimary.withOpacity(0.10), blurRadius: 30, offset: const Offset(0, -6))],
         ),
         padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
@@ -710,6 +760,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNavItem(int index) {
+    final isDark = ThemeState.instance.isDark;
+    final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
@@ -730,11 +782,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
                   decoration: BoxDecoration(
-                    color: isSelected ? kPrimaryDark.withOpacity(0.09) : Colors.transparent,
+                    color: isSelected ? navPrimary.withOpacity(0.09) : Colors.transparent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isSelected ? item.selected : item.unselected,
-                      color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
+                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
                       size: kNavIconSize),
                 ),
                 if (showChatBadge) Positioned(top: 2, right: 4,
@@ -749,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 200),
               width: isSelected ? kNavDotSize : 0, height: isSelected ? kNavDotSize : 0,
               margin: const EdgeInsets.only(top: 2),
-              decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: navPrimary, shape: BoxShape.circle),
             ),
           ]);
         },
@@ -759,69 +811,89 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ANIMATED LOGO WIDGET
+// ANIMATED LOGO WIDGET  — floating frosted bordo badge
 // ═══════════════════════════════════════════════════════════════════════════════
-class _AnimatedLogo extends StatelessWidget {
+class _AnimatedLogo extends StatefulWidget {
   final Animation<double> glowAnim;
   const _AnimatedLogo({required this.glowAnim});
+  @override State<_AnimatedLogo> createState() => _AnimatedLogoState();
+}
+
+class _AnimatedLogoState extends State<_AnimatedLogo>
+    with SingleTickerProviderStateMixin {
+
+  late AnimationController _floatCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _floatCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3200))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _floatCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: glowAnim,
+      animation: Listenable.merge([_floatCtrl, widget.glowAnim]),
       builder: (_, __) {
-        final shimX = (glowAnim.value * 2 - 0.5) * 140;
-        final glowOpacity = 0.15 + 0.20 * math.sin(glowAnim.value * math.pi);
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: kPrimaryDark.withOpacity(glowOpacity),
-                blurRadius: 16 + glowOpacity * 10,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        final floatY = math.sin(_floatCtrl.value * math.pi) * 4.0;
+        final aura   = widget.glowAnim.value;
+
+        return Transform.translate(
+          offset: Offset(0, floatY),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+
+              // ── breathing glow ────────────────────────────────────────────
+              Container(
+                width: 115, height: 44,
                 decoration: BoxDecoration(
-                  color: kPrimaryDark.withOpacity(0.88),
-                  borderRadius: BorderRadius.circular(23),
-                  border: Border.all(color: kPrimaryDark.withOpacity(0.60), width: 1.2),
+                  borderRadius: BorderRadius.circular(26),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kPrimaryDark.withOpacity(0.30 + aura * 0.20),
+                      blurRadius: 20 + aura * 14,
+                      spreadRadius: -2,
+                    ),
+                  ],
                 ),
-                child: Stack(children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(23),
-                      child: Transform.translate(
-                        offset: Offset(shimX, 0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                                begin: Alignment(-1 + glowAnim.value * 2, 0),
-                                end: Alignment(1 + glowAnim.value * 2, 0),
-                                colors: [
-                                  Colors.white.withOpacity(0.0),
-                                  Colors.white.withOpacity(0.18),
-                                  Colors.white.withOpacity(0.0),
-                                ]),
-                          ),
-                        ),
+              ),
+
+              // ── frosted bordo pill ────────────────────────────────────────
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: kPrimaryDark.withOpacity(0.72),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.14),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Center(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        height: 22,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    const SizedBox(width: 8),
-                    Image.asset('assets/images/logo.png', height: 30),
-                  ]),
-                ]),
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -876,66 +948,6 @@ class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderSta
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PLACEHOLDER SCREENS
-// ═══════════════════════════════════════════════════════════════════════════════
-// NotificationsScreen imported from notifications_screen.dart
-
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
-  @override Widget build(BuildContext context) =>
-      const _PlaceholderScreen(title: 'Postavke', icon: Icons.settings_outlined);
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _PlaceholderScreen({required this.title, required this.icon});
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: kSurface,
-      body: Column(children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 3))],
-          ),
-          padding: EdgeInsets.only(top: mq.padding.top + 12, left: 16, right: 20, bottom: 14),
-          child: Row(children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(13)),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 16),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Text(title, style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 18)),
-          ]),
-        ),
-        Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 96, height: 96,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.12)]),
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.14), blurRadius: 28, offset: const Offset(0, 10))],
-            ),
-            child: Icon(icon, color: kPrimaryDark, size: 40),
-          ),
-          const SizedBox(height: 22),
-          Text(title, style: const TextStyle(color: kPrimaryDark, fontSize: 21, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('Uskoro dostupno! 🚀', style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 14)),
-        ]))),
-      ]),
-    );
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NAV BADGE  — public so chat_screen & notifications_screen can import it

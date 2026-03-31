@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
+import 'theme_state.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -287,7 +288,10 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
             (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 200)));
 
     _entryCtrl.forward();
+    ThemeState.instance.addListener(_onTheme);
   }
+
+  void _onTheme() { if (mounted) setState(() {}); }
 
   void _buildCardAnims(int dir) {
     _cardSlide = Tween<Offset>(begin: Offset(dir * 0.22, 0), end: Offset.zero)
@@ -300,6 +304,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 
   @override
   void dispose() {
+    ThemeState.instance.removeListener(_onTheme);
     _entryCtrl.dispose();
     _cityPickerCtrl.dispose();
     _cardCtrl.dispose();
@@ -385,36 +390,42 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: FadeTransition(
-        opacity: _entryFade,
-        child: SlideTransition(
-          position: _entrySlide,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(mq),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 14),
-                        _buildLocationBar(),
-                        const SizedBox(height: 12),
-                        _buildCategoryChips(),
-                        const SizedBox(height: 10),
-                        Expanded(child: _buildCardArea()),
-                        _buildSearchBar(mq),
-                      ],
-                    ),
-                    if (_showCityPicker) _buildCityPickerOverlay(),
-                  ],
+    final isDark = ThemeState.instance.isDark;
+    final bg = isDark ? kDarkBg : Colors.white;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: bg,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: FadeTransition(
+          opacity: _entryFade,
+          child: SlideTransition(
+            position: _entrySlide,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(mq),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 14),
+                          _buildLocationBar(),
+                          const SizedBox(height: 12),
+                          _buildCategoryChips(),
+                          const SizedBox(height: 10),
+                          Expanded(child: _buildCardArea()),
+                          _buildSearchBar(mq),
+                        ],
+                      ),
+                      if (_showCityPicker) _buildCityPickerOverlay(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -423,20 +434,27 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
   Widget _buildHeader(MediaQueryData mq) {
-    return Container(
-      color: Colors.white,
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: cardBg,
       padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 18, bottom: 6),
       child: Row(children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _bordo, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: primary, size: 20),
           onPressed: () => Navigator.pop(context),
           padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
         ),
         const SizedBox(width: 2),
-        const Expanded(
-          child: Text('Pronađi događanja za sebe',
-              style: TextStyle(color: _bordo, fontSize: 21,
-                  fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        Expanded(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(color: primary, fontSize: 21,
+                fontWeight: FontWeight.w800, letterSpacing: -0.5),
+            child: const Text('Pronađi događanja za sebe'),
+          ),
         ),
       ]),
     );
@@ -444,6 +462,10 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 
   // ── LOCATION BAR ────────────────────────────────────────────────────────────
   Widget _buildLocationBar() {
+    final isDark   = ThemeState.instance.isDark;
+    final primary  = isDark ? kDarkPrimary : _bordo;
+    final inactiveBg     = isDark ? kDarkCard : const Color(0xFFF4EDED);
+    final inactiveBorder = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: GestureDetector(
@@ -452,29 +474,31 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
           duration: const Duration(milliseconds: 220),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _showCityPicker ? _bordo : const Color(0xFFF4EDED),
+            color: _showCityPicker ? primary : inactiveBg,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-                color: _showCityPicker ? _bordo : const Color(0xFFE8D5D8), width: 1.5),
+                color: _showCityPicker ? primary : inactiveBorder, width: 1.5),
             boxShadow: _showCityPicker
-                ? [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 14, offset: const Offset(0, 4))]
+                ? [BoxShadow(color: primary.withOpacity(0.20), blurRadius: 14, offset: const Offset(0, 4))]
                 : [],
           ),
           child: Row(children: [
             Icon(Icons.location_on_rounded,
-                color: _showCityPicker ? Colors.white : _bordo, size: 18),
+                color: _showCityPicker ? (isDark ? kDarkBg : Colors.white) : primary, size: 18),
             const SizedBox(width: 9),
             Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Tvoja lokacija',
                       style: TextStyle(
-                        color: _showCityPicker ? Colors.white.withOpacity(0.65) : _bordo.withOpacity(0.50),
+                        color: _showCityPicker
+                            ? (isDark ? kDarkBg : Colors.white).withOpacity(0.65)
+                            : primary.withOpacity(0.50),
                         fontSize: 10.5, fontWeight: FontWeight.w500,
                       )),
                   const SizedBox(height: 1),
                   Text(_cities[_cityIndex].name,
                       style: TextStyle(
-                        color: _showCityPicker ? Colors.white : _bordo,
+                        color: _showCityPicker ? (isDark ? kDarkBg : Colors.white) : primary,
                         fontSize: 16, fontWeight: FontWeight.w800,
                       )),
                 ]),
@@ -484,7 +508,9 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutCubic,
               child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: _showCityPicker ? Colors.white : _bordo.withOpacity(0.55), size: 22),
+                  color: _showCityPicker
+                      ? (isDark ? kDarkBg : Colors.white).withOpacity(0.80)
+                      : primary.withOpacity(0.55), size: 22),
             ),
           ]),
         ),
@@ -494,6 +520,10 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 
   // ── CITY PICKER OVERLAY ─────────────────────────────────────────────────────
   Widget _buildCityPickerOverlay() {
+    final isDark  = ThemeState.instance.isDark;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
+    final border  = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
+    final primary = isDark ? kDarkPrimary : _bordo;
     return Positioned(
       top: 14 + 62 + 4, left: 18, right: 18,
       child: FadeTransition(
@@ -503,13 +533,14 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
               .animate(_cityPickerAnim),
           child: Material(
             color: Colors.transparent,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 340),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE8D5D8), width: 1.5),
+                border: Border.all(color: border, width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: _bordo.withOpacity(0.13), blurRadius: 22, offset: const Offset(0, 8)),
+                  BoxShadow(color: primary.withOpacity(0.13), blurRadius: 22, offset: const Offset(0, 8)),
                 ],
               ),
               child: ClipRRect(
@@ -543,6 +574,11 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
         itemBuilder: (_, i) {
           final cat = _categories[i];
           final sel = _selectedCat == cat.label;
+          final isDark  = ThemeState.instance.isDark;
+          final primary = isDark ? kDarkPrimary : _bordo;
+          final chipBg  = isDark ? kDarkCard : Colors.white;
+          final chipBdr = isDark ? kDarkCardEl : const Color(0xFFDDC8CB);
+          final fgColor = isDark ? kDarkBg : Colors.white;
           return GestureDetector(
             onTapDown: (_) => _catCtrls[i].forward(),
             onTapUp: (_) {
@@ -561,17 +597,17 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
                   decoration: BoxDecoration(
-                    color: sel ? _bordo : Colors.white,
+                    color: sel ? primary : chipBg,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                        color: sel ? _bordo : const Color(0xFFDDC8CB), width: 1.2),
+                        color: sel ? primary : chipBdr, width: 1.2),
                     boxShadow: sel
-                        ? [BoxShadow(color: _bordo.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
+                        ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
                         : [],
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     if (cat.icon != null) ...[
-                      Icon(cat.icon, size: 13, color: sel ? Colors.white : _bordo),
+                      Icon(cat.icon, size: 13, color: sel ? fgColor : primary),
                       const SizedBox(width: 4),
                     ] else if (cat.emoji != null) ...[
                       Text(cat.emoji!, style: const TextStyle(fontSize: 12)),
@@ -579,7 +615,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                     ],
                     Text(cat.label,
                         style: TextStyle(
-                          color: sel ? Colors.white : _bordo,
+                          color: sel ? fgColor : primary,
                           fontSize: 12.5, fontWeight: FontWeight.w600,
                         )),
                   ]),
@@ -596,30 +632,40 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   Widget _buildCardArea() {
     final events = _filtered;
     final cityEmpty = _cityEvents.isEmpty;
+    final isDark   = ThemeState.instance.isDark;
+    final primary  = isDark ? kDarkPrimary : _bordo;
+    final emptyBg  = isDark ? kDarkCardEl  : _bordoLight;
 
     if (cityEmpty || events.isEmpty) {
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 340),
             width: 72, height: 72,
-            decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: _bordo.withOpacity(0.10), blurRadius: 20, offset: const Offset(0, 6))]),
+            decoration: BoxDecoration(color: emptyBg, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 6))]),
             child: Icon(cityEmpty ? Icons.location_off_rounded : Icons.search_off_rounded,
-                color: _bordo.withOpacity(0.55), size: 32),
+                color: primary.withOpacity(0.55), size: 32),
           ),
           const SizedBox(height: 16),
-          Text(
-            cityEmpty
-                ? 'Nema događanja u\n${_cities[_cityIndex].name}u'
-                : 'Nema rezultata',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 15,
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(color: primary.withOpacity(0.65), fontSize: 15,
                 fontWeight: FontWeight.w600, height: 1.4),
+            child: Text(
+              cityEmpty
+                  ? 'Nema događanja u\nodabranom gradu!'
+                  : 'Nema rezultata',
+              textAlign: TextAlign.center,
+            ),
           ),
           if (cityEmpty) ...[
             const SizedBox(height: 8),
-            Text('Provjeri drugi grad 👆',
-                style: TextStyle(color: _bordo.withOpacity(0.35), fontSize: 13)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13),
+              child: const Text('Provjeri drugi grad 👆'),
+            ),
           ],
         ]),
       );
@@ -720,23 +766,28 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 
   // ── SEARCH BAR ──────────────────────────────────────────────────────────────
   Widget _buildSearchBar(MediaQueryData mq) {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final bg      = isDark ? kDarkCard : const Color(0xFFF0E8EA);
+    final border  = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFDDC8CB);
     return Padding(
       padding: EdgeInsets.fromLTRB(54, 6, 54, mq.padding.bottom + 10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0E8EA),
+          color: bg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFDDC8CB), width: 1),
+          border: Border.all(color: border, width: 1),
         ),
         child: TextField(
           controller: _searchCtrl,
           onChanged: (v) => setState(() { _searchQuery = v; _currentPage = 0; }),
-          style: TextStyle(color: _bordo, fontSize: 13),
+          style: TextStyle(color: primary, fontSize: 13),
           decoration: InputDecoration(
             hintText: 'Pretraži događanja',
-            hintStyle: TextStyle(color: _bordo.withOpacity(0.35), fontSize: 13),
-            suffixIcon: Icon(Icons.search_rounded, color: _bordo.withOpacity(0.45), size: 18),
+            hintStyle: TextStyle(color: primary.withOpacity(0.35), fontSize: 13),
+            suffixIcon: Icon(Icons.search_rounded, color: primary.withOpacity(0.45), size: 18),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             isDense: true,
@@ -907,6 +958,11 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
 
   @override
   Widget build(BuildContext context) {
+    final isDark   = ThemeState.instance.isDark;
+    final primary  = isDark ? kDarkPrimary : _bordo;
+    final tileBg   = isDark ? kDarkCard    : Colors.white;
+    final hoverBg  = isDark ? kDarkCardEl  : const Color(0xFFF4EDED);
+    final divColor = isDark ? kDarkCardEl  : const Color(0xFFE8D5D8);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       GestureDetector(
         onTapDown: (_) => _c.forward(),
@@ -914,26 +970,34 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
         onTapCancel: () => _c.reverse(),
         child: AnimatedBuilder(
           animation: _c,
-          builder: (_, __) => Container(
+          builder: (_, __) => AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             color: widget.isSelected
-                ? _bordo.withOpacity(0.05)
-                : Color.lerp(Colors.white, const Color(0xFFF4EDED), _c.value),
+                ? primary.withOpacity(0.08)
+                : Color.lerp(tileBg, hoverBg, _c.value),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
             child: Row(children: [
-              Text(widget.name,
-                  style: TextStyle(color: _bordo, fontSize: 14.5,
-                      fontWeight: widget.isSelected ? FontWeight.w800 : FontWeight.w500)),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(color: primary, fontSize: 14.5,
+                    fontWeight: widget.isSelected ? FontWeight.w800 : FontWeight.w500),
+                child: Text(widget.name),
+              ),
               const Spacer(),
               if (widget.isSelected)
-                Container(width: 20, height: 20,
-                    decoration: const BoxDecoration(color: _bordo, shape: BoxShape.circle),
-                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 13)),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+                  child: Icon(Icons.check_rounded,
+                      color: isDark ? kDarkBg : Colors.white, size: 13),
+                ),
             ]),
           ),
         ),
       ),
       if (widget.showDivider)
-        Divider(height: 1, thickness: 0.5, color: const Color(0xFFE8D5D8), indent: 18, endIndent: 18),
+        Divider(height: 1, thickness: 0.5, color: divColor, indent: 18, endIndent: 18),
     ]);
   }
 }
@@ -973,6 +1037,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   void initState() {
     super.initState();
     _mapController = MapController();
+    ThemeState.instance.addListener(_onTheme);
 
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
@@ -996,8 +1061,11 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     _heroCtrl.forward();
   }
 
+  void _onTheme() { if (mounted) setState(() {}); }
+
   @override
   void dispose() {
+    ThemeState.instance.removeListener(_onTheme);
     _entryCtrl.dispose();
     _heroCtrl.dispose();
     _btnCtrl.dispose();
@@ -1037,369 +1105,396 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     final event = widget.event;
     final c = event.cardColor;
     final attendees = _effectiveAttendees(event);
+    final isDark  = ThemeState.instance.isDark;
+    final bgColor = isDark ? kDarkBg : Colors.white;
+    final primary = isDark ? kDarkPrimary : _bordoDark;
+    final textMuted = isDark ? kDarkTextSub : Colors.black.withOpacity(0.55);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // ── scrollable content ─────────────────────────────────────────────
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── HERO IMAGE ────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: ScaleTransition(
-                  scale: _heroScale,
-                  child: Container(
-                    height: mq.size.height * 0.42,
-                    color: c,
-                    child: Stack(fit: StackFit.expand, children: [
-                      if (event.imagePath.isNotEmpty)
-                        Image.asset(event.imagePath, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(color: c))
-                      else
-                        Container(color: c),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: bgColor,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // ── scrollable content ─────────────────────────────────────────────
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── HERO IMAGE ────────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: ScaleTransition(
+                    scale: _heroScale,
+                    child: Container(
+                      height: mq.size.height * 0.42,
+                      color: c,
+                      child: Stack(fit: StackFit.expand, children: [
+                        if (event.imagePath.isNotEmpty)
+                          Image.asset(event.imagePath, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: c))
+                        else
+                          Container(color: c),
 
-                      // subtle gradient at bottom for readability
-                      Positioned(
-                        bottom: 0, left: 0, right: 0, height: 100,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Colors.black.withOpacity(0.18)],
+                        // subtle gradient at bottom for readability
+                        Positioned(
+                          bottom: 0, left: 0, right: 0, height: 100,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, Colors.black.withOpacity(0.18)],
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      // decorative clouds
-                      _cloudWidget(top: 28, left: 18, w: 70, h: 32),
-                      _cloudWidget(top: 14, right: 60, w: 50, h: 24),
-                      _cloudWidget(top: 60, right: 16, w: 36, h: 18),
-                      _cloudWidget(bottom: 100, left: 30, w: 44, h: 22),
-                    ]),
+                        // decorative clouds
+                        _cloudWidget(top: 28, left: 18, w: 70, h: 32),
+                        _cloudWidget(top: 14, right: 60, w: 50, h: 24),
+                        _cloudWidget(top: 60, right: 16, w: 36, h: 18),
+                        _cloudWidget(bottom: 100, left: 30, w: 44, h: 22),
+                      ]),
+                    ),
                   ),
                 ),
-              ),
 
-              // ── DETAIL CONTENT ───────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: FadeTransition(
-                  opacity: _entryFade,
-                  child: SlideTransition(
-                    position: _contentSlide,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(20, 22, 20, mq.padding.bottom + 100),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                // ── DETAIL CONTENT ───────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _entryFade,
+                    child: SlideTransition(
+                      position: _contentSlide,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(20, 22, 20, mq.padding.bottom + 100),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
 
-                          // ── TITLE ROW ────────────────────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(event.title,
-                                        style: const TextStyle(
-                                          color: Colors.black87, fontSize: 30,
+                            // ── TITLE ROW ────────────────────────────────────
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      AnimatedDefaultTextStyle(
+                                        duration: const Duration(milliseconds: 300),
+                                        style: TextStyle(
+                                          color: isDark ? kDarkText : Colors.black87, fontSize: 30,
                                           fontWeight: FontWeight.w900, letterSpacing: -0.8, height: 1.1,
-                                        )),
-                                    const SizedBox(height: 6),
-                                    AnimatedBuilder(
-                                      animation: _countAnim,
-                                      builder: (_, __) {
-                                        return Row(children: [
-                                          Transform.scale(
-                                            scale: 1.0 + _countAnim.value * 0.12,
-                                            child: Text(
-                                              '$attendees',
-                                              style: const TextStyle(
-                                                color: _bordo, fontSize: 16,
-                                                fontWeight: FontWeight.w800,
+                                        ),
+                                        child: Text(event.title),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      AnimatedBuilder(
+                                        animation: _countAnim,
+                                        builder: (_, __) {
+                                          return Row(children: [
+                                            Transform.scale(
+                                              scale: 1.0 + _countAnim.value * 0.12,
+                                              child: Text(
+                                                '$attendees',
+                                                style: TextStyle(
+                                                  color: primary, fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
                                               ),
                                             ),
+                                            Text(' ljudi se pridružilo',
+                                                style: TextStyle(
+                                                  color: textMuted,
+                                                  fontSize: 14, fontWeight: FontWeight.w500,
+                                                )),
+                                          ]);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Date badge
+                                Container(
+                                  width: 68, height: 68,
+                                  decoration: BoxDecoration(
+                                    color: _bordo,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5)),
+                                    ],
+                                  ),
+                                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                    Text(event.dateDay,
+                                        style: const TextStyle(color: Colors.white, fontSize: 20,
+                                            fontWeight: FontWeight.w900, height: 1.0)),
+                                    Text(event.dateMonth,
+                                        style: const TextStyle(color: Colors.white, fontSize: 20,
+                                            fontWeight: FontWeight.w900, height: 1.0)),
+                                  ]),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // ── TIME + MAP CONTAINER ─────────────────────────
+                            GestureDetector(
+                              onTap: _toggleMap,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 340),
+                                curve: Curves.easeOutCubic,
+                                decoration: BoxDecoration(
+                                  color: isDark ? kDarkCard : _bordoLight,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: primary.withOpacity(0.12), width: 1),
+                                  boxShadow: [
+                                    BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4)),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Collapsed row: time + location + mini map
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        children: [
+                                          // time & location
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(children: [
+                                                  Icon(Icons.access_time_rounded,
+                                                      color: primary.withOpacity(0.70), size: 15),
+                                                  const SizedBox(width: 6),
+                                                  AnimatedDefaultTextStyle(
+                                                    duration: const Duration(milliseconds: 300),
+                                                    style: TextStyle(
+                                                      color: isDark ? kDarkText : _bordoDark, fontSize: 17,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
+                                                    child: Text(event.time),
+                                                  ),
+                                                ]),
+                                                const SizedBox(height: 6),
+                                                Row(children: [
+                                                  Icon(Icons.location_on_rounded,
+                                                      color: primary.withOpacity(0.70), size: 15),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: AnimatedDefaultTextStyle(
+                                                      duration: const Duration(milliseconds: 300),
+                                                      style: TextStyle(
+                                                        color: isDark ? kDarkText : _bordoDark, fontSize: 17,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                      child: Text(event.location),
+                                                    ),
+                                                  ),
+                                                ]),
+                                              ],
+                                            ),
                                           ),
-                                          Text(' ljudi se pridružilo',
-                                              style: TextStyle(
-                                                color: Colors.black.withOpacity(0.55),
-                                                fontSize: 14, fontWeight: FontWeight.w500,
-                                              )),
-                                        ]);
+                                          const SizedBox(width: 12),
+                                          // Mini map thumbnail
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: SizedBox(
+                                              width: 90, height: 70,
+                                              child: Stack(children: [
+                                                FlutterMap(
+                                                  mapController: _mapController,
+                                                  options: MapOptions(
+                                                    initialCenter: event.coordinates,
+                                                    initialZoom: 14.5,
+                                                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                                                  ),
+                                                  children: [
+                                                    TileLayer(
+                                                      urlTemplate:
+                                                      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                                      subdomains: const ['a', 'b', 'c', 'd'],
+                                                      userAgentPackageName: 'com.meetcute.app',
+                                                    ),
+                                                    MarkerLayer(markers: [
+                                                      Marker(
+                                                        point: event.coordinates,
+                                                        width: 22, height: 22,
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            color: _bordo,
+                                                            shape: BoxShape.circle,
+                                                            border: Border.all(color: Colors.white, width: 2),
+                                                            boxShadow: [
+                                                              BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ]),
+                                                  ],
+                                                ),
+                                                // expand hint overlay
+                                                Positioned.fill(
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      gradient: LinearGradient(
+                                                        colors: [Colors.transparent,
+                                                          Colors.black.withOpacity(0.12)],
+                                                        begin: Alignment.topCenter,
+                                                        end: Alignment.bottomCenter,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Positioned(
+                                                  bottom: 4, right: 4,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(3),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white.withOpacity(0.85),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Icon(
+                                                      _mapExpanded
+                                                          ? Icons.zoom_in_map_rounded
+                                                          : Icons.zoom_out_map_rounded,
+                                                      size: 12, color: _bordo,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ]),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Expanded map
+                                    AnimatedBuilder(
+                                      animation: _mapCtrl,
+                                      builder: (_, __) {
+                                        final h = _mapCtrl.value * 220.0;
+                                        if (h < 1) return const SizedBox.shrink();
+                                        return ClipRRect(
+                                          borderRadius: const BorderRadius.vertical(
+                                              bottom: Radius.circular(20)),
+                                          child: SizedBox(
+                                            height: h,
+                                            child: FlutterMap(
+                                              options: MapOptions(
+                                                initialCenter: event.coordinates,
+                                                initialZoom: 15.0,
+                                                interactionOptions: const InteractionOptions(
+                                                  flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                                                ),
+                                              ),
+                                              children: [
+                                                TileLayer(
+                                                  urlTemplate:
+                                                  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                                  subdomains: const ['a', 'b', 'c', 'd'],
+                                                  userAgentPackageName: 'com.meetcute.app',
+                                                ),
+                                                MarkerLayer(markers: [
+                                                  Marker(
+                                                    point: event.coordinates,
+                                                    width: 36, height: 36,
+                                                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                                      Container(
+                                                        width: 26, height: 26,
+                                                        decoration: BoxDecoration(
+                                                          color: _bordo, shape: BoxShape.circle,
+                                                          border: Border.all(color: Colors.white, width: 3),
+                                                          boxShadow: [BoxShadow(
+                                                              color: _bordo.withOpacity(0.5), blurRadius: 8)],
+                                                        ),
+                                                      ),
+                                                      Container(width: 3, height: 7,
+                                                        decoration: BoxDecoration(
+                                                          color: _bordo,
+                                                          borderRadius: BorderRadius.circular(2),
+                                                        ),
+                                                      ),
+                                                    ]),
+                                                  ),
+                                                ]),
+                                              ],
+                                            ),
+                                          ),
+                                        );
                                       },
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              // Date badge
-                              Container(
-                                width: 68, height: 68,
-                                decoration: BoxDecoration(
-                                  color: _bordo,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5)),
-                                  ],
-                                ),
-                                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                  Text(event.dateDay,
-                                      style: const TextStyle(color: Colors.white, fontSize: 20,
-                                          fontWeight: FontWeight.w900, height: 1.0)),
-                                  Text(event.dateMonth,
-                                      style: const TextStyle(color: Colors.white, fontSize: 20,
-                                          fontWeight: FontWeight.w900, height: 1.0)),
-                                ]),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // ── TIME + MAP CONTAINER ─────────────────────────
-                          GestureDetector(
-                            onTap: _toggleMap,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 340),
-                              curve: Curves.easeOutCubic,
-                              decoration: BoxDecoration(
-                                color: _bordoLight,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _bordo.withOpacity(0.12), width: 1),
-                                boxShadow: [
-                                  BoxShadow(color: _bordo.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4)),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  // Collapsed row: time + location + mini map
-                                  Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Row(
-                                      children: [
-                                        // time & location
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(children: [
-                                                Icon(Icons.access_time_rounded,
-                                                    color: _bordo.withOpacity(0.70), size: 15),
-                                                const SizedBox(width: 6),
-                                                Text(event.time,
-                                                    style: const TextStyle(
-                                                      color: Colors.white, fontSize: 17,
-                                                      fontWeight: FontWeight.w800,
-                                                    )),
-                                              ]),
-                                              const SizedBox(height: 6),
-                                              Row(children: [
-                                                Icon(Icons.location_on_rounded,
-                                                    color: _bordo.withOpacity(0.70), size: 15),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Text(event.location,
-                                                      style: const TextStyle(
-                                                        color: Colors.white, fontSize: 17,
-                                                        fontWeight: FontWeight.w700,
-                                                      )),
-                                                ),
-                                              ]),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        // Mini map thumbnail
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: SizedBox(
-                                            width: 90, height: 70,
-                                            child: Stack(children: [
-                                              FlutterMap(
-                                                mapController: _mapController,
-                                                options: MapOptions(
-                                                  initialCenter: event.coordinates,
-                                                  initialZoom: 14.5,
-                                                  interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                                                ),
-                                                children: [
-                                                  TileLayer(
-                                                    urlTemplate:
-                                                    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                                    subdomains: const ['a', 'b', 'c', 'd'],
-                                                    userAgentPackageName: 'com.meetcute.app',
-                                                  ),
-                                                  MarkerLayer(markers: [
-                                                    Marker(
-                                                      point: event.coordinates,
-                                                      width: 22, height: 22,
-                                                      child: Container(
-                                                        decoration: BoxDecoration(
-                                                          color: _bordo,
-                                                          shape: BoxShape.circle,
-                                                          border: Border.all(color: Colors.white, width: 2),
-                                                          boxShadow: [
-                                                            BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ]),
-                                                ],
-                                              ),
-                                              // expand hint overlay
-                                              Positioned.fill(
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [Colors.transparent,
-                                                        Colors.black.withOpacity(0.12)],
-                                                      begin: Alignment.topCenter,
-                                                      end: Alignment.bottomCenter,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Positioned(
-                                                bottom: 4, right: 4,
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(3),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white.withOpacity(0.85),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Icon(
-                                                    _mapExpanded
-                                                        ? Icons.zoom_in_map_rounded
-                                                        : Icons.zoom_out_map_rounded,
-                                                    size: 12, color: _bordo,
-                                                  ),
-                                                ),
-                                              ),
-                                            ]),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Expanded map
-                                  AnimatedBuilder(
-                                    animation: _mapCtrl,
-                                    builder: (_, __) {
-                                      final h = _mapCtrl.value * 220.0;
-                                      if (h < 1) return const SizedBox.shrink();
-                                      return ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(
-                                            bottom: Radius.circular(20)),
-                                        child: SizedBox(
-                                          height: h,
-                                          child: FlutterMap(
-                                            options: MapOptions(
-                                              initialCenter: event.coordinates,
-                                              initialZoom: 15.0,
-                                              interactionOptions: const InteractionOptions(
-                                                flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-                                              ),
-                                            ),
-                                            children: [
-                                              TileLayer(
-                                                urlTemplate:
-                                                'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                                subdomains: const ['a', 'b', 'c', 'd'],
-                                                userAgentPackageName: 'com.meetcute.app',
-                                              ),
-                                              MarkerLayer(markers: [
-                                                Marker(
-                                                  point: event.coordinates,
-                                                  width: 36, height: 36,
-                                                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                                    Container(
-                                                      width: 26, height: 26,
-                                                      decoration: BoxDecoration(
-                                                        color: _bordo, shape: BoxShape.circle,
-                                                        border: Border.all(color: Colors.white, width: 3),
-                                                        boxShadow: [BoxShadow(
-                                                            color: _bordo.withOpacity(0.5), blurRadius: 8)],
-                                                      ),
-                                                    ),
-                                                    Container(width: 3, height: 7,
-                                                      decoration: BoxDecoration(
-                                                        color: _bordo,
-                                                        borderRadius: BorderRadius.circular(2),
-                                                      ),
-                                                    ),
-                                                  ]),
-                                                ),
-                                              ]),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
                             ),
-                          ),
 
-                          const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                          // ── DESCRIPTION ──────────────────────────────────
-                          const Text('Opis',
+                            // ── DESCRIPTION ──────────────────────────────────
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 300),
                               style: TextStyle(
-                                color: Colors.black87, fontSize: 17,
+                                color: isDark ? kDarkText : Colors.black87, fontSize: 17,
                                 fontWeight: FontWeight.w800, letterSpacing: -0.2,
-                              )),
-                          const SizedBox(height: 10),
-                          Text(
-                            event.description.isNotEmpty
-                                ? event.description
-                                : 'Više informacija o eventu uskoro.',
-                            style: TextStyle(
-                              color: Colors.black.withOpacity(0.65),
-                              fontSize: 15, height: 1.65,
+                              ),
+                              child: const Text('Opis'),
                             ),
-                            textAlign: TextAlign.justify,
-                          ),
-                        ],
+                            const SizedBox(height: 10),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 300),
+                              style: TextStyle(
+                                color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65),
+                                fontSize: 15, height: 1.65,
+                              ),
+                              child: Text(
+                                event.description.isNotEmpty
+                                    ? event.description
+                                    : 'Više informacija o eventu uskoro.',
+                                textAlign: TextAlign.justify,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          // ── BACK BUTTON (floating over hero) ──────────────────────────────
-          Positioned(
-            top: mq.padding.top + 14,
-            left: 14,
-            child: FadeTransition(
-              opacity: _entryFade,
-              child: _BackButton(onTap: () => Navigator.pop(context)),
+              ],
             ),
-          ),
 
-          // ── JOIN BUTTON (pinned at bottom) ───────────────────────────────
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: _buildJoinBar(mq),
-          ),
-        ],
+            // ── BACK BUTTON (floating over hero) ──────────────────────────────
+            Positioned(
+              top: mq.padding.top + 14,
+              left: 14,
+              child: FadeTransition(
+                opacity: _entryFade,
+                child: _BackButton(onTap: () => Navigator.pop(context)),
+              ),
+            ),
+
+            // ── JOIN BUTTON (pinned at bottom) ───────────────────────────────
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: _buildJoinBar(mq),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildJoinBar(MediaQueryData mq) {
-    return Container(
+    final isDark  = ThemeState.instance.isDark;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4)),
+          BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4)),
         ],
       ),
       padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
@@ -1413,11 +1508,13 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             curve: Curves.easeOutCubic,
             height: 54,
             decoration: BoxDecoration(
-              color: _joined ? const Color(0xFF2C2C2C) : _bordo,
+              color: _joined
+                  ? (isDark ? const Color(0xFF3A3A42) : const Color(0xFF2C2C2C))
+                  : primary,
               borderRadius: BorderRadius.circular(27),
               boxShadow: [
                 BoxShadow(
-                  color: (_joined ? Colors.black : _bordo).withOpacity(0.28),
+                  color: (_joined ? Colors.black : primary).withOpacity(0.28),
                   blurRadius: 16, offset: const Offset(0, 6),
                 ),
               ],
@@ -1430,7 +1527,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   child: Icon(
                     _joined ? Icons.close_rounded : Icons.check_rounded,
                     key: ValueKey(_joined),
-                    color: Colors.white, size: 20,
+                    color: isDark ? kDarkBg : Colors.white, size: 20,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1439,8 +1536,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   child: Text(
                     _joined ? 'Otkaži prijavu' : 'Ja sam za!',
                     key: ValueKey(_joined),
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 16,
+                    style: TextStyle(
+                      color: isDark ? kDarkBg : Colors.white, fontSize: 16,
                       fontWeight: FontWeight.w800, letterSpacing: 0.1,
                     ),
                   ),

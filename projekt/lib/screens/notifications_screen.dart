@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems, kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
-import 'chat_screen.dart' show ChatState;
+import 'chat_screen.dart' show ChatState, ChatScreen;
 import 'events_nearby.dart' show _attendanceState, _eventsByCity;
+import 'profile_screen.dart';
+import 'settings_screen.dart' show SettingsScreen;
+import 'theme_state.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NOTIFICATION MODEL
@@ -205,6 +208,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     seedStaticNotifications();
     NotificationState.instance.addListener(_rebuild);
     ChatState.instance.addListener(_rebuild);
+    ThemeState.instance.addListener(_rebuild);
 
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
@@ -248,6 +252,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void dispose() {
     NotificationState.instance.removeListener(_rebuild);
     ChatState.instance.removeListener(_rebuild);
+    ThemeState.instance.removeListener(_rebuild);
     _entryCtrl.dispose(); _headerCtrl.dispose(); _listCtrl.dispose();
     _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
@@ -257,11 +262,34 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void _onNavTap(int index) {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
-    if (index == 0) { Navigator.pop(context); return; }
     _navTapCtrls[_selectedNavIndex].reverse();
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
-    Navigator.pop(context);
+
+    if (index == 0) { Navigator.pop(context); return; }
+
+    Widget? screen;
+    switch (index) {
+      case 1: screen = const ChatScreen(); break;
+      case 3: screen = const ProfileScreen(); break;
+      case 4: screen = const SettingsScreen(); break;
+      default: Navigator.pop(context); return;
+    }
+    Navigator.push(context, PageRouteBuilder(
+      pageBuilder: (_, a, __) => screen!,
+      transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
+      transitionDuration: const Duration(milliseconds: 320),
+    )).then((_) {
+      _navTapCtrls[index].reverse();
+      _navTapCtrls[2].forward(from: 0.0);
+      setState(() => _selectedNavIndex = 2);
+    });
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────────
@@ -269,51 +297,64 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final notifs = NotificationState.instance.all;
+    final isDark = ThemeState.instance.isDark;
+    final bgColor = isDark ? kDarkBg : kSurface;
 
-    return Scaffold(
-      backgroundColor: kSurface,
-      body: FadeTransition(
-        opacity: _entryFade,
-        child: Column(children: [
-          _buildHeader(mq),
-          Expanded(
-            child: FadeTransition(
-              opacity: _listFade,
-              child: SlideTransition(
-                position: _listSlide,
-                child: notifs.isEmpty
-                    ? _buildEmpty()
-                    : _buildList(notifs),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: bgColor,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: FadeTransition(
+          opacity: _entryFade,
+          child: Column(children: [
+            _buildHeader(mq),
+            Expanded(
+              child: FadeTransition(
+                opacity: _listFade,
+                child: SlideTransition(
+                  position: _listSlide,
+                  child: notifs.isEmpty
+                      ? _buildEmpty()
+                      : _buildList(notifs),
+                ),
               ),
             ),
-          ),
-          _buildNavBar(mq),
-        ]),
+            _buildNavBar(mq),
+          ]),
+        ),
       ),
     );
   }
 
   // ── HEADER ──────────────────────────────────────────────────────────────────
   Widget _buildHeader(MediaQueryData mq) {
-    final unread = NotificationState.instance.unreadCount;
+    final unread  = NotificationState.instance.unreadCount;
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
     return FadeTransition(
       opacity: _headerFade,
       child: SlideTransition(
         position: _headerSlide,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 380),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 22, offset: const Offset(0, 5))],
+            color: cardBg,
+            border: Border(bottom: BorderSide(color: primary.withOpacity(0.06), width: 1)),
+            boxShadow: [BoxShadow(color: primary.withOpacity(0.07), blurRadius: 22, offset: const Offset(0, 5))],
           ),
           padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 18),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  const Text('Obavijesti',
-                      style: TextStyle(color: kPrimaryDark, fontSize: 28,
-                          fontWeight: FontWeight.w900, letterSpacing: -0.8)),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 300),
+                    style: TextStyle(color: primary, fontSize: 28,
+                        fontWeight: FontWeight.w900, letterSpacing: -0.8),
+                    child: const Text('Obavijesti'),
+                  ),
                   if (unread > 0) ...[
                     const SizedBox(width: 10),
                     TweenAnimationBuilder<double>(
@@ -321,19 +362,24 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.easeOutBack,
                       builder: (_, v, child) => Transform.scale(scale: v, child: child),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 340),
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                         decoration: BoxDecoration(
-                            color: kPrimaryDark, borderRadius: BorderRadius.circular(10)),
+                            color: primary, borderRadius: BorderRadius.circular(10)),
                         child: Text('$unread',
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                            style: TextStyle(color: isDark ? kDarkBg : Colors.white,
+                                fontSize: 12, fontWeight: FontWeight.w800)),
                       ),
                     ),
                   ],
                 ]),
                 const SizedBox(height: 3),
-                Text('${NotificationState.instance.all.length} obavijesti',
-                    style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500)),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 300),
+                  style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
+                  child: Text('${NotificationState.instance.all.length} obavijesti'),
+                ),
               ]),
             ),
             // Clear all
@@ -343,16 +389,20 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   HapticFeedback.mediumImpact();
                   _showClearConfirm();
                 },
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 340),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: kPrimaryDark.withOpacity(0.06),
+                    color: primary.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kPrimaryDark.withOpacity(0.10)),
+                    border: Border.all(color: primary.withOpacity(0.10)),
                   ),
-                  child: Text('Obriši sve',
-                      style: TextStyle(color: kPrimaryDark.withOpacity(0.60),
-                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 300),
+                    style: TextStyle(color: primary.withOpacity(0.60),
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                    child: const Text('Obriši sve'),
+                  ),
                 ),
               ),
           ]),
@@ -423,6 +473,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   // ── EMPTY STATE ─────────────────────────────────────────────────────────────
   Widget _buildEmpty() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final accent  = isDark ? kPrimaryDark  : kPrimaryLight;
     return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         TweenAnimationBuilder<double>(
@@ -431,27 +484,34 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           curve: Curves.easeOutBack,
           builder: (_, v, __) => Transform.scale(
             scale: v,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 380),
               width: 100, height: 100,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.12)],
+                  colors: [accent, primary.withOpacity(0.20)],
                 ),
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.14), blurRadius: 28, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.18), blurRadius: 28, offset: const Offset(0, 10))],
               ),
-              child: const Icon(Icons.notifications_none_rounded, color: kPrimaryDark, size: 46),
+              child: Icon(Icons.notifications_none_rounded, color: primary, size: 46),
             ),
           ),
         ),
         const SizedBox(height: 24),
-        const Text('Sve je čisto!',
-            style: TextStyle(color: kPrimaryDark, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: primary, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+          child: const Text('Sve je čisto!'),
+        ),
         const SizedBox(height: 8),
-        Text('Nema novih obavijesti.\nPrijavi se na event i vidi što se događa! 🎉',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 14, height: 1.5)),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: primary.withOpacity(isDark ? 0.65 : 0.40), fontSize: 14, height: 1.5),
+          child: const Text('Nema novih obavijesti.\nPrijavi se na event i vidi što se događa! 🎉',
+              textAlign: TextAlign.center),
+        ),
       ]),
     );
   }
@@ -512,14 +572,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   // ── NAV BAR ─────────────────────────────────────────────────────────────────
   Widget _buildNavBar(MediaQueryData mq) {
+    final isDark  = ThemeState.instance.isDark;
+    final navBg   = isDark ? kDarkCard : Colors.white;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
     return AnimatedBuilder(
       animation: _navBarSlide,
       builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 380),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: kPrimaryDark.withOpacity(0.06), width: 1)),
-          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, -5))],
+          color: navBg,
+          border: Border(top: BorderSide(color: primary.withOpacity(0.06), width: 1)),
+          boxShadow: [BoxShadow(color: primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, -5))],
         ),
         padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
@@ -531,6 +595,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildNavItem(int index) {
+    final isDark     = ThemeState.instance.isDark;
+    final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
@@ -551,11 +617,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: kNavPadH, vertical: kNavPadV),
                   decoration: BoxDecoration(
-                    color: isSelected ? kPrimaryDark.withOpacity(0.09) : Colors.transparent,
+                    color: isSelected ? navPrimary.withOpacity(0.09) : Colors.transparent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isSelected ? item.selected : item.unselected,
-                      color: isSelected ? kPrimaryDark : kPrimaryDark.withOpacity(0.25),
+                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
                       size: kNavIconSize),
                 ),
                 if (showChatBadge) Positioned(top: 2, right: 4,
@@ -568,7 +634,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               duration: const Duration(milliseconds: 200),
               width: isSelected ? kNavDotSize : 0, height: isSelected ? kNavDotSize : 0,
               margin: const EdgeInsets.only(top: 2),
-              decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: navPrimary, shape: BoxShape.circle),
             ),
           ]);
         },
