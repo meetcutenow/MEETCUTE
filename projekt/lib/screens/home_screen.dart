@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
+import 'events_nearby.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DESIGN TOKENS
@@ -303,15 +304,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: FadeTransition(
         opacity: _entryFade,
         child: Stack(children: [
-
-          // ── MAP CARD (zaobljeni kutovi, sjena) ─────────────────────────
           Positioned(
             top: 0, left: 0, right: 0,
             height: mapH,
             child: _buildMapCard(mq, mapH),
           ),
-
-          // ── SCROLLABLE CONTENT BELOW MAP ───────────────────────────────
           Positioned(
             top: mapH + avatarD / 2 + 6,
             left: 0, right: 0, bottom: 0,
@@ -333,8 +330,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-
-          // ── AVATAR (overlaps map bottom) ───────────────────────────────
           Positioned(
             top: mapH - avatarD / 2,
             left: 0, right: 0,
@@ -344,7 +339,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: GestureDetector(
                   onTap: () => _onNavTap(3),
                   child: Stack(alignment: Alignment.center, children: [
-                    // Outer glow ring
                     Container(
                       width: avatarD + 12, height: avatarD + 12,
                       decoration: BoxDecoration(
@@ -352,15 +346,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: kPrimaryDark.withOpacity(0.08),
                       ),
                     ),
-                    // White border ring
                     Container(
                       width: avatarD + 6, height: avatarD + 6,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
                     ),
-                    // Avatar
                     Container(
                       width: avatarD, height: avatarD,
                       decoration: BoxDecoration(
@@ -370,15 +359,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8)),
                         ],
                       ),
-                      child: Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
+                      child: const Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
                     ),
                   ]),
                 ),
               ),
             ),
           ),
-
-          // ── NAV BAR ────────────────────────────────────────────────────
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: _buildNavBar(mq),
@@ -390,7 +377,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildMapCard(MediaQueryData mq, double mapH) {
     return Container(
-      // Zaobljeni samo donji kutovi + sjena
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
@@ -404,8 +390,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           animation: _blurAnim,
           builder: (_, child) => Stack(children: [
             child!,
-
-            // Blur when location disabled
             if (_blurAnim.value > 0)
               Positioned.fill(
                 child: BackdropFilter(
@@ -434,40 +418,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-            // Animated MeetCute Logo (bordo, glass, animirani shimmer)
             Positioned(
               top: mq.padding.top + 16,
               left: 16,
               child: _AnimatedLogo(glowAnim: _logoGlow),
             ),
-
-            // Top-right glass buttons
             Positioned(
               top: mq.padding.top + 16,
               right: 16,
               child: Row(children: [
-                _GlassMapBtn(
-                  icon: Icons.notifications_none_rounded,
-                  onTap: () => _onNavTap(2),
-                ),
+                _GlassMapBtn(icon: Icons.notifications_none_rounded, onTap: () => _onNavTap(2)),
                 const SizedBox(width: 8),
-                _GlassMapBtn(
-                  icon: Icons.settings_outlined,
-                  onTap: () => _onNavTap(4),
-                ),
+                _GlassMapBtn(icon: Icons.settings_outlined, onTap: () => _onNavTap(4)),
               ]),
             ),
-
-            // Bottom gradient for seamless transition
             Positioned(
-              bottom: 0, left: 0, right: 0,
-              height: 72,
+              bottom: 0, left: 0, right: 0, height: 72,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
                     colors: [Colors.transparent, kSurface.withOpacity(0.7)],
                   ),
                 ),
@@ -653,7 +623,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: kMenuPadH, vertical: kMenuPadV),
               child: Row(children: [
-                // Icon box with gradient
                 Container(
                   width: 48, height: 48,
                   decoration: BoxDecoration(
@@ -814,7 +783,6 @@ class _AnimatedLogo extends StatelessWidget {
                   border: Border.all(color: kPrimaryDark.withOpacity(0.60), width: 1.2),
                 ),
                 child: Stack(children: [
-                  // Shimmer sweep
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(23),
@@ -826,22 +794,18 @@ class _AnimatedLogo extends StatelessWidget {
                                 begin: Alignment(-1 + glowAnim.value * 2, 0),
                                 end: Alignment(1 + glowAnim.value * 2, 0),
                                 colors: [
-                              Colors.white.withOpacity(0.0),
-                              Colors.white.withOpacity(0.18),
-                              Colors.white.withOpacity(0.0),
-                            ]),
+                                  Colors.white.withOpacity(0.0),
+                                  Colors.white.withOpacity(0.18),
+                                  Colors.white.withOpacity(0.0),
+                                ]),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  // Content
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     const SizedBox(width: 8),
-                    Image.asset(
-                      'assets/images/logo.png',
-                      height:30,
-                    ),
+                    Image.asset('assets/images/logo.png', height: 30),
                   ]),
                 ]),
               ),
@@ -903,26 +867,12 @@ class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderSta
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLACEHOLDER SCREENS
 // ═══════════════════════════════════════════════════════════════════════════════
-class EventsNearbyScreen extends StatelessWidget {
-  const EventsNearbyScreen({super.key});
-  @override Widget build(BuildContext context) =>
-      const _PlaceholderScreen(title: 'Događanja u blizini', icon: Icons.calendar_today_rounded);
-}
-class OrganizeMeetupScreen extends StatelessWidget {
-  const OrganizeMeetupScreen({super.key});
-  @override Widget build(BuildContext context) =>
-      const _PlaceholderScreen(title: 'Organiziraj susret', icon: Icons.coffee_rounded);
-}
-class FilterMatchesScreen extends StatelessWidget {
-  const FilterMatchesScreen({super.key});
-  @override Widget build(BuildContext context) =>
-      const _PlaceholderScreen(title: 'Filtriraj matcheve', icon: Icons.tune_rounded);
-}
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override Widget build(BuildContext context) =>
       const _PlaceholderScreen(title: 'Obavijesti', icon: Icons.notifications_none_rounded);
 }
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
   @override Widget build(BuildContext context) =>
