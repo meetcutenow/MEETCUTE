@@ -317,7 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 300),
                   style: TextStyle(color: _primary.withOpacity(0.42), fontSize: 12.5, fontWeight: FontWeight.w400),
-                  child: Text(_dark ? 'Upaljeno — bordo vibe 🌙' : 'Ugašeno — roza vibe ☀️'),
+                  child: Text(_dark ? 'Upaljeno' : 'Ugašeno'),
                 ),
               ])),
               // custom toggle
