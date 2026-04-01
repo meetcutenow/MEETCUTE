@@ -719,7 +719,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                 duration: const Duration(milliseconds: 100),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: ThemeState.instance.isDark ? kDarkCard : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isUnread ? accent.withOpacity(0.20) : kPrimaryDark.withOpacity(0.06),
@@ -769,7 +769,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                     Expanded(
                                       child: Text(n.title,
                                           style: TextStyle(
-                                            color: kPrimaryDark,
+                                            color: ThemeState.instance.isDark ? kDarkText : kPrimaryDark,
                                             fontSize: 14.5,
                                             fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
                                             letterSpacing: -0.2,
@@ -788,7 +788,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                         const SizedBox(height: 3),
                                         Text(_formatTime(n.timestamp),
                                             style: TextStyle(
-                                              color: kPrimaryDark.withOpacity(0.30),
+                                              color: (ThemeState.instance.isDark ? kDarkText : kPrimaryDark).withOpacity(0.30),
                                               fontSize: 11.5, fontWeight: FontWeight.w500,
                                             )),
                                       ],
@@ -798,7 +798,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                 const SizedBox(height: 4),
                                 Text(n.body,
                                     style: TextStyle(
-                                      color: kPrimaryDark.withOpacity(isUnread ? 0.65 : 0.40),
+                                      color: (ThemeState.instance.isDark ? kDarkText : kPrimaryDark).withOpacity(isUnread ? 0.65 : 0.40),
                                       fontSize: 13, height: 1.45,
                                     )),
                                 if (n.eventName != null) ...[

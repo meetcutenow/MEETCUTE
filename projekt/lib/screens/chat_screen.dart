@@ -621,61 +621,66 @@ class _DismissibleTileState extends State<_DismissibleTile>
           child: Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ThemeState.instance.isDark ? kDarkCard : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: kPrimaryDark.withOpacity(hasUnread ? 0.12 : 0.05), width: 1),
               boxShadow: [
                 BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 18, offset: const Offset(0, 5)),
               ],
             ),
-            child: Row(children: [
-              Container(width: 52, height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      colors: [kPrimaryLight, kPrimaryDark.withOpacity(0.14)]),
-                  border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 2),
-                ),
-                child: Icon(Icons.person_rounded, color: kPrimaryDark, size: 26),
-              ),
-              const SizedBox(width: 13),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text(convo.name, style: TextStyle(
-                    color: kPrimaryDark,
-                    fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
-                    fontSize: 15.5,
-                  )),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: hasUnread ? kPrimaryDark.withOpacity(0.08) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Text(convo.lastMessageTime, style: TextStyle(
-                      color: hasUnread ? kPrimaryDark : kPrimaryDark.withOpacity(0.30),
-                      fontSize: 12, fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
-                    )),
+            child: Builder(builder: (context) {
+              final isDark = ThemeState.instance.isDark;
+              final tileText = isDark ? kDarkText : kPrimaryDark;
+              final tileAccent = isDark ? kDarkPrimary : kPrimaryDark;
+              final avatarBg = isDark ? kDarkCardEl : kPrimaryLight;
+              return Row(children: [
+                Container(width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [avatarBg, tileAccent.withOpacity(0.14)]),
+                    border: Border.all(color: tileAccent.withOpacity(0.10), width: 2),
                   ),
-                ]),
-                const SizedBox(height: 5),
-                Row(children: [
-                  Expanded(child: Text(convo.lastMessageText,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: kPrimaryDark.withOpacity(hasUnread ? 0.75 : 0.35),
-                        fontSize: 13.5,
-                        fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
-                      ))),
-                  if (hasUnread) ...[
-                    const SizedBox(width: 8),
-                    Container(width: 9, height: 9,
-                        decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle)),
-                  ],
-                ]),
-              ])),
-            ]),
+                  child: Icon(Icons.person_rounded, color: tileAccent, size: 26),
+                ),
+                const SizedBox(width: 13),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text(convo.name, style: TextStyle(
+                      color: tileText,
+                      fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
+                      fontSize: 15.5,
+                    )),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: hasUnread ? tileAccent.withOpacity(0.08) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(convo.lastMessageTime, style: TextStyle(
+                        color: hasUnread ? tileAccent : tileText.withOpacity(0.30),
+                        fontSize: 12, fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
+                      )),
+                    ),
+                  ]),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    Expanded(child: Text(convo.lastMessageText,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: tileText.withOpacity(hasUnread ? 0.75 : 0.35),
+                          fontSize: 13.5,
+                          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                        ))),
+                    if (hasUnread) ...[
+                      const SizedBox(width: 8),
+                      Container(width: 9, height: 9,
+                          decoration: BoxDecoration(color: tileAccent, shape: BoxShape.circle)),
+                    ],
+                  ]),
+                ])),
+              ]);}),
           ),
         ),
       ),

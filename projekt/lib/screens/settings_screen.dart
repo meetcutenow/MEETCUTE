@@ -801,10 +801,10 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // made with love tag
+                  // made with love tag — wrapped so it doesn't overflow on narrow screens
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 340),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
                       color: widget.accent.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(20),
@@ -813,13 +813,18 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.coffee_rounded, color: widget.primary, size: 14),
                       const SizedBox(width: 6),
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 300),
-                        style: TextStyle(
-                          color: widget.primary.withOpacity(0.65),
-                          fontSize: 12.5, fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 300),
+                          style: TextStyle(
+                            color: widget.primary.withOpacity(0.65),
+                            fontSize: 12.5, fontWeight: FontWeight.w600,
+                          ),
+                          child: const Text(
+                            'Napravljeno s ljubavlju i ledenom kavom',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        child: const Text('Napravljeno s ljubavlju i ledenom kavom'),
                       ),
                       const SizedBox(width: 6),
                       Icon(Icons.favorite_rounded, color: widget.primary, size: 12),
