@@ -14,7 +14,7 @@ class ThemeState extends ChangeNotifier {
   }
 }
 
-// ─── Light palette ──────────────────────────────────────────────────────────
+// ─── Svijetla paleta ──────────────────────────────────────────────────────────
 const Color kLightBg      = Color(0xFFF5EDEF);
 const Color kLightCard    = Color(0xFFFFFFFF);
 const Color kLightCardEl  = Color(0xFFF2E8E9);
@@ -23,7 +23,7 @@ const Color kLightAccent  = Color(0xFFF2E8E9);
 const Color kLightText    = Color(0xFF1C0A10);
 const Color kLightTextSub = Color(0xFF8C6A72);
 
-// ─── Dark palette ────────────────────────────────────────────────────────────
+// ─── Tamna paleta ────────────────────────────────────────────────────────────
 const Color kDarkBg       = Color(0xFF000000);
 const Color kDarkCard     = Color(0xFF393737);
 const Color kDarkCardEl   = Color(0xFF5A5A61);
@@ -32,7 +32,7 @@ const Color kDarkAccent   = Color(0xFFF2A8B8);
 const Color kDarkText     = Color(0xFF785661);
 const Color kDarkTextSub  = Color(0xFF8E8E93);
 
-// ─── Semantic getters ────────────────────────────────────────────────────────
+// ─── Getteri ────────────────────────────────────────────────────────
 extension AppColors on ThemeState {
   Color get bg       => isDark ? kDarkBg      : kLightBg;
   Color get card     => isDark ? kDarkCard    : kLightCard;

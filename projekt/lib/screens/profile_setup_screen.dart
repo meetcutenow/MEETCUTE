@@ -4,9 +4,9 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 
-// ═══════════════════════════════════════════════════════════════════════════════
+
 // PROFILE DATA MODEL
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ProfileSetupData {
   List<String> photoPaths;
@@ -54,9 +54,7 @@ class ProfileSetupData {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE SETUP SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ProfileSetupScreen extends StatefulWidget {
   final ProfileSetupData? initial;
@@ -165,9 +163,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SHARED HEADER
-// ═══════════════════════════════════════════════════════════════════════════════
+
+//HEADER
+
 
 class _Header extends StatelessWidget {
   final int step;
@@ -224,9 +222,9 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NEXT BUTTON
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// NEXT BOTUN
+
 
 class _NextButton extends StatefulWidget {
   final int step;
@@ -294,9 +292,9 @@ class _NextButtonState extends State<_NextButton> with SingleTickerProviderState
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 1 — Photos + personal info
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// 1 — fotografije i osobne informacije
+
 
 class _Step1 extends StatefulWidget {
   final ProfileSetupData data;
@@ -454,7 +452,7 @@ class _Step1State extends State<_Step1> {
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── PHOTO ROW ───────────────────────────────────────────────────────
+        // ── red s foto───────────────────────────────────────────────────────
         SizedBox(
           height: 156,
           child: Row(children: [
@@ -583,9 +581,9 @@ class _Step1State extends State<_Step1> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 2 — Interests
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// 2 — interesi
+
 
 class _Step2 extends StatefulWidget {
   final ProfileSetupData data;
@@ -715,16 +713,9 @@ class _InterestCell extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 3 — Ice-breaker
-//
-// POPRAVCI:
-//   1) _stopEdit() poziva widget.onChange → iceBreaker se propagira u _data
-//      i dalje u _globalProfileData (kroz onSave u profile_screen)
-//   2) Gumb je desno i PRELAZI oba pravokutnika:
-//      koristi LayoutBuilder + Stack + Positioned(top: boundary - fabSize/2)
-//      gdje je boundary = totalHeight * 5/12 (flex 5 od ukupno 12)
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// 3 — opis
+
 
 class _Step3 extends StatefulWidget {
   final ProfileSetupData data;
@@ -784,9 +775,8 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
         onTap: _editing ? _stopEdit : null,
         child: Stack(children: [
 
-          // ── Oba pravokutnika ─────────────────────────────────────────────
           Column(children: [
-            // Gornji — svjetlija ružičasta
+
             Expanded(
               flex: 5,
               child: Container(
@@ -804,7 +794,7 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
-            // Donji — tamnija ružičasta
+
             Expanded(
               flex: 7,
               child: Container(
@@ -846,7 +836,7 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
             ),
           ]),
 
-          // ── FAB gumb — DESNO, PRELAZI oba pravokutnika ───────────────────
+          // gumb
           Positioned(
             top: fabTop,
             right: 24,

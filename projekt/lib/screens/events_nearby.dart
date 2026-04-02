@@ -6,16 +6,12 @@ import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
 import 'theme_state.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════════
+
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const Color _bordoDark  = Color(0xFF4A0818);
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// DATA MODELS
-// ═══════════════════════════════════════════════════════════════════════════════
+//podaci
 
 class _City {
   final String name;
@@ -34,7 +30,7 @@ class EventData {
   final String location;
   final String dateDay;
   final String dateMonth;
-  final String time;           // e.g. '10:00 – 12:00'
+  final String time;
   final String description;
   final int    attendees;
   final LatLng coordinates;
@@ -57,9 +53,7 @@ class EventData {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ATTENDANCE STATE  (global, survives navigation)
-// ═══════════════════════════════════════════════════════════════════════════════
+//stanje prijave
 final _attendanceState = <String, bool>{};   // key = event title
 int _effectiveAttendees(EventData e) {
   final joined = _attendanceState[e.title];
@@ -67,9 +61,7 @@ int _effectiveAttendees(EventData e) {
   return joined ? e.attendees + 1 : e.attendees;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATIC DATA
-// ═══════════════════════════════════════════════════════════════════════════════
+//podaci
 
 const _cities = [
   _City('Zagreb'),
@@ -186,9 +178,9 @@ final _eventsByCity = <int, List<EventData>>{
       cardColor: Color(0xFFFFB3C6),
     ),
   ],
-  // ── Rijeka — nema evenata ────────────────────────────────────────────────────
+  // ── Rijeka ────────────────────────────────────────────────────
   2: [],
-  // ── Osijek ───────────────────────────────────────────────────────────────────
+  // ── Osijek ────────────────────────────────────────────────────
   3: [
     const EventData(
       title: 'Tvrđa fest',
@@ -235,9 +227,7 @@ final _eventsByCity = <int, List<EventData>>{
   ],
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENTS NEARBY SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+//glavno
 
 class EventsNearbyScreen extends StatefulWidget {
   const EventsNearbyScreen({super.key});
@@ -384,9 +374,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     )).then((_) => setState(() {})); // refresh attendance counts on return
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ═════════════════════════════════════════════════════════════════════════
+  //BUILD
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -518,7 +506,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── CITY PICKER OVERLAY ─────────────────────────────────────────────────────
+  // ── BIRAČ GRADOVA ─────────────────────────────────────────────────────
   Widget _buildCityPickerOverlay() {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
@@ -562,7 +550,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── CATEGORY CHIPS ──────────────────────────────────────────────────────────
+  // ── CATEGORY ──────────────────────────────────────────────────────────
   Widget _buildCategoryChips() {
     return SizedBox(
       height: 36,
@@ -798,9 +786,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENT CARD (list thumbnail)
-// ═══════════════════════════════════════════════════════════════════════════════
+//EVENT CARD
 
 class _EventCard extends StatefulWidget {
   final EventData event;
@@ -865,7 +851,7 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
               _cloud(top: 44, right: 10, w: 28, h: 14),
               _cloud(bottom: 72, left: 22, w: 32, h: 16),
 
-              // tap hint
+              //"detalji"
               Positioned(
                 bottom: 12, right: 12,
                 child: Container(
@@ -935,9 +921,7 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CITY TILE
-// ═══════════════════════════════════════════════════════════════════════════════
+//grad
 
 class _CityTile extends StatefulWidget {
   final String name;
@@ -1002,9 +986,7 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENT DETAIL SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+//detalji evenata
 
 class EventDetailScreen extends StatefulWidget {
   final EventData event;
@@ -1117,11 +1099,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            // ── scrollable content ─────────────────────────────────────────────
             CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // ── HERO IMAGE ────────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: ScaleTransition(
                     scale: _heroScale,
@@ -1135,7 +1115,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         else
                           Container(color: c),
 
-                        // subtle gradient at bottom for readability
                         Positioned(
                           bottom: 0, left: 0, right: 0, height: 100,
                           child: DecoratedBox(
@@ -1148,7 +1127,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           ),
                         ),
 
-                        // decorative clouds
                         _cloudWidget(top: 28, left: 18, w: 70, h: 32),
                         _cloudWidget(top: 14, right: 60, w: 50, h: 24),
                         _cloudWidget(top: 60, right: 16, w: 36, h: 18),
@@ -1158,7 +1136,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   ),
                 ),
 
-                // ── DETAIL CONTENT ───────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: FadeTransition(
                     opacity: _entryFade,
@@ -1170,7 +1147,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
 
-                            // ── TITLE ROW ────────────────────────────────────
+
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1213,7 +1190,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                // Date badge
                                 Container(
                                   width: 68, height: 68,
                                   decoration: BoxDecoration(
@@ -1237,7 +1213,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
                             const SizedBox(height: 20),
 
-                            // ── TIME + MAP CONTAINER ─────────────────────────
+                            // ── VRIJEME + MAPA ─────────────────────────
                             GestureDetector(
                               onTap: _toggleMap,
                               child: AnimatedContainer(
@@ -1253,12 +1229,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                 ),
                                 child: Column(
                                   children: [
-                                    // Collapsed row: time + location + mini map
                                     Padding(
                                       padding: const EdgeInsets.all(16),
                                       child: Row(
                                         children: [
-                                          // time & location
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1296,7 +1270,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          // Mini map thumbnail
+                                          // mala mapa
                                           ClipRRect(
                                             borderRadius: BorderRadius.circular(12),
                                             child: SizedBox(
@@ -1370,7 +1344,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                       ),
                                     ),
 
-                                    // Expanded map
+                                    // raširena mapa
                                     AnimatedBuilder(
                                       animation: _mapCtrl,
                                       builder: (_, __) {
@@ -1464,7 +1438,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               ],
             ),
 
-            // ── BACK BUTTON (floating over hero) ──────────────────────────────
+            // ── BACK BUTTON ──────────────────────────────
             Positioned(
               top: mq.padding.top + 14,
               left: 14,
@@ -1474,7 +1448,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               ),
             ),
 
-            // ── JOIN BUTTON (pinned at bottom) ───────────────────────────────
+            // ── JOIN BUTTON ───────────────────────────────
             Positioned(
               bottom: 0, left: 0, right: 0,
               child: _buildJoinBar(mq),
@@ -1561,9 +1535,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BACK BUTTON (glassmorphism)
-// ═══════════════════════════════════════════════════════════════════════════════
+//BACK BUTTON
 
 class _BackButton extends StatefulWidget {
   final VoidCallback onTap;

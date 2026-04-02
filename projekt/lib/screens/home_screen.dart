@@ -12,9 +12,7 @@ import 'notifications_screen.dart' show NotificationsScreen, NotificationState, 
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// DESIGN TOKENS
-// ═══════════════════════════════════════════════════════════════════════════════
+
 const Color kPrimaryDark   = Color(0xFF700D25);
 const Color kPrimaryLight  = Color(0xFFF2E8E9);
 const Color kGradientStart = Color(0xFF938083);
@@ -54,9 +52,7 @@ class _NavItem {
   const _NavItem(this.unselected, this.selected, this.label);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HOME SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override State<HomeScreen> createState() => _HomeScreenState();
@@ -801,9 +797,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ANIMATED LOGO WIDGET  — floating frosted bordo badge
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// animirani logo
 class _AnimatedLogo extends StatefulWidget {
   final Animation<double> glowAnim;
   const _AnimatedLogo({required this.glowAnim});
@@ -843,7 +838,7 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
             clipBehavior: Clip.none,
             children: [
 
-              // ── breathing glow ────────────────────────────────────────────
+              //glow
               Container(
                 width: 115, height: 44,
                 decoration: BoxDecoration(
@@ -858,7 +853,7 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
                 ),
               ),
 
-              // ── frosted bordo pill ────────────────────────────────────────
+              // kontejner
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: BackdropFilter(
@@ -892,9 +887,7 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLASS MAP BUTTON
-// ═══════════════════════════════════════════════════════════════════════════════
+//botun za mapu
 class _GlassMapBtn extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -940,9 +933,7 @@ class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderSta
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NAV BADGE  — public so chat_screen & notifications_screen can import it
-// ═══════════════════════════════════════════════════════════════════════════════
+//navbadge
 class NavBadge extends StatelessWidget {
   final int count;
   const NavBadge({super.key, required this.count});

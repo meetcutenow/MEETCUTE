@@ -23,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   int _selectedNavIndex = 4;
 
-  // ── entry animations ───────────────────────────────────────────────────────
+  // ── animacije ───────────────────────────────────────────────────────
   late final AnimationController _entryCtrl;
   late final AnimationController _navBarCtrl;
   late final List<AnimationController> _navTapCtrls;
@@ -32,11 +32,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final Animation<Offset> _entrySlide;
   late final Animation<double> _navBarSlide;
 
-  // ── dark mode toggle ───────────────────────────────────────────────────────
+  // ── dark mode botun ───────────────────────────────────────────────────────
   late final AnimationController _toggleCtrl;
   late final Animation<double> _toggleKnob;
 
-  // ── about dialog ──────────────────────────────────────────────────────────
+  // ── about us ──────────────────────────────────────────────────────────
   late final AnimationController _aboutCtrl;
 
   @override
@@ -101,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     super.dispose();
   }
 
-  // ── helpers ────────────────────────────────────────────────────────────────
+  // ── helperi ────────────────────────────────────────────────────────────────
   bool get _dark => ThemeState.instance.isDark;
   Color get _bg      => _dark ? kDarkBg      : kSurface;
   Color get _card    => _dark ? kDarkCard    : Colors.white;
@@ -114,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     ThemeState.instance.isDark ? _toggleCtrl.forward() : _toggleCtrl.reverse();
   }
 
-  // ── nav ────────────────────────────────────────────────────────────────────
+  // ── navigacija ────────────────────────────────────────────────────────────────────
   void _onNavTap(int index) {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
@@ -147,9 +147,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     });
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
+
   // BUILD
-  // ═════════════════════════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -217,13 +217,13 @@ class _SettingsScreenState extends State<SettingsScreen>
       padding: EdgeInsets.fromLTRB(18, 22, 18, mq.padding.bottom + 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── section: Izgled ─────────────────────────────────────────────────
+        // ──Izgled ─────────────────────────────────────────────────
         _sectionLabel('Izgled', 0),
         const SizedBox(height: 10),
         _buildDarkModeRow(1),
         const SizedBox(height: 24),
 
-        // ── section: Račun ──────────────────────────────────────────────────
+        // ── Racun ──────────────────────────────────────────────────
         _sectionLabel('Račun', 2),
         const SizedBox(height: 10),
         _buildTapRow(
@@ -236,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 24),
 
-        // ── section: O nama ─────────────────────────────────────────────────
+        // ─O nama ─────────────────────────────────────────────────
         _sectionLabel('O nama', 4),
         const SizedBox(height: 10),
         _buildTapRow(
@@ -272,7 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  // ── DARK MODE ROW ───────────────────────────────────────────────────────────
+  // ── DARK MODe ───────────────────────────────────────────────────────────
   Widget _buildDarkModeRow(int rowIdx) {
     return FadeTransition(
       opacity: CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOut),
@@ -363,7 +363,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  // ── ABOUT DIALOG ───────────────────────────────────────────────────────────
+  // ── O NAMA ───────────────────────────────────────────────────────────
   void _showAboutDialog() {
     HapticFeedback.mediumImpact();
     showGeneralDialog(
@@ -393,7 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  // ── NAV BAR ────────────────────────────────────────────────────────────────
+  // ── NAVIGACIJA ────────────────────────────────────────────────────────────────
   Widget _buildNavBar(MediaQueryData mq) {
     return AnimatedBuilder(
       animation: _navBarSlide,
@@ -465,9 +465,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// DARK TOGGLE  — custom animated switch
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// DARK MODE TOGGLE
+
 class _DarkToggle extends StatelessWidget {
   final bool value;
   final Color primary;
@@ -517,9 +517,9 @@ class _DarkToggle extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+
 // TAP CARD  — reusable pressable row card
-// ═══════════════════════════════════════════════════════════════════════════════
+
 class _TapCard extends StatefulWidget {
   final Color card, primary, accent, iconColor;
   final IconData icon;
@@ -591,9 +591,8 @@ class _TapCardState extends State<_TapCard> with SingleTickerProviderStateMixin 
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HEART DECO  — animated header decoration
-// ═══════════════════════════════════════════════════════════════════════════════
+// Srce
+
 class _HeartDeco extends StatefulWidget {
   final Color primary, accent;
   const _HeartDeco({required this.primary, required this.accent});
@@ -634,9 +633,9 @@ class _HeartDecoState extends State<_HeartDeco> with SingleTickerProviderStateMi
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ABOUT CARD  — the pretty popup
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// O NAMA pop up
+
 class _AboutCard extends StatefulWidget {
   final Color primary, accent, card;
   final VoidCallback onClose;
@@ -770,7 +769,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                 },
               ),
 
-              // ── text content ───────────────────────────────────────────────
+              //text
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
                 child: Column(children: [
@@ -792,8 +791,8 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                     child: const Text(
                       'MeetCute nastao je kao projekt dvije studentice, Lane i Iris, '
                           'druge godine računarstva — dok su sjedile u svom omiljenom kafiću, '
-                          'pile ledenu kavu i sanjale o aplikaciji koja spaja ljude na način '
-                          'koji se zbilja osjeća posebno.\n\n'
+                          'pile ledenu kavu i sanjale o aplikaciji koja spaja ljude na poseban način '
+                          '\n\n'
                           'Nisu htjele još jedan swipe-left-swipe-right. Htjele su nešto toplije '
                           '— mjesto gdje upoznaješ ljude iz svog grada, na stvarnim događanjima, '
                           'u pravom životu. I tako je MeetCute dobio srce. 🍵✨',

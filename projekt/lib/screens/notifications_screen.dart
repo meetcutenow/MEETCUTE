@@ -7,9 +7,7 @@ import 'profile_screen.dart';
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATION MODEL
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 enum NotifType { joined, cancelled, reminder, newEvent, general }
 
@@ -37,9 +35,9 @@ class AppNotification {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLOBAL NOTIFICATION STATE
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// notification state
+
 
 class NotificationState {
   static final NotificationState instance = NotificationState._();
@@ -81,7 +79,7 @@ class NotificationState {
     _notify();
   }
 
-  // Called from EventDetailScreen when join/cancel toggled
+  // povezano s eventovima
   void onAttendanceChanged(String eventName, String location, Color cardColor, bool joined) {
     if (joined) {
       push(AppNotification(
@@ -109,9 +107,9 @@ class NotificationState {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+
 // SEED STATIC NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 void seedStaticNotifications() {
   if (NotificationState.instance.all.isNotEmpty) return;
@@ -143,7 +141,7 @@ void seedStaticNotifications() {
     AppNotification(
       id: 'remind_2',
       type: NotifType.reminder,
-      title: 'Sutra ti je event 🗓️',
+      title: 'Sutra imaš zakazan event 🗓️',
       body: '"Večer komedije" u HNK-u počinje sutra u 20:00. Ne zaboravi!',
       eventName: 'Večer komedije',
       eventLocation: 'HNK Zagreb',
@@ -154,7 +152,7 @@ void seedStaticNotifications() {
     AppNotification(
       id: 'new_2',
       type: NotifType.newEvent,
-      title: 'Heeeej, novi event! ✨',
+      title: 'Novi event! ✨',
       body: '"Street food festival" na Trgu bana Jelačića — ulaz slobodan, grickalice zagarantirane.',
       eventName: 'Street food festival',
       eventLocation: 'Trg bana Jelačića',
@@ -166,7 +164,7 @@ void seedStaticNotifications() {
       id: 'general_1',
       type: NotifType.general,
       title: 'Dobrodošao/la na MeetCute 💘',
-      body: 'Pronađi eventi u svojoj blizini i upoznaj nove ljude. Tvoja nova avantura počinje ovdje!',
+      body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude. Tvoja nova avantura počinje ovdje!',
       accentColor: const Color(0xFF700D25),
       timestamp: now.subtract(const Duration(days: 1)),
       isRead: true,
@@ -174,9 +172,6 @@ void seedStaticNotifications() {
   ]);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATIONS SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -474,7 +469,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  // ── EMPTY STATE ─────────────────────────────────────────────────────────────
+  // IZGLED KAD NEMA OBAVIJESTI
   Widget _buildEmpty() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
@@ -519,7 +514,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  // ── NOTIFICATIONS LIST ──────────────────────────────────────────────────────
+  // LISTA NOTIF
   Widget _buildList(List<AppNotification> notifs) {
     final today = <AppNotification>[];
     final earlier = <AppNotification>[];
@@ -574,7 +569,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     ]);
   }
 
-  // ── NAV BAR ─────────────────────────────────────────────────────────────────
+  // NAVIGACIJA
   Widget _buildNavBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final navBg   = isDark ? kDarkCard : Colors.white;
@@ -647,9 +642,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATION TILE — improved dark mode contrast
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// NOTIFICATION TILE
+
 
 class _NotifTile extends StatefulWidget {
   final AppNotification notif;
@@ -688,9 +683,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
     final isUnread = !n.isRead;
     final isDark  = ThemeState.instance.isDark;
 
-    // Improved dark mode card bg — lighter for visibility
     final cardBg  = isDark ? const Color(0xFF4A3A42) : Colors.white;
-    // Text with high contrast in dark mode
     final titleColor = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
     final bodyColor  = isDark
         ? const Color(0xFFEEE0E5).withOpacity(isUnread ? 0.80 : 0.60)
@@ -847,7 +840,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
   }
 }
 
-// ── Notification icon ────────────────────────────────────────────────────────
+// Notification ikona
 
 class _NotifIcon extends StatelessWidget {
   final NotifType type;
@@ -878,7 +871,7 @@ class _NotifIcon extends StatelessWidget {
   }
 }
 
-// ── Event chip ────────────────────────────────────────────────────────────────
+// Event chip
 
 class _EventChip extends StatelessWidget {
   final String name;

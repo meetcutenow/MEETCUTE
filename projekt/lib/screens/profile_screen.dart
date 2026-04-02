@@ -6,9 +6,9 @@ import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
 import 'profile_setup_screen.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLOBAL PROFILE DATA  (in-memory, shared across the app)
-// ═══════════════════════════════════════════════════════════════════════════════
+
+// PROFILE DATA
+
 
 ProfileSetupData _globalProfileData = ProfileSetupData(
   photoPaths: [
@@ -19,9 +19,7 @@ ProfileSetupData _globalProfileData = ProfileSetupData(
   iceBreaker: 'Pitaj me kakvu kavu pijem.',
 );
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,7 +31,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
 
-  // ── photos ─────────────────────────────────────────────────────────────────
+  // ── slike ─────────────────────────────────────────────────────────────────
   List<String> get _photos => _globalProfileData.photoPaths.isNotEmpty
       ? _globalProfileData.photoPaths
       : ['assets/images/profile_1.png'];
@@ -47,7 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   static const double _minFrac = 0.35;
   static const double _maxFrac = 0.80;
 
-  // ── animations ─────────────────────────────────────────────────────────────
+  // ── animacije─────────────────────────────────────────────────────────────
   late final AnimationController _entryCtrl;
   late final AnimationController _staggerCtrl;
   late final Animation<double> _photoFade;
@@ -148,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ..forward();
   }
 
-  // ── navigate to edit ────────────────────────────────────────────────────────
+  // ── navigacija do editora ────────────────────────────────────────────────────────
   void _openSetup() {
     Navigator.push(
       context,
@@ -159,7 +157,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             setState(() {
               _globalProfileData = saved;
               _photoIndex = 0;
-              // rebuild chip animations for new interests list
               _staggerCtrl.reset();
               _staggerCtrl.forward();
             });
@@ -192,7 +189,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         body: Stack(
           children: [
 
-            // ── LAYER 0: PHOTO CAROUSEL ──────────────────────────────────────
+            // ── slike──────────────────────────────────────
             Positioned(
               top: 0, left: 0, right: 0,
               height: sheetTop + 2,
@@ -218,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 1: GRADIENT FADE ────────────────────────────────────────
+
             Positioned(
               left: 0, right: 0,
               top: sheetTop - 180,
@@ -240,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 2: DOTS INDICATOR ──────────────────────────────────────
+
             Positioned(
               left: 0, right: 0,
               bottom: screenH - sheetTop + 52,
@@ -267,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 3: NAME ─────────────────────────────────────────────────
+
             Positioned(
               left: 0, right: 0,
               bottom: screenH - sheetTop + 14,
@@ -292,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 4: WHITE CARD ──────────────────────────────────────────
+
             Positioned(
               top: sheetTop,
               left: 0, right: 0, bottom: 0,
@@ -359,7 +356,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 5: BACK BUTTON ─────────────────────────────────────────
             Positioned(
               top: mq.padding.top + 15,
               left: 14,
@@ -395,9 +391,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CARD BODY  — shows current profile data
-// ─────────────────────────────────────────────────────────────────────────────
+
+// PRAVOKUTMIK S PODACIMA - trenutni podaci
+
 class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
   final List<String> interests;
@@ -409,7 +405,7 @@ class _CardBody extends StatelessWidget {
     required this.data,
   });
 
-  // emoji map for interests
+  // mapa interesa
   static const _emojiMap = {
     'Crtanje':     '🎨',
     'Fotografija': '📸',
@@ -531,9 +527,9 @@ class _CardBody extends StatelessWidget {
       color: kPrimaryDark.withOpacity(0.10), thickness: 0.8, height: 1);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INTEREST CHIP  (read-only in profile view)
-// ─────────────────────────────────────────────────────────────────────────────
+
+// INTERESI
+
 class _Chip extends StatefulWidget {
   final String label;
   final String emoji;
@@ -588,9 +584,9 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // DATA ROW
-// ─────────────────────────────────────────────────────────────────────────────
+
 class _DataRow extends StatelessWidget {
   final IconData icon;
   final String   label;
@@ -624,9 +620,9 @@ class _DataRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BACK BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
+
+// BACK BOTUN
+
 class _BackBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _BackBtn({required this.onTap});
@@ -682,9 +678,9 @@ class _BackBtnState extends State<_BackBtn>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EDIT BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
+
+// EDIT BOTUN
+
 class _EditBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _EditBtn({required this.onTap});

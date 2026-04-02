@@ -9,9 +9,7 @@ import 'notifications_screen.dart' show NotificationsScreen, NotificationState;
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// DATA MODELS
-// ═══════════════════════════════════════════════════════════════════════════════
+
 class ChatMessage {
   final String? text;
   final String? imagePath;
@@ -58,9 +56,7 @@ String _fmt(DateTime? dt) {
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLOBAL STATE
-// ═══════════════════════════════════════════════════════════════════════════════
+
 class ChatState extends ChangeNotifier {
   static final ChatState instance = ChatState._();
   ChatState._();
@@ -69,14 +65,14 @@ class ChatState extends ChangeNotifier {
     ChatConversation(id: '1', name: 'Luka', messages: [
       ChatMessage(text: 'Hej! Vidio sam da si i ti na ovom eventu 😄', isMe: true,
           sentAt: DateTime.now().subtract(const Duration(minutes: 42))),
-      ChatMessage(text: 'Haha jaa, idem svake godine!', isMe: false,
+      ChatMessage(text: 'Haha daa, idem svake godine!', isMe: false,
           sentAt: DateTime.now().subtract(const Duration(minutes: 40))),
       ChatMessage(timeDivider: 'Danas', isMe: false),
       ChatMessage(text: 'Gdje ćeš bit otprilike?', isMe: false,
           sentAt: DateTime.now().subtract(const Duration(minutes: 15))),
       ChatMessage(text: 'Bit ću kod glavne pozornice 🎶', isMe: true,
           sentAt: DateTime.now().subtract(const Duration(minutes: 12))),
-      ChatMessage(text: 'Ok savršeno, i ja tamo!', isMe: false,
+      ChatMessage(text: 'Ok savršeno, i ja ću biti tamo!', isMe: false,
           sentAt: DateTime.now().subtract(const Duration(minutes: 8))),
       ChatMessage(text: 'Haha ok, vidimo se onda 😄', isMe: true,
           sentAt: DateTime.now().subtract(const Duration(minutes: 5))),
@@ -124,9 +120,7 @@ class ChatState extends ChangeNotifier {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CHAT LIST SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+//lista u chatu
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
   @override State<ChatScreen> createState() => _ChatScreenState();
@@ -394,7 +388,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       Text(_searchQuery.isEmpty ? 'Nema poruka' : 'Nema rezultata',
           style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 18)),
       const SizedBox(height: 7),
-      Text(_searchQuery.isEmpty ? 'Izađi i upoznaj svog Cutieja! 💘' : 'Pokušaj drugi pojam',
+      Text(_searchQuery.isEmpty ? 'Izađi i upoznaj svog Cutie-ja!' : 'Pokušaj drugi pojam',
           style: TextStyle(color: primary.withOpacity(0.40), fontSize: 13.5)),
     ]));
   }
@@ -503,9 +497,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// DISMISSIBLE TILE  — improved dark mode contrast
-// ═══════════════════════════════════════════════════════════════════════════════
+
 class _DismissibleTile extends StatefulWidget {
   final ChatConversation convo;
   final VoidCallback onTap;
@@ -534,11 +526,9 @@ class _DismissibleTileState extends State<_DismissibleTile>
     final hasUnread = convo.hasUnread;
     final isDark = ThemeState.instance.isDark;
 
-    // Improved contrast for dark mode
     final tileText   = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
     final tileAccent = isDark ? kDarkPrimary : kPrimaryDark;
     final avatarBg   = isDark ? const Color(0xFF5A4A52) : kPrimaryLight;
-    // Card bg: lighter in dark mode for better contrast
     final cardBg     = isDark ? const Color(0xFF4A3A42) : Colors.white;
 
     return Dismissible(
@@ -694,9 +684,7 @@ class _DismissibleTileState extends State<_DismissibleTile>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CHAT CONVERSATION SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
+//RAZGOVOR
 class ChatConversationScreen extends StatefulWidget {
   final ChatConversation convo;
   const ChatConversationScreen({super.key, required this.convo});
@@ -1090,9 +1078,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SWIPE TO REVEAL TIME
-// ═══════════════════════════════════════════════════════════════════════════════
+//swipe za vrijeme
 class _SwipeRevealTime extends StatefulWidget {
   final Widget child;
   final bool isMe;
