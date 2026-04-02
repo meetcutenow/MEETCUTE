@@ -5,26 +5,21 @@ import 'dart:io';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE DATA MODEL  — holds everything the user fills in
+// PROFILE DATA MODEL
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupData {
-  // Step 1
-  List<String> photoPaths;   // local file paths, 2–6
+  List<String> photoPaths;
   int?    birthDay;
   int?    birthMonth;
   int?    birthYear;
-  String? height;            // free-text, cm
+  String? height;
   String? hairColor;
   String? eyeColor;
   String? piercing;
   String? tattoo;
   String? gender;
-
-  // Step 2
   List<String> interests;
-
-  // Step 3
   String iceBreaker;
 
   ProfileSetupData({
@@ -60,7 +55,7 @@ class ProfileSetupData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE SETUP SCREEN  — entry point, manages step state
+// PROFILE SETUP SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -80,7 +75,7 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     with TickerProviderStateMixin {
 
-  int _step = 0;   // 0, 1, 2
+  int _step = 0;
   late ProfileSetupData _data;
 
   late AnimationController _progressCtrl;
@@ -139,23 +134,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(children: [
-        // ── HEADER (shared across steps) ────────────────────────────────────
         _Header(step: _step, progressCtrl: _progressCtrl, mq: mq),
-
-        // ── STEP CONTENT ────────────────────────────────────────────────────
         Expanded(
           child: SlideTransition(
             position: _pageSlide,
             child: _buildStepContent(mq),
           ),
         ),
-
-        // ── NEXT BUTTON ─────────────────────────────────────────────────────
-        _NextButton(
-          step: _step,
-          onTap: _goNext,
-          mq: mq,
-        ),
+        _NextButton(step: _step, onTap: _goNext, mq: mq),
       ]),
     );
   }
@@ -180,7 +166,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SHARED HEADER  — "Izrada profila" + animated progress bar
+// SHARED HEADER
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _Header extends StatelessWidget {
@@ -208,7 +194,6 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        // Progress bar
         AnimatedBuilder(
           animation: progressCtrl,
           builder: (_, __) {
@@ -240,7 +225,7 @@ class _Header extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NEXT BUTTON (shared)
+// NEXT BUTTON
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NextButton extends StatefulWidget {
@@ -288,13 +273,9 @@ class _NextButtonState extends State<_NextButton> with SingleTickerProviderState
                 ],
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white, fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(label,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(width: 10),
                 Container(
                   width: 28, height: 28,
@@ -302,8 +283,7 @@ class _NextButtonState extends State<_NextButton> with SingleTickerProviderState
                     color: Colors.white.withOpacity(0.20),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white, size: 20),
+                  child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
                 ),
               ]),
             ),
@@ -328,107 +308,59 @@ class _Step1 extends StatefulWidget {
 
 class _Step1State extends State<_Step1> {
   final ImagePicker _picker = ImagePicker();
-  final _heightCtrl = TextEditingController();
-  final _dayCtrl    = TextEditingController();
-  final _monthCtrl  = TextEditingController();
-  final _yearCtrl   = TextEditingController();
+  late final TextEditingController _heightCtrl;
+  late final TextEditingController _dayCtrl;
+  late final TextEditingController _monthCtrl;
+  late final TextEditingController _yearCtrl;
 
-  static const _hairOptions  = ['plava', 'smeđa', 'crna', 'crvena', 'sijeda', 'rusa', 'ostalo'];
-  static const _eyeOptions   = ['smeđe', 'zelene', 'plave', 'sive', 'zelenkasto-smeđe', 'ostalo'];
+  // 'rusa' maknuta
+  static const _hairOptions  = ['plava', 'smeđa', 'crna', 'crvena', 'sijeda', 'ostalo'];
+  // 'zelenkasto-smeđe' i 'ostalo' maknuti
+  static const _eyeOptions   = ['smeđe', 'zelene', 'plave', 'sive'];
   static const _yesNo        = ['da', 'ne'];
   static const _genderOptions = ['žensko', 'muško', 'ostalo'];
 
   @override
   void initState() {
     super.initState();
-    _heightCtrl.text = widget.data.height ?? '';
-    _dayCtrl.text    = widget.data.birthDay?.toString() ?? '';
-    _monthCtrl.text  = widget.data.birthMonth?.toString() ?? '';
-    _yearCtrl.text   = widget.data.birthYear?.toString() ?? '';
+    _heightCtrl = TextEditingController(text: widget.data.height ?? '');
+    _dayCtrl    = TextEditingController(text: widget.data.birthDay?.toString() ?? '');
+    _monthCtrl  = TextEditingController(text: widget.data.birthMonth?.toString() ?? '');
+    _yearCtrl   = TextEditingController(text: widget.data.birthYear?.toString() ?? '');
   }
 
   @override
   void dispose() {
-    _heightCtrl.dispose();
-    _dayCtrl.dispose();
-    _monthCtrl.dispose();
-    _yearCtrl.dispose();
+    _heightCtrl.dispose(); _dayCtrl.dispose();
+    _monthCtrl.dispose();  _yearCtrl.dispose();
     super.dispose();
   }
 
-  void _update(ProfileSetupData Function(ProfileSetupData) fn) {
-    widget.onChange(fn(widget.data.copy()));
-  }
+  void _update(ProfileSetupData Function(ProfileSetupData) fn) =>
+      widget.onChange(fn(widget.data.copy()));
 
   Future<void> _pickPhoto(int idx) async {
-    final xFile = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
+    final xFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (xFile == null) return;
     _update((d) {
-      if (idx < d.photoPaths.length) {
-        d.photoPaths[idx] = xFile.path;
-      } else {
-        d.photoPaths.add(xFile.path);
-      }
+      if (idx < d.photoPaths.length) d.photoPaths[idx] = xFile.path;
+      else d.photoPaths.add(xFile.path);
       return d;
     });
   }
 
   Future<void> _addPhoto() async {
     if (widget.data.photoPaths.length >= 6) return;
-    final xFile = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
+    final xFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (xFile == null) return;
+    HapticFeedback.lightImpact();
     _update((d) { d.photoPaths.add(xFile.path); return d; });
   }
 
-  Widget _photoSlot(int idx) {
-    final photos = widget.data.photoPaths;
-    final hasPhoto = idx < photos.length;
-
-    return GestureDetector(
-      onTap: () => _pickPhoto(idx),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        decoration: BoxDecoration(
-          color: kPrimaryLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: kPrimaryDark.withOpacity(0.10),
-            width: 1,
-          ),
-        ),
-        child: hasPhoto
-            ? Stack(fit: StackFit.expand, children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: _isAsset(photos[idx])
-                ? Image.asset(photos[idx], fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _emptyPhotoContent())
-                : Image.file(File(photos[idx]), fit: BoxFit.cover),
-          ),
-          Positioned(
-            top: 4, right: 4,
-            child: GestureDetector(
-              onTap: () => _pickPhoto(idx),
-              child: Container(
-                width: 24, height: 24,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.15),
-                        blurRadius: 4),
-                  ],
-                ),
-                child: Icon(Icons.edit_rounded, color: kPrimaryDark, size: 13),
-              ),
-            ),
-          ),
-        ])
-            : _emptyPhotoContent(),
-      ),
-    );
+  void _removePhoto(int idx) {
+    if (widget.data.photoPaths.length <= 1) return;
+    HapticFeedback.mediumImpact();
+    _update((d) { d.photoPaths.removeAt(idx); return d; });
   }
 
   bool _isAsset(String path) => path.startsWith('assets/');
@@ -437,203 +369,181 @@ class _Step1State extends State<_Step1> {
     child: Icon(Icons.add_a_photo_rounded, color: kPrimaryDark.withOpacity(0.28), size: 28),
   );
 
-  Widget _addSlot() {
-    if (widget.data.photoPaths.length >= 6) return const SizedBox.shrink();
-    return GestureDetector(
-      onTap: _addPhoto,
-      child: Container(
-        decoration: BoxDecoration(
-          color: kPrimaryLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: kPrimaryDark.withOpacity(0.10)),
+  Widget _photoSlot(int idx) {
+    final photos = widget.data.photoPaths;
+    final hasPhoto = idx < photos.length;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: () => _pickPhoto(idx),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            decoration: BoxDecoration(
+              color: kPrimaryLight,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1),
+            ),
+            child: hasPhoto
+                ? ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Stack(fit: StackFit.expand, children: [
+                _isAsset(photos[idx])
+                    ? Image.asset(photos[idx], fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _emptyPhotoContent())
+                    : Image.file(File(photos[idx]), fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _emptyPhotoContent()),
+                Positioned(
+                  bottom: 4, right: 4,
+                  child: Container(
+                    width: 24, height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)],
+                    ),
+                    child: Icon(Icons.edit_rounded, color: kPrimaryDark, size: 13),
+                  ),
+                ),
+              ]),
+            )
+                : _emptyPhotoContent(),
+          ),
         ),
-        child: Center(
-          child: Icon(Icons.add_rounded, color: kPrimaryDark, size: 36),
-        ),
-      ),
+        // X gumb — prikazan samo kad postoji foto i ima ih više od 1
+        if (hasPhoto && photos.length > 1)
+          Positioned(
+            top: -8, right: -8,
+            child: GestureDetector(
+              onTap: () => _removePhoto(idx),
+              child: Container(
+                width: 22, height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent, shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)],
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 13),
+              ),
+            ),
+          ),
+      ],
     );
   }
+
+  Widget _addSlot() => GestureDetector(
+    onTap: _addPhoto,
+    child: Container(
+      decoration: BoxDecoration(
+        color: kPrimaryLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kPrimaryDark.withOpacity(0.18), width: 1.5),
+      ),
+      child: Center(child: Icon(Icons.add_rounded, color: kPrimaryDark, size: 36)),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
+    final photos = d.photoPaths;
+    final hairValue = _hairOptions.contains(d.hairColor) ? d.hairColor : null;
+    final eyeValue  = _eyeOptions.contains(d.eyeColor)   ? d.eyeColor  : null;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── PHOTO GRID ───────────────────────────────────────────────────────
+        // ── PHOTO ROW ───────────────────────────────────────────────────────
         SizedBox(
           height: 156,
           child: Row(children: [
-            // First two always visible
-            Expanded(
-              child: _photoSlot(0),
-            ),
+            Expanded(child: _photoSlot(0)),
             const SizedBox(width: 10),
             Expanded(
-              child: _photoSlot(1),
+              child: photos.length >= 2 ? _photoSlot(1) : _addSlot(),
             ),
-            const SizedBox(width: 10),
-            // Third slot or add button
-            Expanded(
-              child: d.photoPaths.length >= 3
-                  ? _photoSlot(2)
-                  : _addSlot(),
-            ),
-            // More slots if >3 photos
-            if (d.photoPaths.length > 3) ...[
+            if (photos.length >= 2) ...[
               const SizedBox(width: 10),
-              Expanded(child: _photoSlot(3)),
+              Expanded(
+                child: photos.length >= 3 ? _photoSlot(2) : _addSlot(),
+              ),
+            ],
+            if (photos.length >= 3 && photos.length < 6) ...[
+              const SizedBox(width: 10),
+              Expanded(child: _addSlot()),
             ],
           ]),
         ),
 
         const SizedBox(height: 22),
-
-        // ── DATUM ROĐENJA ────────────────────────────────────────────────────
         _label('Datum rođenja:'),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(
-            child: _textField(
-              ctrl: _dayCtrl,
-              hint: 'DD',
-              keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) {
-                d.birthDay = int.tryParse(v);
-                return d;
-              }),
-            ),
-          ),
+          Expanded(child: _textField(ctrl: _dayCtrl, hint: 'DD', keyboardType: TextInputType.number,
+              onChanged: (v) => _update((d) { d.birthDay = int.tryParse(v); return d; }))),
           const SizedBox(width: 8),
-          Expanded(
-            child: _textField(
-              ctrl: _monthCtrl,
-              hint: 'MM',
-              keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) {
-                d.birthMonth = int.tryParse(v);
-                return d;
-              }),
-            ),
-          ),
+          Expanded(child: _textField(ctrl: _monthCtrl, hint: 'MM', keyboardType: TextInputType.number,
+              onChanged: (v) => _update((d) { d.birthMonth = int.tryParse(v); return d; }))),
           const SizedBox(width: 8),
-          Expanded(
-            flex: 2,
-            child: _textField(
-              ctrl: _yearCtrl,
-              hint: 'GGGG',
-              keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) {
-                d.birthYear = int.tryParse(v);
-                return d;
-              }),
-            ),
-          ),
+          Expanded(flex: 2, child: _textField(ctrl: _yearCtrl, hint: 'GGGG', keyboardType: TextInputType.number,
+              onChanged: (v) => _update((d) { d.birthYear = int.tryParse(v); return d; }))),
         ]),
 
         const SizedBox(height: 16),
-
-        // ── VISINA ───────────────────────────────────────────────────────────
         _label('Visina:'),
         const SizedBox(height: 8),
-        _textField(
-          ctrl: _heightCtrl,
-          hint: '168',
-          keyboardType: TextInputType.number,
-          onChanged: (v) => _update((d) { d.height = v; return d; }),
-        ),
+        _textField(ctrl: _heightCtrl, hint: '168', keyboardType: TextInputType.number,
+            onChanged: (v) => _update((d) { d.height = v; return d; })),
 
         const SizedBox(height: 16),
-
-        // ── SPOL ─────────────────────────────────────────────────────────────
         _label('Spol:'),
         const SizedBox(height: 8),
-        _dropdown(
-          value: d.gender,
-          hint: 'odaberi',
-          items: _genderOptions,
-          onChanged: (v) => _update((dd) { dd.gender = v; return dd; }),
-        ),
+        _dropdown(value: d.gender, hint: 'odaberi', items: _genderOptions,
+            onChanged: (v) => _update((dd) { dd.gender = v; return dd; })),
 
         const SizedBox(height: 16),
-
-        // ── BOJA KOSE ────────────────────────────────────────────────────────
         _label('Boja kose:'),
         const SizedBox(height: 8),
-        _dropdown(
-          value: d.hairColor,
-          hint: 'odaberi',
-          items: _hairOptions,
-          onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; }),
-        ),
+        _dropdown(value: hairValue, hint: 'odaberi', items: _hairOptions,
+            onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; })),
 
         const SizedBox(height: 16),
-
-        // ── BOJA OČIJU ───────────────────────────────────────────────────────
         _label('Boja očiju:'),
         const SizedBox(height: 8),
-        _dropdown(
-          value: d.eyeColor,
-          hint: 'odaberi',
-          items: _eyeOptions,
-          onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; }),
-        ),
+        _dropdown(value: eyeValue, hint: 'odaberi', items: _eyeOptions,
+            onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; })),
 
         const SizedBox(height: 16),
-
-        // ── PIRSING ──────────────────────────────────────────────────────────
         _label('Pirsing:'),
         const SizedBox(height: 8),
-        _dropdown(
-          value: d.piercing,
-          hint: 'odaberi',
-          items: _yesNo,
-          onChanged: (v) => _update((dd) { dd.piercing = v; return dd; }),
-        ),
+        _dropdown(value: d.piercing, hint: 'odaberi', items: _yesNo,
+            onChanged: (v) => _update((dd) { dd.piercing = v; return dd; })),
 
         const SizedBox(height: 16),
-
-        // ── TETOVAŽA ─────────────────────────────────────────────────────────
         _label('Tetovaža:'),
         const SizedBox(height: 8),
-        _dropdown(
-          value: d.tattoo,
-          hint: 'odaberi',
-          items: _yesNo,
-          onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; }),
-        ),
+        _dropdown(value: d.tattoo, hint: 'odaberi', items: _yesNo,
+            onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; })),
       ]),
     );
   }
 
-  Widget _label(String text) => Text(
-    text,
-    style: TextStyle(
-      color: kPrimaryDark,
-      fontSize: 14.5,
-      fontWeight: FontWeight.w600,
-    ),
-  );
+  Widget _label(String text) => Text(text,
+      style: TextStyle(color: kPrimaryDark, fontSize: 14.5, fontWeight: FontWeight.w600));
 
   Widget _textField({
-    required TextEditingController ctrl,
-    required String hint,
-    TextInputType? keyboardType,
-    required void Function(String) onChanged,
+    required TextEditingController ctrl, required String hint,
+    TextInputType? keyboardType, required void Function(String) onChanged,
   }) {
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white, borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2),
       ),
       child: TextField(
-        controller: ctrl,
-        keyboardType: keyboardType,
-        onChanged: onChanged,
+        controller: ctrl, keyboardType: keyboardType, onChanged: onChanged,
         style: TextStyle(color: kPrimaryDark, fontSize: 15),
         decoration: InputDecoration(
           hintText: hint,
@@ -647,16 +557,13 @@ class _Step1State extends State<_Step1> {
   }
 
   Widget _dropdown({
-    required String? value,
-    required String hint,
-    required List<String> items,
-    required void Function(String?) onChanged,
+    required String? value, required String hint,
+    required List<String> items, required void Function(String?) onChanged,
   }) {
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white, borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -667,8 +574,7 @@ class _Step1State extends State<_Step1> {
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: kPrimaryDark.withOpacity(0.45)),
           style: TextStyle(color: kPrimaryDark, fontSize: 15, fontFamily: 'SF Pro Display'),
-          dropdownColor: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          dropdownColor: Colors.white, borderRadius: BorderRadius.circular(12),
           onChanged: onChanged,
           items: items.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
         ),
@@ -691,23 +597,12 @@ class _Step2 extends StatefulWidget {
 class _Step2State extends State<_Step2> with TickerProviderStateMixin {
 
   static const _allInterests = [
-    ('Crtanje',    '🎨'),
-    ('Fotografija','📸'),
-    ('Pisanje',    '✍️'),
-    ('Film',       '🎬'),
-    ('Trčanje',    '🏃‍♀️'),
-    ('Biciklizam', '🚴'),
-    ('Planinarenje','🥾'),
-    ('Teretana',   '🏋️'),
-    ('Boks',       '🥊'),
-    ('Tenis',      '🎾'),
-    ('Nogomet',    '⚽'),
-    ('Odbojka',    '🏐'),
-    ('Kuhanje',    '👨‍🍳'),
-    ('Putovanja',  '✈️'),
-    ('Gaming',     '🎮'),
-    ('Formula',    '🏎️'),
-    ('Glazba',     '🎵'),
+    ('Crtanje',    '🎨'), ('Fotografija','📸'), ('Pisanje',    '✍️'),
+    ('Film',       '🎬'), ('Trčanje',    '🏃‍♀️'), ('Biciklizam', '🚴'),
+    ('Planinarenje','🥾'), ('Teretana',  '🏋️'), ('Boks',       '🥊'),
+    ('Tenis',      '🎾'), ('Nogomet',   '⚽'),  ('Odbojka',    '🏐'),
+    ('Kuhanje',    '👨‍🍳'), ('Putovanja', '✈️'),  ('Gaming',     '🎮'),
+    ('Formula',    '🏎️'), ('Glazba',    '🎵'),
   ];
 
   late final List<AnimationController> _tapCtrls;
@@ -715,10 +610,8 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tapCtrls = List.generate(
-      _allInterests.length,
-          (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 100)),
-    );
+    _tapCtrls = List.generate(_allInterests.length,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 100)));
   }
 
   @override
@@ -730,11 +623,8 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
   void _toggle(int idx) {
     final name = _allInterests[idx].$1;
     final copy = widget.data.copy();
-    if (copy.interests.contains(name)) {
-      copy.interests.remove(name);
-    } else {
-      copy.interests.add(name);
-    }
+    if (copy.interests.contains(name)) copy.interests.remove(name);
+    else copy.interests.add(name);
     widget.onChange(copy);
     HapticFeedback.selectionClick();
   }
@@ -742,28 +632,18 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final selected = widget.data.interests;
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
-        child: Text(
-          'Odaberi svoje interese:',
-          style: TextStyle(
-            color: kPrimaryDark.withOpacity(0.55),
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: Text('Odaberi svoje interese:',
+            style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 16, fontWeight: FontWeight.w600)),
       ),
       Expanded(
         child: GridView.builder(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.05,
+            crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.05,
           ),
           itemCount: _allInterests.length,
           itemBuilder: (_, i) {
@@ -771,21 +651,14 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
             final isSel = selected.contains(name);
             return GestureDetector(
               onTapDown: (_) => _tapCtrls[i].forward(),
-              onTapUp: (_) {
-                _tapCtrls[i].reverse();
-                _toggle(i);
-              },
+              onTapUp: (_) { _tapCtrls[i].reverse(); _toggle(i); },
               onTapCancel: () => _tapCtrls[i].reverse(),
               child: AnimatedBuilder(
                 animation: _tapCtrls[i],
                 builder: (_, __) => Transform.scale(
                   scale: 1.0 - _tapCtrls[i].value * 0.04,
-                  child: _InterestCell(
-                    name: name,
-                    emoji: emoji,
-                    isSelected: isSel,
-                    onRemove: isSel ? () => _toggle(i) : null,
-                  ),
+                  child: _InterestCell(name: name, emoji: emoji, isSelected: isSel,
+                      onRemove: isSel ? () => _toggle(i) : null),
                 ),
               ),
             );
@@ -797,17 +670,11 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
 }
 
 class _InterestCell extends StatelessWidget {
-  final String name;
-  final String emoji;
+  final String name, emoji;
   final bool isSelected;
   final VoidCallback? onRemove;
-
-  const _InterestCell({
-    required this.name,
-    required this.emoji,
-    required this.isSelected,
-    this.onRemove,
-  });
+  const _InterestCell({required this.name, required this.emoji,
+    required this.isSelected, this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -817,30 +684,17 @@ class _InterestCell extends StatelessWidget {
         color: isSelected ? kPrimaryLight : kPrimaryLight.withOpacity(0.55),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? kPrimaryDark.withOpacity(0.20) : Colors.transparent,
-          width: 1.2,
-        ),
+            color: isSelected ? kPrimaryDark.withOpacity(0.20) : Colors.transparent, width: 1.2),
         boxShadow: isSelected
             ? [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 12, offset: const Offset(0, 4))]
             : [],
       ),
       child: Stack(children: [
-        // Content
-        Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(emoji, style: const TextStyle(fontSize: 44)),
-            const SizedBox(height: 8),
-            Text(
-              name,
-              style: TextStyle(
-                color: kPrimaryDark,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ]),
-        ),
-        // Remove badge
+        Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(emoji, style: const TextStyle(fontSize: 44)),
+          const SizedBox(height: 8),
+          Text(name, style: TextStyle(color: kPrimaryDark, fontSize: 15, fontWeight: FontWeight.w700)),
+        ])),
         if (isSelected && onRemove != null)
           Positioned(
             top: 6, right: 6,
@@ -849,8 +703,7 @@ class _InterestCell extends StatelessWidget {
               child: Container(
                 width: 22, height: 22,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+                  color: Colors.white, shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)],
                 ),
                 child: Icon(Icons.close_rounded, size: 14, color: kPrimaryDark),
@@ -863,7 +716,14 @@ class _InterestCell extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STEP 3 — Ice-breaker text
+// STEP 3 — Ice-breaker
+//
+// POPRAVCI:
+//   1) _stopEdit() poziva widget.onChange → iceBreaker se propagira u _data
+//      i dalje u _globalProfileData (kroz onSave u profile_screen)
+//   2) Gumb je desno i PRELAZI oba pravokutnika:
+//      koristi LayoutBuilder + Stack + Positioned(top: boundary - fabSize/2)
+//      gdje je boundary = totalHeight * 5/12 (flex 5 od ukupno 12)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _Step3 extends StatefulWidget {
@@ -882,19 +742,14 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _ctrl  = TextEditingController(text: widget.data.iceBreaker);
-    _focus = FocusNode();
-    _editBounce = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
+    _ctrl       = TextEditingController(text: widget.data.iceBreaker);
+    _focus      = FocusNode();
+    _editBounce = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
-    _focus.dispose();
-    _editBounce.dispose();
+    _ctrl.dispose(); _focus.dispose(); _editBounce.dispose();
     super.dispose();
   }
 
@@ -908,6 +763,7 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
   void _stopEdit() {
     setState(() => _editing = false);
     _focus.unfocus();
+    // POPRAVAK 1: propagiraj promjenu u parent
     final copy = widget.data.copy();
     copy.iceBreaker = _ctrl.text;
     widget.onChange(copy);
@@ -915,119 +771,116 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
     final hasText = _ctrl.text.isNotEmpty;
 
-    return GestureDetector(
-      onTap: _editing ? _stopEdit : null,
-      child: Column(children: [
-        // Upper half — light pink prompt section
-        Expanded(
-          flex: 5,
-          child: Container(
-            width: double.infinity,
-            color: kPrimaryLight.withOpacity(0.60),
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.fromLTRB(28, 0, 80, 0),
-            child: Text(
-              'Napiši kako želiš da ti\ndrugi cutie priđe:',
-              style: TextStyle(
-                color: kPrimaryDark.withOpacity(0.70),
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                height: 1.4,
+    // POPRAVAK 2: LayoutBuilder da znamo tocnu visinu, pa Positioned gumb
+    return LayoutBuilder(builder: (context, constraints) {
+      const double fabSize = 52.0;
+      // Gornji flex:5, donji flex:7 → granica na 5/12 ukupne visine
+      final double boundary = constraints.maxHeight * 5 / 12;
+      final double fabTop   = boundary - fabSize / 2;
+
+      return GestureDetector(
+        onTap: _editing ? _stopEdit : null,
+        child: Stack(children: [
+
+          // ── Oba pravokutnika ─────────────────────────────────────────────
+          Column(children: [
+            // Gornji — svjetlija ružičasta
+            Expanded(
+              flex: 5,
+              child: Container(
+                width: double.infinity,
+                color: kPrimaryLight.withOpacity(0.60),
+                alignment: Alignment.centerLeft,
+                // padding desno veći da tekst ne ide ispod gumba
+                padding: const EdgeInsets.fromLTRB(28, 0, 90, 0),
+                child: Text(
+                  'Napiši kako želiš da ti\nnetko priđe:',
+                  style: TextStyle(
+                    color: kPrimaryDark.withOpacity(0.70),
+                    fontSize: 22, fontWeight: FontWeight.w700, height: 1.4,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-
-        // ── Edit FAB ────────────────────────────────────────────────────────
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const SizedBox(width: double.infinity, height: 0),
-            Positioned(
-              right: 24,
-              top: -26,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                  CurvedAnimation(parent: _editBounce, curve: Curves.easeOutBack),
-                ),
-                child: GestureDetector(
-                  onTap: _editing ? _stopEdit : _startEdit,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    width: 52, height: 52,
-                    decoration: BoxDecoration(
-                      color: _editing ? Colors.white : kPrimaryDark,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: kPrimaryDark.withOpacity(0.30),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+            // Donji — tamnija ružičasta
+            Expanded(
+              flex: 7,
+              child: Container(
+                width: double.infinity,
+                color: kPrimaryLight,
+                padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
+                child: _editing
+                    ? TextField(
+                  controller: _ctrl,
+                  focusNode: _focus,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _stopEdit(),
+                  maxLines: null,
+                  style: TextStyle(
+                    color: kPrimaryDark,
+                    fontSize: 26, fontWeight: FontWeight.w800, height: 1.3,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Napiši nešto zanimljivo...',
+                    hintStyle: TextStyle(
+                      color: kPrimaryDark.withOpacity(0.30),
+                      fontSize: 22, fontWeight: FontWeight.w700,
                     ),
-                    child: Icon(
-                      _editing ? Icons.check_rounded : Icons.edit_rounded,
-                      color: _editing ? kPrimaryDark : Colors.white,
-                      size: 22,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                )
+                    : GestureDetector(
+                  onTap: _startEdit,
+                  child: Text(
+                    hasText ? _ctrl.text : 'Nek me pita koju\nseriju trenutno\nbingam...',
+                    style: TextStyle(
+                      color: hasText ? kPrimaryDark : kPrimaryDark.withOpacity(0.45),
+                      fontSize: 26, fontWeight: FontWeight.w800, height: 1.3,
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ]),
 
-        // Lower half — bordo / dark pink text area
-        Expanded(
-          flex: 7,
-          child: Container(
-            width: double.infinity,
-            color: kPrimaryLight,
-            padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
-            child: _editing
-                ? TextField(
-              controller: _ctrl,
-              focusNode: _focus,
-              onChanged: (v) => setState(() {}),
-              onSubmitted: (_) => _stopEdit(),
-              maxLines: null,
-              style: TextStyle(
-                color: kPrimaryDark,
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                height: 1.3,
+          // ── FAB gumb — DESNO, PRELAZI oba pravokutnika ───────────────────
+          Positioned(
+            top: fabTop,
+            right: 24,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                CurvedAnimation(parent: _editBounce, curve: Curves.easeOutBack),
               ),
-              decoration: InputDecoration(
-                hintText: 'Napiši nešto zanimljivo...',
-                hintStyle: TextStyle(
-                  color: kPrimaryDark.withOpacity(0.30),
-                  fontSize: 22, fontWeight: FontWeight.w700,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-            )
-                : GestureDetector(
-              onTap: _startEdit,
-              child: Text(
-                hasText ? _ctrl.text : 'Nek me pita koju\nseriju trenutno\nbingam...',
-                style: TextStyle(
-                  color: hasText
-                      ? kPrimaryDark
-                      : kPrimaryDark.withOpacity(0.45),
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  height: 1.3,
+              child: GestureDetector(
+                onTap: _editing ? _stopEdit : _startEdit,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  width: fabSize, height: fabSize,
+                  decoration: BoxDecoration(
+                    color: _editing ? Colors.white : kPrimaryDark,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimaryDark.withOpacity(0.35),
+                        blurRadius: 16, offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _editing ? Icons.check_rounded : Icons.edit_rounded,
+                    color: _editing ? kPrimaryDark : Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ]),
-    );
+
+        ]),
+      );
+    });
   }
 }
