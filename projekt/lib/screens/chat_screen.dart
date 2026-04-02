@@ -335,19 +335,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   ),
                 ]),
               ),
-              GestureDetector(
-                onTap: () {},
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 340),
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [BoxShadow(color: primary.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 5))],
-                  ),
-                  child: Icon(Icons.edit_rounded, color: isDark ? kDarkBg : Colors.white, size: 19),
-                ),
-              ),
+              // NOTE: header button (edit icon) removed as requested
             ]),
             const SizedBox(height: 16),
             AnimatedContainer(
@@ -390,6 +378,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildEmpty() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Container(width: 96, height: 96,
         decoration: BoxDecoration(
@@ -402,10 +392,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ),
       const SizedBox(height: 22),
       Text(_searchQuery.isEmpty ? 'Nema poruka' : 'Nema rezultata',
-          style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 18)),
+          style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 18)),
       const SizedBox(height: 7),
       Text(_searchQuery.isEmpty ? 'Izađi i upoznaj svog Cutieja! 💘' : 'Pokušaj drugi pojam',
-          style: TextStyle(color: kPrimaryDark.withOpacity(0.40), fontSize: 13.5)),
+          style: TextStyle(color: primary.withOpacity(0.40), fontSize: 13.5)),
     ]));
   }
 
@@ -514,7 +504,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DISMISSIBLE TILE
+// DISMISSIBLE TILE  — improved dark mode contrast
 // ═══════════════════════════════════════════════════════════════════════════════
 class _DismissibleTile extends StatefulWidget {
   final ChatConversation convo;
@@ -542,6 +532,14 @@ class _DismissibleTileState extends State<_DismissibleTile>
   Widget build(BuildContext context) {
     final convo = widget.convo;
     final hasUnread = convo.hasUnread;
+    final isDark = ThemeState.instance.isDark;
+
+    // Improved contrast for dark mode
+    final tileText   = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
+    final tileAccent = isDark ? kDarkPrimary : kPrimaryDark;
+    final avatarBg   = isDark ? const Color(0xFF5A4A52) : kPrimaryLight;
+    // Card bg: lighter in dark mode for better contrast
+    final cardBg     = isDark ? const Color(0xFF4A3A42) : Colors.white;
 
     return Dismissible(
       key: Key(convo.id),
@@ -555,7 +553,7 @@ class _DismissibleTileState extends State<_DismissibleTile>
             child: Container(
               padding: const EdgeInsets.all(26),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF3A2A32) : Colors.white,
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.18), blurRadius: 36, offset: const Offset(0, 14))],
               ),
@@ -564,12 +562,12 @@ class _DismissibleTileState extends State<_DismissibleTile>
                     decoration: BoxDecoration(color: Colors.red.withOpacity(0.10), shape: BoxShape.circle),
                     child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 27)),
                 const SizedBox(height: 14),
-                const Text('Obriši razgovor?',
-                    style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 17)),
+                Text('Obriši razgovor?',
+                    style: TextStyle(color: tileText, fontWeight: FontWeight.w800, fontSize: 17)),
                 const SizedBox(height: 8),
                 Text('Ova radnja se ne može poništiti.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: kPrimaryDark.withOpacity(0.45), fontSize: 13.5)),
+                    style: TextStyle(color: tileText.withOpacity(0.55), fontSize: 13.5)),
                 const SizedBox(height: 22),
                 Row(children: [
                   Expanded(child: TextButton(
@@ -577,9 +575,9 @@ class _DismissibleTileState extends State<_DismissibleTile>
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(color: kPrimaryDark.withOpacity(0.15))),
+                          side: BorderSide(color: tileText.withOpacity(0.15))),
                     ),
-                    child: Text('Odustani', style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14)),
+                    child: Text('Odustani', style: TextStyle(color: tileText.withOpacity(0.65), fontSize: 14)),
                   )),
                   const SizedBox(width: 10),
                   Expanded(child: ElevatedButton(
@@ -606,10 +604,10 @@ class _DismissibleTileState extends State<_DismissibleTile>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.red.withOpacity(0.15)),
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 23),
-          const SizedBox(height: 3),
-          const Text('Obriši', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
+        child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.delete_rounded, color: Colors.redAccent, size: 23),
+          SizedBox(height: 3),
+          Text('Obriši', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
         ]),
       ),
       child: GestureDetector(
@@ -621,66 +619,74 @@ class _DismissibleTileState extends State<_DismissibleTile>
           child: Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: ThemeState.instance.isDark ? kDarkCard : Colors.white,
+              color: cardBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: kPrimaryDark.withOpacity(hasUnread ? 0.12 : 0.05), width: 1),
+              border: Border.all(
+                color: hasUnread
+                    ? tileAccent.withOpacity(0.25)
+                    : tileAccent.withOpacity(isDark ? 0.15 : 0.07),
+                width: 1,
+              ),
               boxShadow: [
-                BoxShadow(color: kPrimaryDark.withOpacity(0.07), blurRadius: 18, offset: const Offset(0, 5)),
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.30)
+                      : kPrimaryDark.withOpacity(0.07),
+                  blurRadius: 18,
+                  offset: const Offset(0, 5),
+                ),
               ],
             ),
-            child: Builder(builder: (context) {
-              final isDark = ThemeState.instance.isDark;
-              final tileText = isDark ? kDarkText : kPrimaryDark;
-              final tileAccent = isDark ? kDarkPrimary : kPrimaryDark;
-              final avatarBg = isDark ? kDarkCardEl : kPrimaryLight;
-              return Row(children: [
-                Container(width: 52, height: 52,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [avatarBg, tileAccent.withOpacity(0.14)]),
-                    border: Border.all(color: tileAccent.withOpacity(0.10), width: 2),
+            child: Row(children: [
+              Container(width: 52, height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [avatarBg, tileAccent.withOpacity(0.25)],
                   ),
-                  child: Icon(Icons.person_rounded, color: tileAccent, size: 26),
+                  border: Border.all(color: tileAccent.withOpacity(0.20), width: 2),
                 ),
-                const SizedBox(width: 13),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Text(convo.name, style: TextStyle(
-                      color: tileText,
-                      fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
-                      fontSize: 15.5,
-                    )),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: hasUnread ? tileAccent.withOpacity(0.08) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(convo.lastMessageTime, style: TextStyle(
-                        color: hasUnread ? tileAccent : tileText.withOpacity(0.30),
-                        fontSize: 12, fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
-                      )),
+                child: Icon(Icons.person_rounded, color: tileAccent, size: 26),
+              ),
+              const SizedBox(width: 13),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Text(convo.name, style: TextStyle(
+                    color: tileText,
+                    fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w700,
+                    fontSize: 15.5,
+                  )),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: hasUnread ? tileAccent.withOpacity(0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                  ]),
-                  const SizedBox(height: 5),
-                  Row(children: [
-                    Expanded(child: Text(convo.lastMessageText,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: tileText.withOpacity(hasUnread ? 0.75 : 0.35),
-                          fontSize: 13.5,
-                          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
-                        ))),
-                    if (hasUnread) ...[
-                      const SizedBox(width: 8),
-                      Container(width: 9, height: 9,
-                          decoration: BoxDecoration(color: tileAccent, shape: BoxShape.circle)),
-                    ],
-                  ]),
-                ])),
-              ]);}),
+                    child: Text(convo.lastMessageTime, style: TextStyle(
+                      color: hasUnread ? tileAccent : tileText.withOpacity(0.40),
+                      fontSize: 12, fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
+                    )),
+                  ),
+                ]),
+                const SizedBox(height: 5),
+                Row(children: [
+                  Expanded(child: Text(convo.lastMessageText,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: tileText.withOpacity(hasUnread ? 0.85 : 0.55),
+                        fontSize: 13.5,
+                        fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                      ))),
+                  if (hasUnread) ...[
+                    const SizedBox(width: 8),
+                    Container(width: 9, height: 9,
+                        decoration: BoxDecoration(color: tileAccent, shape: BoxShape.circle)),
+                  ],
+                ]),
+              ])),
+            ]),
           ),
         ),
       ),
@@ -826,7 +832,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
     final cardBg  = isDark ? kDarkCard : Colors.white;
-    final accent  = isDark ? kPrimaryDark  : kPrimaryLight;
+    final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
     return FadeTransition(
       opacity: _headerFade,
       child: SlideTransition(
@@ -877,7 +883,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
                   ),
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.32), fontSize: 12, fontWeight: FontWeight.w400),
+                    style: TextStyle(color: primary.withOpacity(0.42), fontSize: 12, fontWeight: FontWeight.w400),
                     child: const Text('Klikni za profil'),
                   ),
                 ]),
@@ -898,7 +904,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
   Widget _buildBubble(ChatMessage msg) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
-    final cardBg  = isDark ? kDarkCard : Colors.white;
+    final cardBg  = isDark ? const Color(0xFF4A3A42) : Colors.white;
 
     if (msg.timeDivider != null) {
       return Padding(
@@ -906,7 +912,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
         child: Row(children: [
           Expanded(child: Container(height: 1,
               decoration: BoxDecoration(gradient: LinearGradient(colors: [
-                Colors.transparent, primary.withOpacity(0.10), Colors.transparent,
+                Colors.transparent, primary.withOpacity(0.15), Colors.transparent,
               ])))),
           AnimatedContainer(
             duration: const Duration(milliseconds: 340),
@@ -915,15 +921,15 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: primary.withOpacity(0.08)),
-              boxShadow: [BoxShadow(color: primary.withOpacity(0.04), blurRadius: 6)],
+              border: Border.all(color: primary.withOpacity(0.12)),
+              boxShadow: [BoxShadow(color: primary.withOpacity(0.06), blurRadius: 6)],
             ),
             child: Text(msg.timeDivider!,
-                style: TextStyle(color: primary.withOpacity(0.40), fontSize: 12, fontWeight: FontWeight.w500)),
+                style: TextStyle(color: primary.withOpacity(0.55), fontSize: 12, fontWeight: FontWeight.w500)),
           ),
           Expanded(child: Container(height: 1,
               decoration: BoxDecoration(gradient: LinearGradient(colors: [
-                Colors.transparent, primary.withOpacity(0.10), Colors.transparent,
+                Colors.transparent, primary.withOpacity(0.15), Colors.transparent,
               ])))),
         ]),
       );
@@ -931,11 +937,10 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
 
     final isMe = msg.isMe;
     final timeStr = _fmt(msg.sentAt);
-    // In dark mode: my messages = pink, their messages = dark card
     final myBubbleBg    = isDark ? kDarkPrimary : kLightPrimary;
-    final myBubbleText  = isDark ? kPrimaryDark  : Colors.white;
-    final theirBubbleBg = isDark ? kDarkCardEl : Colors.white;
-    final theirBubbleText = isDark ? kDarkPrimary : kLightPrimary;
+    final myBubbleText  = isDark ? const Color(0xFF1A0A12) : Colors.white;
+    final theirBubbleBg = isDark ? const Color(0xFF4A3A42) : Colors.white;
+    final theirBubbleText = isDark ? const Color(0xFFEEE0E5) : kLightPrimary;
 
     Widget bubble;
     if (msg.imagePath != null) {
@@ -976,9 +981,9 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
                     bottomLeft: Radius.circular(isMe ? 18 : 4),
                     bottomRight: Radius.circular(isMe ? 4 : 18),
                   ),
-                  border: isMe ? null : Border.all(color: primary.withOpacity(0.10)),
+                  border: isMe ? null : Border.all(color: primary.withOpacity(isDark ? 0.20 : 0.10)),
                   boxShadow: [BoxShadow(
-                    color: isMe ? myBubbleBg.withOpacity(0.22) : primary.withOpacity(0.06),
+                    color: isMe ? myBubbleBg.withOpacity(0.22) : primary.withOpacity(isDark ? 0.12 : 0.06),
                     blurRadius: 12, offset: const Offset(0, 4),
                   )],
                 ),
@@ -1000,7 +1005,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
   Widget _avatar() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
-    final accent  = isDark ? kPrimaryDark  : kPrimaryLight;
+    final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
     return GestureDetector(
       onTap: _onAvatarTap,
       child: AnimatedContainer(
@@ -1010,8 +1015,8 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [accent, primary.withOpacity(0.20)]),
-          border: Border.all(color: primary.withOpacity(0.18), width: 1.5),
+              colors: [accent, primary.withOpacity(0.30)]),
+          border: Border.all(color: primary.withOpacity(0.25), width: 1.5),
         ),
         child: Icon(Icons.person_rounded, color: primary, size: 16),
       ),
@@ -1023,7 +1028,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     final primary  = isDark ? kDarkPrimary : kLightPrimary;
     final cardBg   = isDark ? kDarkCard : Colors.white;
     final inputBg  = isDark ? kDarkBg : kSurface;
-    final accent   = isDark ? kPrimaryDark  : kPrimaryLight;
+    final accent   = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
@@ -1040,7 +1045,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
             width: 42, height: 42, margin: const EdgeInsets.only(right: 9),
             decoration: BoxDecoration(
               color: accent, borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: primary.withOpacity(0.10)),
+              border: Border.all(color: primary.withOpacity(0.15)),
             ),
             child: Icon(Icons.add_photo_alternate_rounded, color: primary, size: 19),
           ),
@@ -1050,14 +1055,14 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
             duration: const Duration(milliseconds: 340),
             decoration: BoxDecoration(
               color: inputBg, borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: primary.withOpacity(0.10), width: 1.2),
+              border: Border.all(color: primary.withOpacity(0.15), width: 1.2),
             ),
             child: TextField(
               controller: _textCtrl, focusNode: _focusNode,
-              style: TextStyle(color: primary, fontSize: 14),
+              style: TextStyle(color: isDark ? const Color(0xFFEEE0E5) : primary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Napiši poruku...',
-                hintStyle: TextStyle(color: primary.withOpacity(0.28), fontSize: 14),
+                hintStyle: TextStyle(color: primary.withOpacity(0.38), fontSize: 14),
                 filled: false,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                 border: InputBorder.none,
@@ -1111,6 +1116,8 @@ class _SwipeRevealTimeState extends State<_SwipeRevealTime>
 
   @override
   Widget build(BuildContext context) {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kPrimaryDark;
     return GestureDetector(
       onHorizontalDragUpdate: (d) {
         setState(() => _offset = (_offset + d.primaryDelta!).clamp(-_max, 0));
@@ -1134,11 +1141,11 @@ class _SwipeRevealTimeState extends State<_SwipeRevealTime>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: kPrimaryDark.withOpacity(0.07),
+                    color: primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(widget.timeStr,
-                      style: TextStyle(color: kPrimaryDark.withOpacity(0.50),
+                      style: TextStyle(color: primary.withOpacity(0.65),
                           fontSize: 11.5, fontWeight: FontWeight.w500)),
                 ),
               ),
@@ -1149,44 +1156,6 @@ class _SwipeRevealTimeState extends State<_SwipeRevealTime>
           offset: Offset(_offset, 0),
           child: widget.child,
         ),
-      ]),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SETTINGS PLACEHOLDER
-// ═══════════════════════════════════════════════════════════════════════════════
-class _SettingsPlaceholder extends StatelessWidget {
-  const _SettingsPlaceholder();
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: kSurface,
-      body: Column(children: [
-        Container(
-          color: Colors.white,
-          padding: EdgeInsets.only(top: mq.padding.top + 14, left: 8, right: 18, bottom: 14),
-          child: Row(children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-            const Text('Postavke', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 20)),
-          ]),
-        ),
-        Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(color: kPrimaryLight, shape: BoxShape.circle),
-            child: Icon(Icons.settings_rounded, color: kPrimaryDark, size: 36),
-          ),
-          const SizedBox(height: 18),
-          const Text('Postavke', style: TextStyle(color: kPrimaryDark, fontSize: 20, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('Uskoro dostupno! 🚀', style: TextStyle(color: kPrimaryDark.withOpacity(0.38), fontSize: 14)),
-        ]))),
       ]),
     );
   }

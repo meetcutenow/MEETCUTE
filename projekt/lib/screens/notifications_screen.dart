@@ -110,7 +110,7 @@ class NotificationState {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SEED STATIC NOTIFICATIONS (events coming up, etc.)
+// SEED STATIC NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 void seedStaticNotifications() {
@@ -382,7 +382,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 ),
               ]),
             ),
-            // Clear all
             if (NotificationState.instance.all.isNotEmpty)
               GestureDetector(
                 onTap: () {
@@ -393,13 +392,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   duration: const Duration(milliseconds: 340),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.06),
+                    color: primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: primary.withOpacity(0.10)),
+                    border: Border.all(color: primary.withOpacity(0.12)),
                   ),
                   child: AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.60),
+                    style: TextStyle(color: primary.withOpacity(0.70),
                         fontSize: 13, fontWeight: FontWeight.w600),
                     child: const Text('Obriši sve'),
                   ),
@@ -412,6 +411,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   void _showClearConfirm() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final cardBg  = isDark ? const Color(0xFF3A2A32) : Colors.white;
+    final textCol = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -424,20 +427,20 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           child: Container(
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(26),
-              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.18), blurRadius: 36, offset: const Offset(0, 14))],
+              color: cardBg, borderRadius: BorderRadius.circular(26),
+              boxShadow: [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 36, offset: const Offset(0, 14))],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Container(width: 56, height: 56,
-                  decoration: BoxDecoration(color: kPrimaryDark.withOpacity(0.08), shape: BoxShape.circle),
-                  child: const Icon(Icons.delete_sweep_rounded, color: kPrimaryDark, size: 28)),
+                  decoration: BoxDecoration(color: primary.withOpacity(0.12), shape: BoxShape.circle),
+                  child: Icon(Icons.delete_sweep_rounded, color: primary, size: 28)),
               const SizedBox(height: 14),
-              const Text('Obriši sve obavijesti?',
-                  style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 17)),
+              Text('Obriši sve obavijesti?',
+                  style: TextStyle(color: textCol, fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 8),
               Text('Sve obavijesti će biti trajno obrisane.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: kPrimaryDark.withOpacity(0.45), fontSize: 13.5)),
+                  style: TextStyle(color: textCol.withOpacity(0.55), fontSize: 13.5)),
               const SizedBox(height: 22),
               Row(children: [
                 Expanded(child: TextButton(
@@ -445,14 +448,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: kPrimaryDark.withOpacity(0.15))),
+                        side: BorderSide(color: textCol.withOpacity(0.20))),
                   ),
-                  child: Text('Odustani', style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14)),
+                  child: Text('Odustani', style: TextStyle(color: textCol.withOpacity(0.65), fontSize: 14)),
                 )),
                 const SizedBox(width: 10),
                 Expanded(child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryDark, foregroundColor: Colors.white,
+                    backgroundColor: primary, foregroundColor: isDark ? kDarkBg : Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
                   ),
@@ -475,7 +478,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget _buildEmpty() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
-    final accent  = isDark ? kPrimaryDark  : kPrimaryLight;
+    final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
     return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         TweenAnimationBuilder<double>(
@@ -518,7 +521,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   // ── NOTIFICATIONS LIST ──────────────────────────────────────────────────────
   Widget _buildList(List<AppNotification> notifs) {
-    // Group by today vs earlier
     final today = <AppNotification>[];
     final earlier = <AppNotification>[];
     final now = DateTime.now();
@@ -533,7 +535,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       children: [
         if (today.isNotEmpty) ...[
           _sectionLabel('Danas'),
@@ -561,11 +563,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _sectionLabel(String text) {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kPrimaryDark;
     return Row(children: [
       Container(width: 4, height: 14,
-          decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(2))),
+          decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2))),
       const SizedBox(width: 8),
-      Text(text, style: const TextStyle(color: kPrimaryDark, fontSize: 12,
+      Text(text, style: TextStyle(color: primary, fontSize: 12,
           fontWeight: FontWeight.w700, letterSpacing: 0.6)),
     ]);
   }
@@ -644,7 +648,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATION TILE
+// NOTIFICATION TILE — improved dark mode contrast
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _NotifTile extends StatefulWidget {
@@ -682,6 +686,18 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
     final n = widget.notif;
     final accent = n.accentColor ?? kPrimaryDark;
     final isUnread = !n.isRead;
+    final isDark  = ThemeState.instance.isDark;
+
+    // Improved dark mode card bg — lighter for visibility
+    final cardBg  = isDark ? const Color(0xFF4A3A42) : Colors.white;
+    // Text with high contrast in dark mode
+    final titleColor = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
+    final bodyColor  = isDark
+        ? const Color(0xFFEEE0E5).withOpacity(isUnread ? 0.80 : 0.60)
+        : kPrimaryDark.withOpacity(isUnread ? 0.65 : 0.40);
+    final timeColor  = isDark
+        ? const Color(0xFFEEE0E5).withOpacity(0.45)
+        : kPrimaryDark.withOpacity(0.30);
 
     return FadeTransition(
       opacity: _entryFade,
@@ -704,10 +720,10 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.red.withOpacity(0.15)),
               ),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 22),
-                const SizedBox(height: 3),
-                const Text('Obriši', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
+              child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.delete_rounded, color: Colors.redAccent, size: 22),
+                SizedBox(height: 3),
+                Text('Obriši', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
               ]),
             ),
             child: GestureDetector(
@@ -719,17 +735,19 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                 duration: const Duration(milliseconds: 100),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: ThemeState.instance.isDark ? kDarkCard : Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isUnread ? accent.withOpacity(0.20) : kPrimaryDark.withOpacity(0.06),
+                      color: isUnread
+                          ? accent.withOpacity(isDark ? 0.45 : 0.20)
+                          : (isDark ? const Color(0xFFEEE0E5).withOpacity(0.12) : kPrimaryDark.withOpacity(0.06)),
                       width: isUnread ? 1.5 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: isUnread
-                            ? accent.withOpacity(0.10)
-                            : kPrimaryDark.withOpacity(0.05),
+                            ? accent.withOpacity(isDark ? 0.18 : 0.10)
+                            : (isDark ? Colors.black.withOpacity(0.25) : kPrimaryDark.withOpacity(0.05)),
                         blurRadius: isUnread ? 18 : 12,
                         offset: const Offset(0, 4),
                       ),
@@ -739,7 +757,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // ── Accent side bar ──────────────────────────────────
+                        // Accent side bar
                         Container(
                           width: 4,
                           decoration: BoxDecoration(
@@ -749,14 +767,14 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                         ),
                         const SizedBox(width: 14),
 
-                        // ── Icon ─────────────────────────────────────────────
+                        // Icon
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: _NotifIcon(type: n.type, accent: accent),
+                          child: _NotifIcon(type: n.type, accent: accent, isDark: isDark),
                         ),
                         const SizedBox(width: 12),
 
-                        // ── Content ──────────────────────────────────────────
+                        // Content
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
@@ -769,14 +787,13 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                     Expanded(
                                       child: Text(n.title,
                                           style: TextStyle(
-                                            color: ThemeState.instance.isDark ? kDarkText : kPrimaryDark,
+                                            color: titleColor,
                                             fontSize: 14.5,
                                             fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
                                             letterSpacing: -0.2,
                                           )),
                                     ),
                                     const SizedBox(width: 8),
-                                    // Unread dot + time
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
@@ -788,7 +805,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                         const SizedBox(height: 3),
                                         Text(_formatTime(n.timestamp),
                                             style: TextStyle(
-                                              color: (ThemeState.instance.isDark ? kDarkText : kPrimaryDark).withOpacity(0.30),
+                                              color: timeColor,
                                               fontSize: 11.5, fontWeight: FontWeight.w500,
                                             )),
                                       ],
@@ -798,12 +815,12 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                                 const SizedBox(height: 4),
                                 Text(n.body,
                                     style: TextStyle(
-                                      color: (ThemeState.instance.isDark ? kDarkText : kPrimaryDark).withOpacity(isUnread ? 0.65 : 0.40),
+                                      color: bodyColor,
                                       fontSize: 13, height: 1.45,
                                     )),
                                 if (n.eventName != null) ...[
                                   const SizedBox(height: 8),
-                                  _EventChip(name: n.eventName!, location: n.eventLocation, color: accent),
+                                  _EventChip(name: n.eventName!, location: n.eventLocation, color: accent, isDark: isDark),
                                 ],
                               ],
                             ),
@@ -835,7 +852,8 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
 class _NotifIcon extends StatelessWidget {
   final NotifType type;
   final Color accent;
-  const _NotifIcon({required this.type, required this.accent});
+  final bool isDark;
+  const _NotifIcon({required this.type, required this.accent, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -851,31 +869,32 @@ class _NotifIcon extends StatelessWidget {
     return Container(
       width: 44, height: 44,
       decoration: BoxDecoration(
-        color: accent.withOpacity(0.12),
+        color: accent.withOpacity(isDark ? 0.22 : 0.12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(0.20), width: 1),
+        border: Border.all(color: accent.withOpacity(isDark ? 0.35 : 0.20), width: 1),
       ),
       child: Icon(icon, color: accent, size: 22),
     );
   }
 }
 
-// ── Event chip shown inside notification ─────────────────────────────────────
+// ── Event chip ────────────────────────────────────────────────────────────────
 
 class _EventChip extends StatelessWidget {
   final String name;
   final String? location;
   final Color color;
-  const _EventChip({required this.name, required this.location, required this.color});
+  final bool isDark;
+  const _EventChip({required this.name, required this.location, required this.color, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withOpacity(isDark ? 0.18 : 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.18), width: 1),
+        border: Border.all(color: color.withOpacity(isDark ? 0.35 : 0.18), width: 1),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.event_rounded, color: color, size: 13),

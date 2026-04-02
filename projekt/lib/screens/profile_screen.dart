@@ -1,8 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
+import 'dart:io' as dart_io;
 import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
+import 'profile_setup_screen.dart';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL PROFILE DATA  (in-memory, shared across the app)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+ProfileSetupData _globalProfileData = ProfileSetupData(
+  photoPaths: [
+    'assets/images/profile_1.png',
+    'assets/images/profile_2.png',
+    'assets/images/profile_3.png',
+  ],
+  iceBreaker: 'Pitaj me kakvu kavu pijem.',
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,12 +33,11 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
 
-  // ── photos (add/remove paths here, min 2 max 6) ───────────────────────────
-  static const _photos = [
-    'assets/images/profile_1.png',
-    'assets/images/profile_2.png',
-    'assets/images/profile_3.png',
-  ];
+  // ── photos ─────────────────────────────────────────────────────────────────
+  List<String> get _photos => _globalProfileData.photoPaths.isNotEmpty
+      ? _globalProfileData.photoPaths
+      : ['assets/images/profile_1.png'];
+
   int _photoIndex = 0;
   late final PageController _pageCtrl;
 
@@ -37,13 +55,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   late final Animation<Offset>  _cardSlide;
   late final List<Animation<double>> _chipFade;
 
-  static const _interests = [
-    ('Priroda',   '🌿'),
-    ('Putovanja', '✈️'),
-    ('Pisanje',   '✍️'),
-    ('Boks',      '🥊'),
-    ('Kuhanje',   '👨‍🍳'),
-  ];
+  List<String> get _interests => _globalProfileData.interests.isNotEmpty
+      ? _globalProfileData.interests
+      : ['Priroda', 'Putovanja', 'Pisanje', 'Boks', 'Kuhanje'];
 
   @override
   void initState() {
@@ -72,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         vsync: this, duration: const Duration(milliseconds: 700));
 
     _chipFade = List.generate(_interests.length, (i) {
-      final s = i * 0.14;
+      final s = (i * 0.14).clamp(0.0, 0.85);
       final e = (s + 0.55).clamp(0.0, 1.0);
       return CurvedAnimation(
           parent: _staggerCtrl,
@@ -134,12 +148,42 @@ class _ProfileScreenState extends State<ProfileScreen>
       ..forward();
   }
 
+  // ── navigate to edit ────────────────────────────────────────────────────────
+  void _openSetup() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, a, __) => ProfileSetupScreen(
+          initial: _globalProfileData.copy(),
+          onSave: (saved) {
+            setState(() {
+              _globalProfileData = saved;
+              _photoIndex = 0;
+              // rebuild chip animations for new interests list
+              _staggerCtrl.reset();
+              _staggerCtrl.forward();
+            });
+          },
+        ),
+        transitionsBuilder: (_, a, __, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 420),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq      = MediaQuery.of(context);
     final screenH = mq.size.height;
-    final screenW = mq.size.width;
     final double sheetTop = screenH * (1.0 - _sheetFrac);
+    final photos  = _photos;
+    final interests = _interests;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -148,45 +192,33 @@ class _ProfileScreenState extends State<ProfileScreen>
         body: Stack(
           children: [
 
-            // ── LAYER 0: PHOTO CAROUSEL (only covers photo zone, not card) ───
+            // ── LAYER 0: PHOTO CAROUSEL ──────────────────────────────────────
             Positioned(
               top: 0, left: 0, right: 0,
-              // height = sheetTop + small overlap so no gap appears
               height: sheetTop + 2,
               child: FadeTransition(
                 opacity: _photoFade,
                 child: PageView.builder(
                   controller: _pageCtrl,
-                  // Use ClampingScrollPhysics so horizontal swipe
-                  // doesn't conflict with vertical sheet drag
                   physics: const ClampingScrollPhysics(),
-                  itemCount: _photos.length,
+                  itemCount: photos.length,
                   onPageChanged: (i) => setState(() => _photoIndex = i),
-                  itemBuilder: (_, i) => Image.asset(
-                    _photos[i],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            const Color(0xFFD9C5BF),
-                            const Color(0xFFBF9090),
-                            kPrimaryDark,
-                          ],
-                        ),
-                      ),
-                      child: Icon(Icons.person_rounded,
-                          size: 110,
-                          color: Colors.white.withOpacity(0.18)),
-                    ),
-                  ),
+                  itemBuilder: (_, i) {
+                    final path = photos[i];
+                    return _isAsset(path)
+                        ? Image.asset(path, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackPhoto())
+                        : Image.file(
+                      dart_io.File(path),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _fallbackPhoto(),
+                    );
+                  },
                 ),
               ),
             ),
 
-            // ── LAYER 1: GRADIENT FADE — bottom of photo → transparent ───────
+            // ── LAYER 1: GRADIENT FADE ────────────────────────────────────────
             Positioned(
               left: 0, right: 0,
               top: sheetTop - 180,
@@ -208,14 +240,14 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 2: DOTS INDICATOR ───────────────────────────────────────
+            // ── LAYER 2: DOTS INDICATOR ──────────────────────────────────────
             Positioned(
               left: 0, right: 0,
               bottom: screenH - sheetTop + 52,
               child: IgnorePointer(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_photos.length, (i) {
+                  children: List.generate(photos.length, (i) {
                     final active = i == _photoIndex;
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
@@ -260,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 4: WHITE CARD ───────────────────────────────────────────
+            // ── LAYER 4: WHITE CARD ──────────────────────────────────────────
             Positioned(
               top: sheetTop,
               left: 0, right: 0, bottom: 0,
@@ -288,11 +320,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                       child: Stack(
                         children: [
-                          // scrollable content
                           Column(
                             children: [
                               const SizedBox(height: 10),
-                              // drag handle
                               Container(
                                 width: 36, height: 4,
                                 decoration: BoxDecoration(
@@ -307,16 +337,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   padding: EdgeInsets.fromLTRB(
                                       20, 14, 20,
                                       mq.padding.bottom + 80),
-                                  child: _CardBody(chipFade: _chipFade),
+                                  child: _CardBody(
+                                    chipFade: _chipFade,
+                                    interests: interests,
+                                    data: _globalProfileData,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          // edit button pinned to bottom-center
                           Positioned(
                             bottom: mq.padding.bottom + 20,
                             left: 0, right: 0,
-                            child: Center(child: _EditBtn()),
+                            child: Center(child: _EditBtn(onTap: _openSetup)),
                           ),
                         ],
                       ),
@@ -326,7 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
 
-            // ── LAYER 5: BACK BUTTON ──────────────────────────────────────────
+            // ── LAYER 5: BACK BUTTON ─────────────────────────────────────────
             Positioned(
               top: mq.padding.top + 15,
               left: 14,
@@ -341,25 +374,70 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
     );
   }
+
+  bool _isAsset(String path) => path.startsWith('assets/');
+
+  Widget _fallbackPhoto() => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFFD9C5BF),
+          const Color(0xFFBF9090),
+          kPrimaryDark,
+        ],
+      ),
+    ),
+    child: Icon(Icons.person_rounded,
+        size: 110,
+        color: Colors.white.withOpacity(0.18)),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CARD BODY
+// CARD BODY  — shows current profile data
 // ─────────────────────────────────────────────────────────────────────────────
 class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
-  static const _interests = [
-    ('Priroda',   '🌿'),
-    ('Putovanja', '✈️'),
-    ('Pisanje',   '✍️'),
-    ('Boks',      '🥊'),
-    ('Kuhanje',   '👨‍🍳'),
-  ];
+  final List<String> interests;
+  final ProfileSetupData data;
 
-  const _CardBody({required this.chipFade});
+  const _CardBody({
+    required this.chipFade,
+    required this.interests,
+    required this.data,
+  });
+
+  // emoji map for interests
+  static const _emojiMap = {
+    'Crtanje':     '🎨',
+    'Fotografija': '📸',
+    'Pisanje':     '✍️',
+    'Film':        '🎬',
+    'Trčanje':     '🏃‍♀️',
+    'Biciklizam':  '🚴',
+    'Planinarenje':'🥾',
+    'Teretana':    '🏋️',
+    'Boks':        '🥊',
+    'Tenis':       '🎾',
+    'Nogomet':     '⚽',
+    'Odbojka':     '🏐',
+    'Kuhanje':     '👨‍🍳',
+    'Putovanja':   '✈️',
+    'Gaming':      '🎮',
+    'Formula':     '🏎️',
+    'Glazba':      '🎵',
+    // legacy names kept for safety
+    'Priroda':     '🌿',
+  };
 
   @override
   Widget build(BuildContext context) {
+    final iceBreaker = data.iceBreaker.isNotEmpty
+        ? data.iceBreaker
+        : 'Pitaj me kakvu kavu pijem.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -371,8 +449,8 @@ class _CardBody extends StatelessWidget {
               fontWeight: FontWeight.w500,
             )),
         const SizedBox(height: 5),
-        const Text('Pitaj me kakvu kavu pijem.',
-            style: TextStyle(
+        Text(iceBreaker,
+            style: const TextStyle(
               color: Color(0xFF1C1C1E),
               fontSize: 15.5,
               fontWeight: FontWeight.w700,
@@ -394,18 +472,19 @@ class _CardBody extends StatelessWidget {
         Wrap(
           spacing: 7,
           runSpacing: 7,
-          children: List.generate(_interests.length, (i) {
+          children: List.generate(interests.length, (i) {
+            final anim = i < chipFade.length ? chipFade[i] : chipFade.last;
             return AnimatedBuilder(
-              animation: chipFade[i],
+              animation: anim,
               builder: (_, __) {
-                final t = chipFade[i].value.clamp(0.0, 1.0);
+                final t = anim.value.clamp(0.0, 1.0);
                 return Opacity(
                   opacity: t,
                   child: Transform.scale(
                     scale: 0.6 + 0.4 * t,
                     child: _Chip(
-                      label: _interests[i].$1,
-                      emoji: _interests[i].$2,
+                      label: interests[i],
+                      emoji: _emojiMap[interests[i]] ?? '✨',
                     ),
                   ),
                 );
@@ -426,10 +505,24 @@ class _CardBody extends StatelessWidget {
             )),
         const SizedBox(height: 12),
 
-        _DataRow(icon: Icons.cake_outlined,  label: 'Godine', value: '22'),
+        // Age from birth year
+        if (data.birthYear != null)
+          _DataRow(
+            icon: Icons.cake_outlined,
+            label: 'Godine',
+            value: '${DateTime.now().year - data.birthYear!}',
+          ),
+        if (data.birthYear == null)
+          _DataRow(icon: Icons.cake_outlined, label: 'Godine', value: '22'),
+
         Divider(color: kPrimaryDark.withOpacity(0.08),
             thickness: 0.5, height: 1, indent: 28),
-        _DataRow(icon: Icons.height_rounded, label: 'Visina', value: '172 cm'),
+
+        _DataRow(
+          icon: Icons.height_rounded,
+          label: 'Visina',
+          value: data.height != null ? '${data.height} cm' : '172 cm',
+        ),
       ],
     );
   }
@@ -439,7 +532,7 @@ class _CardBody extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INTEREST CHIP
+// INTEREST CHIP  (read-only in profile view)
 // ─────────────────────────────────────────────────────────────────────────────
 class _Chip extends StatefulWidget {
   final String label;
@@ -593,6 +686,9 @@ class _BackBtnState extends State<_BackBtn>
 // EDIT BUTTON
 // ─────────────────────────────────────────────────────────────────────────────
 class _EditBtn extends StatefulWidget {
+  final VoidCallback onTap;
+  const _EditBtn({required this.onTap});
+
   @override
   State<_EditBtn> createState() => _EditBtnState();
 }
@@ -617,7 +713,7 @@ class _EditBtnState extends State<_EditBtn>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) { setState(() => _pressed = true); HapticFeedback.lightImpact(); },
-      onTapUp: (_)   => setState(() => _pressed = false),
+      onTapUp: (_)   { setState(() => _pressed = false); widget.onTap(); },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.94 : 1.0,
