@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'chat_screen.dart' show ChatScreen, ChatState;
 import 'profile_screen.dart';
 import 'events_nearby.dart';
+import 'organize_meetup.dart' show OrganizeMeetupScreen;
 import 'notifications_screen.dart' show NotificationsScreen, NotificationState, seedStaticNotifications;
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
@@ -624,15 +625,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
       child: Column(children: [
-        _buildMenuItem(index: 0, icon: Icons.calendar_today_rounded,
-            label: 'Događanja u blizini', subtitle: 'Otkrij aktivnosti oko sebe',
-            isLocked: false, onTap: () => _navigateTo(const EventsNearbyScreen()), showDivider: true),
-        _buildMenuItem(index: 1, icon: Icons.coffee_rounded,
-            label: 'Organiziraj susret', subtitle: 'Nađi društvo već danas ☕',
-            isLocked: true, onTap: _showPremiumDialog, showDivider: true),
-        _buildMenuItem(index: 2, icon: Icons.tune_rounded,
-            label: 'Filtriraj matcheve', subtitle: 'Pronađi savršenu osobu',
-            isLocked: true, onTap: _showPremiumDialog, showDivider: false),
+        _buildMenuItem(
+          index: 0,
+          icon: Icons.calendar_today_rounded,
+          label: 'Događanja u blizini',
+          subtitle: 'Otkrij aktivnosti oko sebe',
+          isLocked: false,
+          onTap: () => _navigateTo(const EventsNearbyScreen()),
+          showDivider: true,
+        ),
+        // ── ORGANIZIRAJ SUSRET — OTKLJUČANO ─────────────────────────────────
+        _buildMenuItem(
+          index: 1,
+          icon: Icons.coffee_rounded,
+          label: 'Organiziraj susret',
+          subtitle: 'Stvori vlastiti meetup ☕',
+          isLocked: false,                           // <-- unlock
+          onTap: () => _navigateTo(const OrganizeMeetupScreen()), // <-- novi screen
+          showDivider: true,
+        ),
+        _buildMenuItem(
+          index: 2,
+          icon: Icons.tune_rounded,
+          label: 'Filtriraj matcheve',
+          subtitle: 'Pronađi savršenu osobu',
+          isLocked: true,
+          onTap: _showPremiumDialog,
+          showDivider: false,
+        ),
       ]),
     );
   }
@@ -837,8 +857,6 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-
-              //glow
               Container(
                 width: 115, height: 44,
                 decoration: BoxDecoration(
@@ -852,8 +870,6 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
                   ],
                 ),
               ),
-
-              // kontejner
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: BackdropFilter(
@@ -887,7 +903,6 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
   }
 }
 
-//botun za mapu
 class _GlassMapBtn extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -932,8 +947,6 @@ class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderSta
   }
 }
 
-
-//navbadge
 class NavBadge extends StatelessWidget {
   final int count;
   const NavBadge({super.key, required this.count});

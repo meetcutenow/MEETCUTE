@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'dart:io';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
 import 'theme_state.dart';
@@ -10,8 +11,6 @@ import 'theme_state.dart';
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const Color _bordoDark  = Color(0xFF4A0818);
-
-//podaci
 
 class _City {
   final String name;
@@ -25,6 +24,9 @@ class _Category {
   const _Category({required this.label, this.icon, this.emoji});
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENT DATA MODEL — s novim poljima za user evente
+// ═══════════════════════════════════════════════════════════════════════════════
 class EventData {
   final String title;
   final String location;
@@ -37,6 +39,10 @@ class EventData {
   final String imagePath;
   final List<String> categories;
   final Color cardColor;
+  // Nova polja
+  final bool isUserEvent;
+  final int  maxAttendees;
+  final String? userImagePath;
 
   const EventData({
     required this.title,
@@ -49,19 +55,35 @@ class EventData {
     this.coordinates = const LatLng(45.8150, 15.9819),
     this.imagePath   = '',
     required this.categories,
-    this.cardColor = const Color(0xFF6DD5E8),
+    this.cardColor   = const Color(0xFF6DD5E8),
+    this.isUserEvent = false,
+    this.maxAttendees = 0,
+    this.userImagePath,
   });
 }
 
-//stanje prijave
-final _attendanceState = <String, bool>{};   // key = event title
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL: user eventi po gradu
+// ═══════════════════════════════════════════════════════════════════════════════
+final Map<String, List<EventData>> _userEventsByCity = {};
+
+/// Pozovi ovo iz OrganizeMeetupScreen kad korisnik kreira event
+void addUserEvent(String cityName, EventData event) {
+  _userEventsByCity.putIfAbsent(cityName, () => []);
+  _userEventsByCity[cityName]!.insert(0, event);
+}
+
+// stanje prijave
+final _attendanceState = <String, bool>{};
 int _effectiveAttendees(EventData e) {
   final joined = _attendanceState[e.title];
   if (joined == null) return e.attendees;
   return joined ? e.attendees + 1 : e.attendees;
 }
 
-//podaci
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATIČKI PODACI
+// ═══════════════════════════════════════════════════════════════════════════════
 
 const _cities = [
   _City('Zagreb'),
@@ -178,9 +200,7 @@ final _eventsByCity = <int, List<EventData>>{
       cardColor: Color(0xFFFFB3C6),
     ),
   ],
-  // ── Rijeka ────────────────────────────────────────────────────
   2: [],
-  // ── Osijek ────────────────────────────────────────────────────
   3: [
     const EventData(
       title: 'Tvrđa fest',
@@ -196,7 +216,6 @@ final _eventsByCity = <int, List<EventData>>{
       cardColor: Color(0xFFFFD166),
     ),
   ],
-  // ── Zadar ─────────────────────────────────────────────────────────────────────
   4: [
     const EventData(
       title: 'Sunčani sat',
@@ -227,7 +246,9 @@ final _eventsByCity = <int, List<EventData>>{
   ],
 };
 
-//glavno
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class EventsNearbyScreen extends StatefulWidget {
   const EventsNearbyScreen({super.key});
@@ -261,7 +282,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   @override
   void initState() {
     super.initState();
-
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
@@ -303,8 +323,13 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     super.dispose();
   }
 
-  // ── data ────────────────────────────────────────────────────────────────────
-  List<EventData> get _cityEvents => _eventsByCity[_cityIndex] ?? [];
+  // ── Spoji statičke i user evente za trenutni grad ────────────────────────────
+  List<EventData> get _cityEvents {
+    final cityName = _cities[_cityIndex].name;
+    final staticEvents = _eventsByCity[_cityIndex] ?? [];
+    final userEvents = _userEventsByCity[cityName] ?? [];
+    return [...userEvents, ...staticEvents];
+  }
 
   List<EventData> get _filtered {
     return _cityEvents.where((e) {
@@ -317,7 +342,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     }).toList();
   }
 
-  // ── navigation ──────────────────────────────────────────────────────────────
   void _animateCardSwap(int dir) {
     _buildCardAnims(dir);
     _cardCtrl.forward(from: 0);
@@ -371,10 +395,9 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
         );
       },
       transitionDuration: const Duration(milliseconds: 380),
-    )).then((_) => setState(() {})); // refresh attendance counts on return
+    )).then((_) => setState(() {}));
   }
 
-  //BUILD
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -420,7 +443,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
   Widget _buildHeader(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -448,7 +470,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── LOCATION BAR ────────────────────────────────────────────────────────────
   Widget _buildLocationBar() {
     final isDark   = ThemeState.instance.isDark;
     final primary  = isDark ? kDarkPrimary : _bordo;
@@ -506,7 +527,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── BIRAČ GRADOVA ─────────────────────────────────────────────────────
   Widget _buildCityPickerOverlay() {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
@@ -550,7 +570,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── CATEGORY ──────────────────────────────────────────────────────────
   Widget _buildCategoryChips() {
     return SizedBox(
       height: 36,
@@ -587,8 +606,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                   decoration: BoxDecoration(
                     color: sel ? primary : chipBg,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                        color: sel ? primary : chipBdr, width: 1.2),
+                    border: Border.all(color: sel ? primary : chipBdr, width: 1.2),
                     boxShadow: sel
                         ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
                         : [],
@@ -616,7 +634,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  // ── CARD AREA ───────────────────────────────────────────────────────────────
   Widget _buildCardArea() {
     final events = _filtered;
     final cityEmpty = _cityEvents.isEmpty;
@@ -641,9 +658,7 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
             style: TextStyle(color: primary.withOpacity(0.65), fontSize: 15,
                 fontWeight: FontWeight.w600, height: 1.4),
             child: Text(
-              cityEmpty
-                  ? 'Nema događanja u\nodabranom gradu!'
-                  : 'Nema rezultata',
+              cityEmpty ? 'Nema događanja u\nodabranom gradu!' : 'Nema rezultata',
               textAlign: TextAlign.center,
             ),
           ),
@@ -679,7 +694,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // 3rd stack
                 if (events.length > page + 2)
                   Positioned(
                     top: 16, left: 12, right: 12, height: cardH,
@@ -691,7 +705,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                       ),
                     ),
                   ),
-                // 2nd stack
                 if (events.length > page + 1)
                   Positioned(
                     top: 8, left: 6, right: 6, height: cardH,
@@ -703,7 +716,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                       ),
                     ),
                   ),
-                // Front card — tappable
                 Positioned(
                   top: 0, left: 0, right: 0, height: cardH,
                   child: AnimatedBuilder(
@@ -724,7 +736,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                     ),
                   ),
                 ),
-                // Page dots
                 if (events.length > 1)
                   Positioned(
                     bottom: 6,
@@ -752,7 +763,6 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     });
   }
 
-  // ── SEARCH BAR ──────────────────────────────────────────────────────────────
   Widget _buildSearchBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -786,8 +796,9 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   }
 }
 
-//EVENT CARD
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENT CARD — s user event badge-om
+// ═══════════════════════════════════════════════════════════════════════════════
 class _EventCard extends StatefulWidget {
   final EventData event;
   const _EventCard({super.key, required this.event});
@@ -807,6 +818,10 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     final c = widget.event.cardColor;
+    final isUser = widget.event.isUserEvent;
+    final hasUserImage = widget.event.userImagePath != null &&
+        widget.event.userImagePath!.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         color: c,
@@ -821,13 +836,17 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
             child: Stack(fit: StackFit.expand, children: [
-              if (widget.event.imagePath.isNotEmpty)
+              // Slika ili boja
+              if (hasUserImage)
+                Image.file(File(widget.event.userImagePath!), fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(color: c))
+              else if (widget.event.imagePath.isNotEmpty)
                 Image.asset(widget.event.imagePath, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(color: c))
               else
                 Container(color: c),
 
-              // shimmer
+              // Shimmer
               AnimatedBuilder(
                 animation: _shimCtrl,
                 builder: (_, __) {
@@ -846,12 +865,55 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                   );
                 },
               ),
+
+              // Clouds
               _cloud(top: 18, left: 14, w: 52, h: 24),
               _cloud(top: 8,  right: 46, w: 38, h: 18),
               _cloud(top: 44, right: 10, w: 28, h: 14),
               _cloud(bottom: 72, left: 22, w: 32, h: 16),
 
-              //"detalji"
+              // User event badge
+              if (isUser)
+                Positioned(
+                  top: 12, left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _bordo,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8)],
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.star_rounded, color: Colors.white, size: 12),
+                      SizedBox(width: 4),
+                      Text('Moj event', style: TextStyle(
+                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700,
+                      )),
+                    ]),
+                  ),
+                ),
+
+              // Max people badge (samo za user evente)
+              if (isUser && widget.event.maxAttendees > 0)
+                Positioned(
+                  top: 12, right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.people_rounded, color: Colors.white, size: 12),
+                      const SizedBox(width: 4),
+                      Text('max ${widget.event.maxAttendees}', style: const TextStyle(
+                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600,
+                      )),
+                    ]),
+                  ),
+                ),
+
+              // Detalji hint
               Positioned(
                 bottom: 12, right: 12,
                 child: Container(
@@ -921,8 +983,9 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
   }
 }
 
-//grad
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// CITY TILE
+// ═══════════════════════════════════════════════════════════════════════════════
 class _CityTile extends StatefulWidget {
   final String name;
   final bool isSelected;
@@ -986,8 +1049,9 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
   }
 }
 
-//detalji evenata
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENT DETAIL SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
 class EventDetailScreen extends StatefulWidget {
   final EventData event;
   const EventDetailScreen({super.key, required this.event});
@@ -999,7 +1063,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
   bool get _joined => _attendanceState[widget.event.title] ?? false;
 
-  // ── animations ──────────────────────────────────────────────────────────────
   late final AnimationController _entryCtrl;
   late final AnimationController _heroCtrl;
   late final AnimationController _btnCtrl;
@@ -1048,29 +1111,77 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   @override
   void dispose() {
     ThemeState.instance.removeListener(_onTheme);
-    _entryCtrl.dispose();
-    _heroCtrl.dispose();
-    _btnCtrl.dispose();
-    _countCtrl.dispose();
-    _mapCtrl.dispose();
+    _entryCtrl.dispose(); _heroCtrl.dispose(); _btnCtrl.dispose();
+    _countCtrl.dispose(); _mapCtrl.dispose();
     super.dispose();
   }
 
   void _toggleJoin() async {
+    // Provjeri max attendees za user evente
+    if (!_joined && widget.event.isUserEvent && widget.event.maxAttendees > 0) {
+      final current = _effectiveAttendees(widget.event);
+      if (current >= widget.event.maxAttendees) {
+        _showFullDialog();
+        return;
+      }
+    }
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward();
     await _btnCtrl.reverse();
     final wasJoined = _joined;
-    setState(() {
-      _attendanceState[widget.event.title] = !wasJoined;
-    });
+    setState(() { _attendanceState[widget.event.title] = !wasJoined; });
     _countCtrl.forward(from: 0);
-    // Fire notification
     NotificationState.instance.onAttendanceChanged(
       widget.event.title,
       widget.event.location,
       widget.event.cardColor,
       !wasJoined,
+    );
+  }
+
+  void _showFullDialog() {
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutBack,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 32, offset: const Offset(0, 12))],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 60, height: 60,
+                  decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
+                  child: const Icon(Icons.group_off_rounded, color: _bordo, size: 28)),
+              const SizedBox(height: 16),
+              const Text('Event je popunjen!', style: TextStyle(color: _bordo,
+                  fontWeight: FontWeight.w800, fontSize: 18)),
+              const SizedBox(height: 8),
+              Text('Ovaj meetup je dostigao maksimalan broj sudionika (${widget.event.maxAttendees}).',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 13.5, height: 1.5)),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(23)),
+                  child: const Center(child: Text('Razumijem', style: TextStyle(
+                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1080,7 +1191,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     _mapExpanded ? _mapCtrl.forward() : _mapCtrl.reverse();
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -1091,6 +1201,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     final bgColor = isDark ? kDarkBg : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordoDark;
     final textMuted = isDark ? kDarkTextSub : Colors.black.withOpacity(0.55);
+    final hasUserImage = event.userImagePath != null && event.userImagePath!.isNotEmpty;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
@@ -1109,7 +1220,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                       height: mq.size.height * 0.42,
                       color: c,
                       child: Stack(fit: StackFit.expand, children: [
-                        if (event.imagePath.isNotEmpty)
+                        if (hasUserImage)
+                          Image.file(File(event.userImagePath!), fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: c))
+                        else if (event.imagePath.isNotEmpty)
                           Image.asset(event.imagePath, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(color: c))
                         else
@@ -1118,14 +1232,37 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         Positioned(
                           bottom: 0, left: 0, right: 0, height: 100,
                           child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black.withOpacity(0.18)],
-                              ),
-                            ),
+                            decoration: BoxDecoration(gradient: LinearGradient(
+                              begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Colors.black.withOpacity(0.18)],
+                            )),
                           ),
                         ),
+
+                        // User event badge u detalj screenu
+                        if (event.isUserEvent)
+                          Positioned(
+                            bottom: 110, left: 20,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _bordo,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 10)],
+                              ),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.star_rounded, color: Colors.white, size: 14),
+                                const SizedBox(width: 5),
+                                Text(
+                                  event.maxAttendees > 0
+                                      ? 'Tvoj event · max ${event.maxAttendees} ljudi'
+                                      : 'Tvoj osobni event',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              ]),
+                            ),
+                          ),
 
                         _cloudWidget(top: 28, left: 18, w: 70, h: 32),
                         _cloudWidget(top: 14, right: 60, w: 50, h: 24),
@@ -1143,294 +1280,222 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                       position: _contentSlide,
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(20, 22, 20, mq.padding.bottom + 100),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-
-
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      AnimatedDefaultTextStyle(
-                                        duration: const Duration(milliseconds: 300),
-                                        style: TextStyle(
-                                          color: isDark ? kDarkText : Colors.black87, fontSize: 30,
-                                          fontWeight: FontWeight.w900, letterSpacing: -0.8, height: 1.1,
-                                        ),
-                                        child: Text(event.title),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      AnimatedBuilder(
-                                        animation: _countAnim,
-                                        builder: (_, __) {
-                                          return Row(children: [
-                                            Transform.scale(
-                                              scale: 1.0 + _countAnim.value * 0.12,
-                                              child: Text(
-                                                '$attendees',
-                                                style: TextStyle(
-                                                  color: primary, fontSize: 16,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                            ),
-                                            Text(' ljudi se pridružilo',
-                                                style: TextStyle(
-                                                  color: textMuted,
-                                                  fontSize: 14, fontWeight: FontWeight.w500,
-                                                )),
-                                          ]);
-                                        },
-                                      ),
-                                    ],
-                                  ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 300),
+                                  style: TextStyle(color: isDark ? kDarkText : Colors.black87,
+                                      fontSize: 30, fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.8, height: 1.1),
+                                  child: Text(event.title),
                                 ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  width: 68, height: 68,
-                                  decoration: BoxDecoration(
-                                    color: _bordo,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5)),
-                                    ],
-                                  ),
-                                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                    Text(event.dateDay,
-                                        style: const TextStyle(color: Colors.white, fontSize: 20,
-                                            fontWeight: FontWeight.w900, height: 1.0)),
-                                    Text(event.dateMonth,
-                                        style: const TextStyle(color: Colors.white, fontSize: 20,
-                                            fontWeight: FontWeight.w900, height: 1.0)),
+                                const SizedBox(height: 6),
+                                AnimatedBuilder(
+                                  animation: _countAnim,
+                                  builder: (_, __) => Row(children: [
+                                    Transform.scale(
+                                      scale: 1.0 + _countAnim.value * 0.12,
+                                      child: Text('$attendees',
+                                          style: TextStyle(color: primary, fontSize: 16,
+                                              fontWeight: FontWeight.w800)),
+                                    ),
+                                    Text(' ljudi se pridružilo',
+                                        style: TextStyle(color: textMuted, fontSize: 14,
+                                            fontWeight: FontWeight.w500)),
                                   ]),
                                 ),
-                              ],
+                              ]),
                             ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 68, height: 68,
+                              decoration: BoxDecoration(
+                                color: _bordo, borderRadius: BorderRadius.circular(16),
+                                boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))],
+                              ),
+                              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                Text(event.dateDay, style: const TextStyle(color: Colors.white,
+                                    fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
+                                Text(event.dateMonth, style: const TextStyle(color: Colors.white,
+                                    fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
+                              ]),
+                            ),
+                          ]),
 
-                            const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
-                            // ── VRIJEME + MAPA ─────────────────────────
-                            GestureDetector(
-                              onTap: _toggleMap,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 340),
-                                curve: Curves.easeOutCubic,
-                                decoration: BoxDecoration(
-                                  color: isDark ? kDarkCard : _bordoLight,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: primary.withOpacity(0.12), width: 1),
-                                  boxShadow: [
-                                    BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4)),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(children: [
-                                                  Icon(Icons.access_time_rounded,
-                                                      color: primary.withOpacity(0.70), size: 15),
-                                                  const SizedBox(width: 6),
-                                                  AnimatedDefaultTextStyle(
-                                                    duration: const Duration(milliseconds: 300),
-                                                    style: TextStyle(
-                                                      color: isDark ? kDarkText : _bordoDark, fontSize: 17,
-                                                      fontWeight: FontWeight.w800,
-                                                    ),
-                                                    child: Text(event.time),
-                                                  ),
-                                                ]),
-                                                const SizedBox(height: 6),
-                                                Row(children: [
-                                                  Icon(Icons.location_on_rounded,
-                                                      color: primary.withOpacity(0.70), size: 15),
-                                                  const SizedBox(width: 6),
-                                                  Expanded(
-                                                    child: AnimatedDefaultTextStyle(
-                                                      duration: const Duration(milliseconds: 300),
-                                                      style: TextStyle(
-                                                        color: isDark ? kDarkText : _bordoDark, fontSize: 17,
-                                                        fontWeight: FontWeight.w700,
-                                                      ),
-                                                      child: Text(event.location),
-                                                    ),
-                                                  ),
-                                                ]),
-                                              ],
-                                            ),
+                          GestureDetector(
+                            onTap: _toggleMap,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic,
+                              decoration: BoxDecoration(
+                                color: isDark ? kDarkCard : _bordoLight,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: primary.withOpacity(0.12), width: 1),
+                                boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4))],
+                              ),
+                              child: Column(children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(children: [
+                                    Expanded(
+                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Row(children: [
+                                          Icon(Icons.access_time_rounded, color: primary.withOpacity(0.70), size: 15),
+                                          const SizedBox(width: 6),
+                                          AnimatedDefaultTextStyle(
+                                            duration: const Duration(milliseconds: 300),
+                                            style: TextStyle(color: isDark ? kDarkText : _bordoDark,
+                                                fontSize: 17, fontWeight: FontWeight.w800),
+                                            child: Text(event.time),
                                           ),
-                                          const SizedBox(width: 12),
-                                          // mala mapa
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: SizedBox(
-                                              width: 90, height: 70,
-                                              child: Stack(children: [
-                                                FlutterMap(
-                                                  mapController: _mapController,
-                                                  options: MapOptions(
-                                                    initialCenter: event.coordinates,
-                                                    initialZoom: 14.5,
-                                                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                                                  ),
-                                                  children: [
-                                                    TileLayer(
-                                                      urlTemplate:
-                                                      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                                      subdomains: const ['a', 'b', 'c', 'd'],
-                                                      userAgentPackageName: 'com.meetcute.app',
-                                                    ),
-                                                    MarkerLayer(markers: [
-                                                      Marker(
-                                                        point: event.coordinates,
-                                                        width: 22, height: 22,
-                                                        child: Container(
-                                                          decoration: BoxDecoration(
-                                                            color: _bordo,
-                                                            shape: BoxShape.circle,
-                                                            border: Border.all(color: Colors.white, width: 2),
-                                                            boxShadow: [
-                                                              BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ]),
-                                                  ],
-                                                ),
-                                                // expand hint overlay
-                                                Positioned.fill(
+                                        ]),
+                                        const SizedBox(height: 6),
+                                        Row(children: [
+                                          Icon(Icons.location_on_rounded, color: primary.withOpacity(0.70), size: 15),
+                                          const SizedBox(width: 6),
+                                          Expanded(child: AnimatedDefaultTextStyle(
+                                            duration: const Duration(milliseconds: 300),
+                                            style: TextStyle(color: isDark ? kDarkText : _bordoDark,
+                                                fontSize: 17, fontWeight: FontWeight.w700),
+                                            child: Text(event.location),
+                                          )),
+                                        ]),
+                                      ]),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SizedBox(
+                                        width: 90, height: 70,
+                                        child: Stack(children: [
+                                          FlutterMap(
+                                            mapController: _mapController,
+                                            options: MapOptions(
+                                              initialCenter: event.coordinates,
+                                              initialZoom: 14.5,
+                                              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                                            ),
+                                            children: [
+                                              TileLayer(
+                                                urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                                subdomains: const ['a', 'b', 'c', 'd'],
+                                                userAgentPackageName: 'com.meetcute.app',
+                                              ),
+                                              MarkerLayer(markers: [
+                                                Marker(
+                                                  point: event.coordinates, width: 22, height: 22,
                                                   child: Container(
                                                     decoration: BoxDecoration(
-                                                      gradient: LinearGradient(
-                                                        colors: [Colors.transparent,
-                                                          Colors.black.withOpacity(0.12)],
-                                                        begin: Alignment.topCenter,
-                                                        end: Alignment.bottomCenter,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Positioned(
-                                                  bottom: 4, right: 4,
-                                                  child: Container(
-                                                    padding: const EdgeInsets.all(3),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white.withOpacity(0.85),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                    ),
-                                                    child: Icon(
-                                                      _mapExpanded
-                                                          ? Icons.zoom_in_map_rounded
-                                                          : Icons.zoom_out_map_rounded,
-                                                      size: 12, color: _bordo,
+                                                      color: _bordo, shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.white, width: 2),
+                                                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6)],
                                                     ),
                                                   ),
                                                 ),
                                               ]),
+                                            ],
+                                          ),
+                                          Positioned.fill(
+                                            child: Container(
+                                              decoration: BoxDecoration(gradient: LinearGradient(
+                                                colors: [Colors.transparent, Colors.black.withOpacity(0.12)],
+                                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                                              )),
                                             ),
                                           ),
-                                        ],
+                                          Positioned(
+                                            bottom: 4, right: 4,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.85),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Icon(
+                                                _mapExpanded ? Icons.zoom_in_map_rounded : Icons.zoom_out_map_rounded,
+                                                size: 12, color: _bordo,
+                                              ),
+                                            ),
+                                          ),
+                                        ]),
                                       ),
                                     ),
-
-                                    // raširena mapa
-                                    AnimatedBuilder(
-                                      animation: _mapCtrl,
-                                      builder: (_, __) {
-                                        final h = _mapCtrl.value * 220.0;
-                                        if (h < 1) return const SizedBox.shrink();
-                                        return ClipRRect(
-                                          borderRadius: const BorderRadius.vertical(
-                                              bottom: Radius.circular(20)),
-                                          child: SizedBox(
-                                            height: h,
-                                            child: FlutterMap(
-                                              options: MapOptions(
-                                                initialCenter: event.coordinates,
-                                                initialZoom: 15.0,
-                                                interactionOptions: const InteractionOptions(
-                                                  flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-                                                ),
-                                              ),
-                                              children: [
-                                                TileLayer(
-                                                  urlTemplate:
-                                                  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                                  subdomains: const ['a', 'b', 'c', 'd'],
-                                                  userAgentPackageName: 'com.meetcute.app',
-                                                ),
-                                                MarkerLayer(markers: [
-                                                  Marker(
-                                                    point: event.coordinates,
-                                                    width: 36, height: 36,
-                                                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                                      Container(
-                                                        width: 26, height: 26,
-                                                        decoration: BoxDecoration(
-                                                          color: _bordo, shape: BoxShape.circle,
-                                                          border: Border.all(color: Colors.white, width: 3),
-                                                          boxShadow: [BoxShadow(
-                                                              color: _bordo.withOpacity(0.5), blurRadius: 8)],
-                                                        ),
-                                                      ),
-                                                      Container(width: 3, height: 7,
-                                                        decoration: BoxDecoration(
-                                                          color: _bordo,
-                                                          borderRadius: BorderRadius.circular(2),
-                                                        ),
-                                                      ),
-                                                    ]),
-                                                  ),
-                                                ]),
-                                              ],
+                                  ]),
+                                ),
+                                AnimatedBuilder(
+                                  animation: _mapCtrl,
+                                  builder: (_, __) {
+                                    final h = _mapCtrl.value * 220.0;
+                                    if (h < 1) return const SizedBox.shrink();
+                                    return ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                                      child: SizedBox(
+                                        height: h,
+                                        child: FlutterMap(
+                                          options: MapOptions(
+                                            initialCenter: event.coordinates, initialZoom: 15.0,
+                                            interactionOptions: const InteractionOptions(
+                                              flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
                                             ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                          children: [
+                                            TileLayer(
+                                              urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                              subdomains: const ['a', 'b', 'c', 'd'],
+                                              userAgentPackageName: 'com.meetcute.app',
+                                            ),
+                                            MarkerLayer(markers: [
+                                              Marker(
+                                                point: event.coordinates, width: 36, height: 36,
+                                                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                                  Container(
+                                                    width: 26, height: 26,
+                                                    decoration: BoxDecoration(
+                                                      color: _bordo, shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.white, width: 3),
+                                                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 8)],
+                                                    ),
+                                                  ),
+                                                  Container(width: 3, height: 7,
+                                                      decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(2))),
+                                                ]),
+                                              ),
+                                            ]),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
+                              ]),
                             ),
+                          ),
 
-                            const SizedBox(height: 24),
-
-                            // ── DESCRIPTION ──────────────────────────────────
-                            AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                color: isDark ? kDarkText : Colors.black87, fontSize: 17,
-                                fontWeight: FontWeight.w800, letterSpacing: -0.2,
-                              ),
-                              child: const Text('Opis'),
+                          const SizedBox(height: 24),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 300),
+                            style: TextStyle(color: isDark ? kDarkText : Colors.black87,
+                                fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                            child: const Text('Opis'),
+                          ),
+                          const SizedBox(height: 10),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 300),
+                            style: TextStyle(
+                              color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65),
+                              fontSize: 15, height: 1.65,
                             ),
-                            const SizedBox(height: 10),
-                            AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65),
-                                fontSize: 15, height: 1.65,
-                              ),
-                              child: Text(
-                                event.description.isNotEmpty
-                                    ? event.description
-                                    : 'Više informacija o eventu uskoro.',
-                                textAlign: TextAlign.justify,
-                              ),
+                            child: Text(
+                              event.description.isNotEmpty
+                                  ? event.description
+                                  : 'Više informacija o eventu uskoro.',
+                              textAlign: TextAlign.justify,
                             ),
-                          ],
-                        ),
+                          ),
+                        ]),
                       ),
                     ),
                   ),
@@ -1438,17 +1503,14 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               ],
             ),
 
-            // ── BACK BUTTON ──────────────────────────────
             Positioned(
-              top: mq.padding.top + 14,
-              left: 14,
+              top: mq.padding.top + 14, left: 14,
               child: FadeTransition(
                 opacity: _entryFade,
                 child: _BackButton(onTap: () => Navigator.pop(context)),
               ),
             ),
 
-            // ── JOIN BUTTON ───────────────────────────────
             Positioned(
               bottom: 0, left: 0, right: 0,
               child: _buildJoinBar(mq),
@@ -1463,35 +1525,37 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordo;
+    final isFull  = widget.event.isUserEvent &&
+        widget.event.maxAttendees > 0 &&
+        _effectiveAttendees(widget.event) >= widget.event.maxAttendees &&
+        !_joined;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
         color: cardBg,
-        boxShadow: [
-          BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4)),
-        ],
+        boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))],
       ),
       padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
       child: AnimatedBuilder(
         animation: _btnScale,
         builder: (_, child) => Transform.scale(scale: _btnScale.value, child: child),
         child: GestureDetector(
-          onTap: _toggleJoin,
+          onTap: isFull ? _showFullDialog : _toggleJoin,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic,
             height: 54,
             decoration: BoxDecoration(
-              color: _joined
+              color: isFull
+                  ? Colors.grey.withOpacity(0.35)
+                  : _joined
                   ? (isDark ? const Color(0xFF3A3A42) : const Color(0xFF2C2C2C))
                   : primary,
               borderRadius: BorderRadius.circular(27),
-              boxShadow: [
-                BoxShadow(
-                  color: (_joined ? Colors.black : primary).withOpacity(0.28),
-                  blurRadius: 16, offset: const Offset(0, 6),
-                ),
-              ],
+              boxShadow: [BoxShadow(
+                color: (isFull ? Colors.grey : _joined ? Colors.black : primary).withOpacity(0.28),
+                blurRadius: 16, offset: const Offset(0, 6),
+              )],
             ),
             child: Center(
               child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1499,8 +1563,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   duration: const Duration(milliseconds: 250),
                   transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
                   child: Icon(
-                    _joined ? Icons.close_rounded : Icons.check_rounded,
-                    key: ValueKey(_joined),
+                    isFull ? Icons.group_off_rounded : _joined ? Icons.close_rounded : Icons.check_rounded,
+                    key: ValueKey(isFull ? 'full' : _joined),
                     color: isDark ? kDarkBg : Colors.white, size: 20,
                   ),
                 ),
@@ -1508,12 +1572,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   child: Text(
-                    _joined ? 'Otkaži prijavu' : 'Ja sam za!',
-                    key: ValueKey(_joined),
-                    style: TextStyle(
-                      color: isDark ? kDarkBg : Colors.white, fontSize: 16,
-                      fontWeight: FontWeight.w800, letterSpacing: 0.1,
-                    ),
+                    isFull ? 'Popunjeno' : _joined ? 'Otkaži prijavu' : 'Ja sam za!',
+                    key: ValueKey(isFull ? 'full' : _joined),
+                    style: TextStyle(color: isDark ? kDarkBg : Colors.white,
+                        fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.1),
                   ),
                 ),
               ]),
@@ -1534,8 +1596,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             )));
   }
 }
-
-//BACK BUTTON
 
 class _BackButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -1570,8 +1630,7 @@ class _BackButtonState extends State<_BackButton> with SingleTickerProviderState
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
             ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white, size: 16),
+            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
           ),
         ),
       ),
