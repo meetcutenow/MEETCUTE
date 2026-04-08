@@ -186,7 +186,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
       time: _timeCtrl.text.trim(),
       description: _descCtrl.text.trim().isNotEmpty
           ? _descCtrl.text.trim()
-          : 'Osobni meetup organiziran putem MeetCute aplikacije.',
+          : 'Osobni događaj organiziran putem MeetCute aplikacije.',
       attendees: 0,
       coordinates: cityCoords[_selectedCity] ?? const LatLng(45.8150, 15.9819),
       imagePath: '',          // no asset; we pass imagePath separately
@@ -252,11 +252,11 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                 child: const Icon(Icons.check_rounded, color: kPrimaryDark, size: 34),
               ),
               const SizedBox(height: 18),
-              const Text('Meetup kreiran! 🎉',
+              const Text('Događaj kreiran! 🎉',
                   style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900,
                       fontSize: 20, letterSpacing: -0.4)),
               const SizedBox(height: 10),
-              Text('Tvoj meetup je dodan u Događanja u blizini. Sretno! ✨',
+              Text('Tvoj događaj je dodan u Događanja u blizini. Sretno! ✨',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: kPrimaryDark.withOpacity(0.55),
                       fontSize: 14, height: 1.55)),
@@ -318,7 +318,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                     const SizedBox(height: 24),
 
                     // ── NAZIV ────────────────────────────────────────────────
-                    _sectionLabel('Naziv meetupa *'),
+                    _sectionLabel('Naziv događaja *'),
                     const SizedBox(height: 8),
                     _fieldAnim(0, _buildTextField(
                       ctrl: _titleCtrl,
@@ -411,7 +411,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
               duration: const Duration(milliseconds: 300),
               style: TextStyle(color: primary, fontSize: 22,
                   fontWeight: FontWeight.w900, letterSpacing: -0.5),
-              child: const Text('Organiziraj meetup'),
+              child: const Text('Organiziraj događaj'),
             ),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 300),
@@ -725,7 +725,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
         onChanged: (_) => setState(() {}),
         style: TextStyle(color: primary, fontSize: 14.5, fontWeight: FontWeight.w400, height: 1.5),
         decoration: InputDecoration(
-          hintText: 'Opiši što te čeka na meetupu...',
+          hintText: 'Opiši svoj događaj...',
           hintStyle: TextStyle(color: primary.withOpacity(0.30), fontSize: 14.5),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(14),
@@ -758,7 +758,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
               Icon(Icons.celebration_rounded,
                   color: ready ? Colors.white : Colors.white.withOpacity(0.45), size: 20),
               const SizedBox(width: 10),
-              Text('Objavi meetup',
+              Text('Objavi događaj',
                   style: TextStyle(
                     color: ready ? Colors.white : Colors.white.withOpacity(0.45),
                     fontSize: 16, fontWeight: FontWeight.w800,

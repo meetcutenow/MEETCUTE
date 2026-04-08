@@ -639,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           index: 1,
           icon: Icons.coffee_rounded,
           label: 'Organiziraj susret',
-          subtitle: 'Stvori vlastiti meetup ☕',
+          subtitle: 'Stvori vlastiti događaj ☕',
           isLocked: false,                           // <-- unlock
           onTap: () => _navigateTo(const OrganizeMeetupScreen()), // <-- novi screen
           showDivider: true,
