@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,9 @@ class MeetCuteApp extends StatelessWidget {
           seedColor: const Color(0xFF700D25),
         ),
       ),
-      home: const HomeScreen(),
+      home: RegistrationState.instance.isRegistered
+          ? const HomeScreen()
+          : const OnboardingScreen(),
     );
   }
 }

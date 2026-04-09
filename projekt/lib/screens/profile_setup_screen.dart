@@ -5,8 +5,9 @@ import 'dart:io';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // PROFILE DATA MODEL
-
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupData {
   List<String> photoPaths;
@@ -54,7 +55,9 @@ class ProfileSetupData {
   );
 }
 
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE SETUP SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupScreen extends StatefulWidget {
   final ProfileSetupData? initial;
@@ -146,16 +149,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   Widget _buildStepContent(MediaQueryData mq) {
     switch (_step) {
-      case 0: return _Step1(
+      case 0: return ProfileStep1(
         data: _data,
         onChange: (d) => setState(() => _data = d),
         mq: mq,
       );
-      case 1: return _Step2(
+      case 1: return ProfileStep2(
         data: _data,
         onChange: (d) => setState(() => _data = d),
       );
-      default: return _Step3(
+      default: return ProfileStep3(
         data: _data,
         onChange: (d) => setState(() => _data = d),
       );
@@ -163,9 +166,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 }
 
-
-//HEADER
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// HEADER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _Header extends StatelessWidget {
   final int step;
@@ -222,9 +225,9 @@ class _Header extends StatelessWidget {
   }
 }
 
-
-// NEXT BOTUN
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEXT BUTTON
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _NextButton extends StatefulWidget {
   final int step;
@@ -292,28 +295,26 @@ class _NextButtonState extends State<_NextButton> with SingleTickerProviderState
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STEP 1 — fotografije i osobne informacije (PUBLIC)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// 1 — fotografije i osobne informacije
-
-
-class _Step1 extends StatefulWidget {
+class ProfileStep1 extends StatefulWidget {
   final ProfileSetupData data;
   final void Function(ProfileSetupData) onChange;
   final MediaQueryData mq;
-  const _Step1({required this.data, required this.onChange, required this.mq});
-  @override State<_Step1> createState() => _Step1State();
+  const ProfileStep1({super.key, required this.data, required this.onChange, required this.mq});
+  @override State<ProfileStep1> createState() => _ProfileStep1State();
 }
 
-class _Step1State extends State<_Step1> {
+class _ProfileStep1State extends State<ProfileStep1> {
   final ImagePicker _picker = ImagePicker();
   late final TextEditingController _heightCtrl;
   late final TextEditingController _dayCtrl;
   late final TextEditingController _monthCtrl;
   late final TextEditingController _yearCtrl;
 
-  // 'rusa' maknuta
   static const _hairOptions  = ['plava', 'smeđa', 'crna', 'crvena', 'sijeda', 'ostalo'];
-  // 'zelenkasto-smeđe' i 'ostalo' maknuti
   static const _eyeOptions   = ['smeđe', 'zelene', 'plave', 'sive'];
   static const _yesNo        = ['da', 'ne'];
   static const _genderOptions = ['žensko', 'muško', 'ostalo'];
@@ -407,7 +408,6 @@ class _Step1State extends State<_Step1> {
                 : _emptyPhotoContent(),
           ),
         ),
-        // X gumb — prikazan samo kad postoji foto i ima ih više od 1
         if (hasPhoto && photos.length > 1)
           Positioned(
             top: -8, right: -8,
@@ -452,7 +452,6 @@ class _Step1State extends State<_Step1> {
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── red s foto───────────────────────────────────────────────────────
         SizedBox(
           height: 156,
           child: Row(children: [
@@ -581,18 +580,18 @@ class _Step1State extends State<_Step1> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STEP 2 — interesi (PUBLIC)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// 2 — interesi
-
-
-class _Step2 extends StatefulWidget {
+class ProfileStep2 extends StatefulWidget {
   final ProfileSetupData data;
   final void Function(ProfileSetupData) onChange;
-  const _Step2({required this.data, required this.onChange});
-  @override State<_Step2> createState() => _Step2State();
+  const ProfileStep2({super.key, required this.data, required this.onChange});
+  @override State<ProfileStep2> createState() => _ProfileStep2State();
 }
 
-class _Step2State extends State<_Step2> with TickerProviderStateMixin {
+class _ProfileStep2State extends State<ProfileStep2> with TickerProviderStateMixin {
 
   static const _allInterests = [
     ('Crtanje',    '🎨'), ('Fotografija','📸'), ('Pisanje',    '✍️'),
@@ -645,7 +644,8 @@ class _Step2State extends State<_Step2> with TickerProviderStateMixin {
           ),
           itemCount: _allInterests.length,
           itemBuilder: (_, i) {
-            final (name, emoji) = _allInterests[i];
+            final name  = _allInterests[i].$1;
+            final emoji = _allInterests[i].$2;
             final isSel = selected.contains(name);
             return GestureDetector(
               onTapDown: (_) => _tapCtrls[i].forward(),
@@ -713,18 +713,18 @@ class _InterestCell extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STEP 3 — icebreaker (PUBLIC)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// 3 — opis
-
-
-class _Step3 extends StatefulWidget {
+class ProfileStep3 extends StatefulWidget {
   final ProfileSetupData data;
   final void Function(ProfileSetupData) onChange;
-  const _Step3({required this.data, required this.onChange});
-  @override State<_Step3> createState() => _Step3State();
+  const ProfileStep3({super.key, required this.data, required this.onChange});
+  @override State<ProfileStep3> createState() => _ProfileStep3State();
 }
 
-class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
+class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderStateMixin {
   bool _editing = false;
   late TextEditingController _ctrl;
   late FocusNode _focus;
@@ -754,7 +754,6 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
   void _stopEdit() {
     setState(() => _editing = false);
     _focus.unfocus();
-    // POPRAVAK 1: propagiraj promjenu u parent
     final copy = widget.data.copy();
     copy.iceBreaker = _ctrl.text;
     widget.onChange(copy);
@@ -764,10 +763,8 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final hasText = _ctrl.text.isNotEmpty;
 
-    // POPRAVAK 2: LayoutBuilder da znamo tocnu visinu, pa Positioned gumb
     return LayoutBuilder(builder: (context, constraints) {
       const double fabSize = 52.0;
-      // Gornji flex:5, donji flex:7 → granica na 5/12 ukupne visine
       final double boundary = constraints.maxHeight * 5 / 12;
       final double fabTop   = boundary - fabSize / 2;
 
@@ -783,7 +780,6 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
                 width: double.infinity,
                 color: kPrimaryLight.withOpacity(0.60),
                 alignment: Alignment.centerLeft,
-                // padding desno veći da tekst ne ide ispod gumba
                 padding: const EdgeInsets.fromLTRB(28, 0, 90, 0),
                 child: Text(
                   'Napiši kako želiš da ti\nnetko priđe:',
@@ -836,7 +832,6 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
             ),
           ]),
 
-          // gumb
           Positioned(
             top: fabTop,
             right: 24,
@@ -874,3 +869,12 @@ class _Step3State extends State<_Step3> with SingleTickerProviderStateMixin {
     });
   }
 }
+
+// ── backward-compat private aliases used by ProfileSetupScreen internally ───
+
+// ignore: unused_element
+typedef _Step1 = ProfileStep1;
+// ignore: unused_element
+typedef _Step2 = ProfileStep2;
+// ignore: unused_element
+typedef _Step3 = ProfileStep3;
