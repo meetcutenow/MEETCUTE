@@ -5,12 +5,11 @@ import 'dart:io' as dart_io;
 import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
 import 'profile_setup_screen.dart' show ProfileSetupData, ProfileSetupScreen, ProfileStep1, ProfileStep2, ProfileStep3;
-import 'onboarding_screen.dart' show globalProfileData;
+import 'onboarding_screen.dart' show globalProfileData, RegistrationState;
 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
-
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -45,23 +44,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _pageCtrl = PageController();
-
-    _entryCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 750));
-
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 750));
     _photoFade = CurvedAnimation(parent: _entryCtrl,
         curve: const Interval(0.0, 0.65, curve: Curves.easeOut));
-
     _cardFade = CurvedAnimation(parent: _entryCtrl,
         curve: const Interval(0.28, 1.0, curve: Curves.easeOut));
-
     _cardSlide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl,
         curve: const Interval(0.28, 1.0, curve: Curves.easeOutCubic)));
-
-    _staggerCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-
+    _staggerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
     _rebuildChipFade();
     _run();
   }
@@ -85,9 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
-    _pageCtrl.dispose();
-    _entryCtrl.dispose();
-    _staggerCtrl.dispose();
+    _pageCtrl.dispose(); _entryCtrl.dispose(); _staggerCtrl.dispose();
     super.dispose();
   }
 
@@ -147,13 +136,18 @@ class _ProfileScreenState extends State<ProfileScreen>
     ));
   }
 
+  // Prikaži ime iz RegistrationState, a ne hardkodirano
   String get _displayName {
-    final username = globalProfileData.photoPaths.isNotEmpty ? 'Lorna' : 'Lorna';
+    final name = RegistrationState.instance.displayName.isNotEmpty
+        ? RegistrationState.instance.displayName
+        : RegistrationState.instance.username.isNotEmpty
+        ? RegistrationState.instance.username
+        : 'Profil';
     if (globalProfileData.birthYear != null) {
       final age = DateTime.now().year - globalProfileData.birthYear!;
-      return '$username, $age';
+      return '$name, $age';
     }
-    return username;
+    return name;
   }
 
   @override
@@ -169,7 +163,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Stack(children: [
-
           // PHOTOS
           Positioned(
             top: 0, left: 0, right: 0, height: sheetTop + 2,
@@ -191,8 +184,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
-
-          // gradient overlay
           Positioned(
             left: 0, right: 0, top: sheetTop - 180, height: 210,
             child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(
@@ -202,8 +193,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ))),
           ),
-
-          // page dots
           Positioned(
             left: 0, right: 0, bottom: screenH - sheetTop + 52,
             child: IgnorePointer(child: Row(
@@ -211,8 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               children: List.generate(photos.length, (i) {
                 final active = i == _photoIndex;
                 return AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
+                  duration: const Duration(milliseconds: 250), curve: Curves.easeOut,
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   width: active ? 18 : 6, height: 6,
                   decoration: BoxDecoration(
@@ -223,8 +211,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               }),
             )),
           ),
-
-          // name
           Positioned(
             left: 0, right: 0, bottom: screenH - sheetTop + 14,
             child: IgnorePointer(child: Text(
@@ -237,7 +223,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             )),
           ),
-
           // CARD
           Positioned(
             top: sheetTop, left: 0, right: 0, bottom: 0,
@@ -289,8 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
-
-          // back button
           Positioned(
             top: mq.padding.top + 15, left: 14,
             child: FadeTransition(
@@ -314,8 +297,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   );
 }
 
-// ── CARD BODY ─────────────────────────────────────────────────────────────────
-
 class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
   final List<String> interests;
@@ -332,20 +313,24 @@ class _CardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iceBreaker = data.iceBreaker.isNotEmpty
-        ? data.iceBreaker : 'Pitaj me kakvu kavu pijem.';
+    // Prikaži icebreaker samo ako je unesen — bez defaultnog teksta
+    final hasIce = data.iceBreaker.trim().isNotEmpty;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Želim da mi priđeš...',
           style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 5),
-      Text(iceBreaker, style: const TextStyle(
-          color: Color(0xFF1C1C1E), fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.3)),
+      Text(
+          hasIce ? data.iceBreaker : '(Nisi dodao/la icebreaker — uredi profil)',
+          style: TextStyle(
+            color: hasIce ? const Color(0xFF1C1C1E) : kPrimaryDark.withOpacity(0.35),
+            fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.3,
+            fontStyle: hasIce ? FontStyle.normal : FontStyle.italic,
+          )),
       const SizedBox(height: 22),
       Divider(color: kPrimaryDark.withOpacity(0.10), thickness: 0.8, height: 1),
       const SizedBox(height: 18),
-      Text('Interesi', style: TextStyle(
-          color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
+      Text('Interesi', style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 11),
       Wrap(
         spacing: 7, runSpacing: 7,
@@ -356,13 +341,8 @@ class _CardBody extends StatelessWidget {
             builder: (_, __) {
               final t = anim.value.clamp(0.0, 1.0);
               return Opacity(opacity: t,
-                child: Transform.scale(scale: 0.6 + 0.4 * t,
-                  child: _Chip(
-                    label: interests[i],
-                    emoji: _emojiMap[interests[i]] ?? '✨',
-                  ),
-                ),
-              );
+                  child: Transform.scale(scale: 0.6 + 0.4 * t,
+                      child: _Chip(label: interests[i], emoji: _emojiMap[interests[i]] ?? '✨')));
             },
           );
         }),
@@ -370,17 +350,16 @@ class _CardBody extends StatelessWidget {
       const SizedBox(height: 24),
       Divider(color: kPrimaryDark.withOpacity(0.10), thickness: 0.8, height: 1),
       const SizedBox(height: 18),
-      Text('Osobni podaci', style: TextStyle(
-          color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
+      Text('Osobni podaci', style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 12),
       if (data.birthYear != null)
         _DataRow(icon: Icons.cake_outlined, label: 'Godine',
-            value: '${DateTime.now().year - data.birthYear!}'),
-      if (data.birthYear == null)
-        _DataRow(icon: Icons.cake_outlined, label: 'Godine', value: '22'),
+            value: '${DateTime.now().year - data.birthYear!}')
+      else
+        _DataRow(icon: Icons.cake_outlined, label: 'Godine', value: '—'),
       Divider(color: kPrimaryDark.withOpacity(0.08), thickness: 0.5, height: 1, indent: 28),
       _DataRow(icon: Icons.height_rounded, label: 'Visina',
-          value: data.height != null ? '${data.height} cm' : '172 cm'),
+          value: data.height != null ? '${data.height} cm' : '—'),
     ]);
   }
 }
@@ -390,18 +369,15 @@ class _Chip extends StatefulWidget {
   const _Chip({required this.label, required this.emoji});
   @override State<_Chip> createState() => _ChipState();
 }
-
 class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   late final Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _s = Tween<double>(begin: 1.0, end: 0.93)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.93).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -411,10 +387,8 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
       child: ScaleTransition(scale: _s,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFD5C0C4), width: 1.1),
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFD5C0C4), width: 1.1)),
           child: Text('${widget.label} ${widget.emoji}',
               style: const TextStyle(color: Color(0xFF1C1C1E), fontSize: 13, fontWeight: FontWeight.w400)),
         ),
@@ -424,10 +398,8 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
 }
 
 class _DataRow extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
+  final IconData icon; final String label, value;
   const _DataRow({required this.icon, required this.label, required this.value});
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -435,35 +407,27 @@ class _DataRow extends StatelessWidget {
       child: Row(children: [
         Icon(icon, color: kPrimaryDark, size: 18),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(
-            color: Color(0xFF1C1C1E), fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(label, style: const TextStyle(color: Color(0xFF1C1C1E), fontSize: 14, fontWeight: FontWeight.w700)),
         const Spacer(),
-        Text(value, style: TextStyle(
-            color: kPrimaryDark.withOpacity(0.55), fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(value, style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, fontWeight: FontWeight.w500)),
       ]),
     );
   }
 }
-
-// ── BACK BUTTON ───────────────────────────────────────────────────────────────
 
 class _BackBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _BackBtn({required this.onTap});
   @override State<_BackBtn> createState() => _BackBtnState();
 }
-
 class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _s;
+  late final AnimationController _c; late final Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-    _s = Tween<double>(begin: 1.0, end: 0.86)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.86).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -475,11 +439,9 @@ class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin 
           child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.38), width: 1),
-              ),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.38), width: 1)),
               child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 15),
             ),
           ),
@@ -489,14 +451,11 @@ class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin 
   }
 }
 
-// ── EDIT BUTTON ───────────────────────────────────────────────────────────────
-
 class _EditBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _EditBtn({required this.onTap});
   @override State<_EditBtn> createState() => _EditBtnState();
 }
-
 class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin {
   late final AnimationController _shim;
   bool _pressed = false;
@@ -505,7 +464,6 @@ class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin 
     _shim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
   }
   @override void dispose() { _shim.dispose(); super.dispose(); }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -516,34 +474,23 @@ class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin 
         scale: _pressed ? 0.94 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 26),
-          decoration: BoxDecoration(
-            color: kPrimaryDark, borderRadius: BorderRadius.circular(22),
-            boxShadow: [BoxShadow(
-                color: kPrimaryDark.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
+          height: 44, padding: const EdgeInsets.symmetric(horizontal: 26),
+          decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(22),
+              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))]),
+          child: ClipRRect(borderRadius: BorderRadius.circular(22),
             child: Stack(alignment: Alignment.center, children: [
               AnimatedBuilder(
                 animation: _shim,
                 builder: (_, __) => Transform.translate(
                   offset: Offset((_shim.value * 2 - 0.5) * 140, 0),
-                  child: Container(width: 40,
-                    decoration: BoxDecoration(gradient: LinearGradient(colors: [
-                      Colors.white.withOpacity(0.0),
-                      Colors.white.withOpacity(0.12),
-                      Colors.white.withOpacity(0.0),
-                    ])),
-                  ),
+                  child: Container(width: 40, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+                    Colors.white.withOpacity(0.0), Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.0)]))),
                 ),
               ),
               const Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.edit_rounded, color: Colors.white, size: 14),
                 SizedBox(width: 6),
-                Text('Uredi profil', style: TextStyle(
-                    color: Colors.white, fontSize: 13.5,
+                Text('Uredi profil', style: TextStyle(color: Colors.white, fontSize: 13.5,
                     fontWeight: FontWeight.w700, letterSpacing: 0.2)),
               ]),
             ]),

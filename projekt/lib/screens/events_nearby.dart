@@ -7,74 +7,103 @@ import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
 import 'theme_state.dart';
 
-
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const Color _bordoDark  = Color(0xFF4A0818);
 
-class _City {
-  final String name;
-  const _City(this.name);
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGE GROUP & GENDER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enum AgeGroup { all, g18_25, g26_35, g36_45, g45plus }
+enum GenderGroup { all, female, male }
+
+extension AgeGroupLabel on AgeGroup {
+  String get label {
+    switch (this) {
+      case AgeGroup.all:     return 'Sve';
+      case AgeGroup.g18_25:  return '18–25';
+      case AgeGroup.g26_35:  return '26–35';
+      case AgeGroup.g36_45:  return '36–45';
+      case AgeGroup.g45plus: return '45+';
+    }
+  }
 }
 
-class _Category {
-  final String label;
-  final IconData? icon;
-  final String? emoji;
-  const _Category({required this.label, this.icon, this.emoji});
+extension GenderGroupLabel on GenderGroup {
+  String get label {
+    switch (this) {
+      case GenderGroup.all:    return 'Svi';
+      case GenderGroup.female: return 'Žensko';
+      case GenderGroup.male:   return 'Muško';
+    }
+  }
+  String get emoji {
+    switch (this) {
+      case GenderGroup.all:    return '🌍';
+      case GenderGroup.female: return '♀️';
+      case GenderGroup.male:   return '♂️';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EVENT DATA MODEL — s novim poljima za user evente
+// EVENT DATA MODEL
 // ═══════════════════════════════════════════════════════════════════════════════
+
 class EventData {
   final String title;
   final String location;
+  final String specificLocation;
   final String dateDay;
   final String dateMonth;
   final String time;
   final String description;
-  final int    attendees;
+  final int attendees;
   final LatLng coordinates;
   final String imagePath;
   final List<String> categories;
   final Color cardColor;
-  // Nova polja
   final bool isUserEvent;
-  final int  maxAttendees;
+  final int maxAttendees;
   final String? userImagePath;
+  final AgeGroup ageGroup;
+  final GenderGroup genderGroup;
 
   const EventData({
     required this.title,
     required this.location,
+    this.specificLocation = '',
     required this.dateDay,
     required this.dateMonth,
-    this.time        = '10:00 – 12:00',
+    this.time = '10:00 – 12:00',
     this.description = '',
-    this.attendees   = 0,
+    this.attendees = 0,
     this.coordinates = const LatLng(45.8150, 15.9819),
-    this.imagePath   = '',
+    this.imagePath = '',
     required this.categories,
-    this.cardColor   = const Color(0xFF6DD5E8),
+    this.cardColor = const Color(0xFF6DD5E8),
     this.isUserEvent = false,
     this.maxAttendees = 0,
     this.userImagePath,
+    this.ageGroup = AgeGroup.all,
+    this.genderGroup = GenderGroup.all,
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GLOBAL: user eventi po gradu
+// GLOBALS
 // ═══════════════════════════════════════════════════════════════════════════════
+
 final Map<String, List<EventData>> _userEventsByCity = {};
 
-/// Pozovi ovo iz OrganizeMeetupScreen kad korisnik kreira event
 void addUserEvent(String cityName, EventData event) {
   _userEventsByCity.putIfAbsent(cityName, () => []);
   _userEventsByCity[cityName]!.insert(0, event);
 }
 
-// stanje prijave
 final _attendanceState = <String, bool>{};
+
 int _effectiveAttendees(EventData e) {
   final joined = _attendanceState[e.title];
   if (joined == null) return e.attendees;
@@ -82,199 +111,170 @@ int _effectiveAttendees(EventData e) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STATIČKI PODACI
+// STATIC DATA
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const _cities = [
-  _City('Zagreb'),
-  _City('Split'),
-  _City('Rijeka'),
-  _City('Osijek'),
-  _City('Zadar'),
-];
+class _City  { final String name; const _City(this.name); }
+class _Cat   { final String label; final IconData? icon; final String? emoji;
+const _Cat({required this.label, this.icon, this.emoji}); }
+
+const _cities = [ _City('Zagreb'), _City('Split'), _City('Rijeka'), _City('Osijek'), _City('Zadar') ];
 
 const _categories = [
-  _Category(label: 'Kava',     icon: Icons.coffee_outlined),
-  _Category(label: 'Sport',    emoji: '🏃'),
-  _Category(label: 'Druženja', emoji: '🎉'),
-  _Category(label: 'Kultura',  emoji: '🎭'),
-  _Category(label: 'Priroda',  emoji: '🌿'),
-  _Category(label: 'Hrana',    emoji: '🍕'),
+  _Cat(label: 'Kava',     icon: Icons.coffee_outlined),
+  _Cat(label: 'Sport',    emoji: '🏃'),
+  _Cat(label: 'Druženja', emoji: '🎉'),
+  _Cat(label: 'Kultura',  emoji: '🎭'),
+  _Cat(label: 'Priroda',  emoji: '🌿'),
+  _Cat(label: 'Hrana',    emoji: '🍕'),
 ];
 
 final _eventsByCity = <int, List<EventData>>{
-  // ── Zagreb ──────────────────────────────────────────────────────────────────
   0: [
     const EventData(
-      title: 'Running dating',
-      location: 'Jezero Jarun',
-      dateDay: '14.', dateMonth: '04.',
-      time: '10:00 – 12:00',
-      attendees: 20,
+      title: 'Running dating', location: 'Jezero Jarun',
+      specificLocation: 'Jarun, Aleja Matije Ljubeka, Zagreb',
+      dateDay: '14.', dateMonth: '04.', time: '10:00 – 12:00', attendees: 20,
       coordinates: LatLng(45.7785, 15.9148),
-      description:
-      'Idealna prilika za sve ljubitelje trčanja da spoje ugodno s korisnim i na '
-          'svježem zraku u prirodi upoznaju novu ekipu — a potencijalno se i rode poneke iskre.',
-      categories: ['Sport'],
-      cardColor: Color(0xFF6DD5E8),
+      description: 'Idealna prilika za sve ljubitelje trčanja da spoje ugodno s korisnim '
+          'i na svježem zraku u prirodi upoznaju novu ekipu.',
+      categories: ['Sport'], cardColor: Color(0xFF6DD5E8),
+      ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Jutarnja kava',
-      location: 'Stari Grad, Zagreb',
-      dateDay: '15.', dateMonth: '04.',
-      time: '08:30 – 10:00',
-      attendees: 14,
+      title: 'Jutarnja kava', location: 'Stari Grad, Zagreb',
+      specificLocation: 'Caffe Bar Booksa, Martićeva 14d, Zagreb',
+      dateDay: '15.', dateMonth: '04.', time: '08:30 – 10:00', attendees: 14,
       coordinates: LatLng(45.8131, 15.9741),
-      description:
-      'Opuštena jutarnja kava u srcu Starog Grada. Upoznaj ljude koji, baš kao i ti, '
-          'dan ne mogu zamisliti bez dobrog espresa i zanimljivog razgovora.',
-      categories: ['Kava'],
-      cardColor: Color(0xFFFFD166),
+      description: 'Opuštena jutarnja kava u srcu Starog Grada.',
+      categories: ['Kava'], cardColor: Color(0xFFFFD166),
+      ageGroup: AgeGroup.g26_35, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Piknik u parku',
-      location: 'Park Maksimir',
-      dateDay: '16.', dateMonth: '04.',
-      time: '12:00 – 15:00',
-      attendees: 35,
+      title: 'Piknik u parku', location: 'Park Maksimir',
+      specificLocation: 'Ulaz 1, Maksimirski perivoj, Zagreb',
+      dateDay: '16.', dateMonth: '04.', time: '12:00 – 15:00', attendees: 35,
       coordinates: LatLng(45.8237, 16.0189),
-      description:
-      'Donesite piknik dekicu i grickalice — mi donosimo dobro raspoloženje! '
-          'Opušteno druženje u zelenilu jednog od najljepših parkova u gradu.',
-      categories: ['Druženja', 'Priroda'],
-      cardColor: Color(0xFF95D5B2),
+      description: 'Donesite piknik dekicu i grickalice — mi donosimo dobro raspoloženje!',
+      categories: ['Druženja', 'Priroda'], cardColor: Color(0xFF95D5B2),
+      ageGroup: AgeGroup.all, genderGroup: GenderGroup.female,
     ),
     const EventData(
-      title: 'Večer komedije',
-      location: 'HNK Zagreb',
-      dateDay: '17.', dateMonth: '04.',
-      time: '20:00 – 22:30',
-      attendees: 48,
+      title: 'Večer komedije', location: 'HNK Zagreb',
+      specificLocation: 'HNK Zagreb, Trg Republike Hrvatske 15',
+      dateDay: '17.', dateMonth: '04.', time: '20:00 – 22:30', attendees: 48,
       coordinates: LatLng(45.8089, 15.9702),
-      description:
-      'Večer smijeha i kulture u HNK-u. Odlična prigoda za sve koji vole kazalište '
-          'i ne boje se glasno smijati uz odabranu ekipu stranaca koji postaju prijatelji.',
-      categories: ['Kultura'],
-      cardColor: Color(0xFFFFB3C6),
+      description: 'Večer smijeha i kulture u HNK-u.',
+      categories: ['Kultura'], cardColor: Color(0xFFFFB3C6),
+      ageGroup: AgeGroup.g36_45, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Street food festival',
-      location: 'Trg bana Jelačića',
-      dateDay: '18.', dateMonth: '04.',
-      time: '11:00 – 20:00',
-      attendees: 120,
+      title: 'Street food festival', location: 'Trg bana Jelačića',
+      specificLocation: 'Trg bana Josipa Jelačića 1, Zagreb',
+      dateDay: '18.', dateMonth: '04.', time: '11:00 – 20:00', attendees: 120,
       coordinates: LatLng(45.8132, 15.9773),
-      description:
-      'Okusi sve što Zagreb ima za ponuditi — od domaćih specijaliteta do egzotičnih '
-          'zalogaja. Savršeno za sve foodie-je koji traže nova lica uz novu hranu.',
-      categories: ['Hrana', 'Druženja'],
-      cardColor: Color(0xFFFFD166),
+      description: 'Okusi sve što Zagreb ima za ponuditi.',
+      categories: ['Hrana', 'Druženja'], cardColor: Color(0xFFFFD166),
+      ageGroup: AgeGroup.all, genderGroup: GenderGroup.all,
     ),
   ],
-  // ── Split ────────────────────────────────────────────────────────────────────
   1: [
     const EventData(
-      title: 'Plaža & kava',
-      location: 'Bačvice, Split',
-      dateDay: '14.', dateMonth: '04.',
-      time: '09:00 – 11:00',
-      attendees: 18,
+      title: 'Plaža & kava', location: 'Bačvice, Split',
+      specificLocation: 'Plaža Bačvice, Put Firula, Split',
+      dateDay: '14.', dateMonth: '04.', time: '09:00 – 11:00', attendees: 18,
       coordinates: LatLng(43.5016, 16.4413),
-      description:
-      'Jutarnja kava uz šum mora na ikoničnim Bačvicama. Idealno za sve koji vole '
-          'spoj mirnog jutra i novih poznanstava uz plavu podlogu Jadrana.',
-      categories: ['Kava', 'Priroda'],
-      cardColor: Color(0xFF6DD5E8),
+      description: 'Jutarnja kava uz šum mora na ikoničnim Bačvicama.',
+      categories: ['Kava', 'Priroda'], cardColor: Color(0xFF6DD5E8),
+      ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Dioklecijanova noć',
-      location: 'Dioklecijanova palača',
-      dateDay: '20.', dateMonth: '04.',
-      time: '21:00 – 23:30',
-      attendees: 62,
+      title: 'Dioklecijanova noć', location: 'Dioklecijanova palača',
+      specificLocation: 'Peristil, Dioklecijanova palača, Split',
+      dateDay: '20.', dateMonth: '04.', time: '21:00 – 23:30', attendees: 62,
       coordinates: LatLng(43.5081, 16.4402),
-      description:
-      'Večernja šetnja i razgovor unutar zidina 1700 godina stare palače. '
-          'Povijest, arhitektura i nova poznanstva — savršena kombinacija.',
-      categories: ['Kultura'],
-      cardColor: Color(0xFFFFB3C6),
+      description: 'Večernja šetnja unutar zidina 1700 godina stare palače.',
+      categories: ['Kultura'], cardColor: Color(0xFFFFB3C6),
+      ageGroup: AgeGroup.g26_35, genderGroup: GenderGroup.all,
     ),
   ],
   2: [],
   3: [
     const EventData(
-      title: 'Tvrđa fest',
-      location: 'Tvrđa, Osijek',
-      dateDay: '22.', dateMonth: '04.',
-      time: '17:00 – 22:00',
-      attendees: 75,
+      title: 'Tvrđa fest', location: 'Tvrđa, Osijek',
+      specificLocation: 'Trg Svetog Trojstva 6, Tvrđa, Osijek',
+      dateDay: '22.', dateMonth: '04.', time: '17:00 – 22:00', attendees: 75,
       coordinates: LatLng(45.5606, 18.6956),
-      description:
-      'Festival hrane, glazbe i kulture u srcu povijesne Tvrđe. '
-          'Savršena prigoda za upoznavanje lokalnih faca i tko zna — možda i više.',
-      categories: ['Kultura', 'Hrana'],
-      cardColor: Color(0xFFFFD166),
+      description: 'Festival hrane, glazbe i kulture u srcu povijesne Tvrđe.',
+      categories: ['Kultura', 'Hrana'], cardColor: Color(0xFFFFD166),
+      ageGroup: AgeGroup.all, genderGroup: GenderGroup.all,
     ),
   ],
   4: [
     const EventData(
-      title: 'Sunčani sat',
-      location: 'Morske orgulje, Zadar',
-      dateDay: '15.', dateMonth: '04.',
-      time: '18:30 – 20:00',
-      attendees: 30,
+      title: 'Sunčani sat', location: 'Morske orgulje, Zadar',
+      specificLocation: 'Morske orgulje, Obala kralja Petra Krešimira IV, Zadar',
+      dateDay: '15.', dateMonth: '04.', time: '18:30 – 20:00', attendees: 30,
       coordinates: LatLng(44.1152, 15.2214),
-      description:
-      'Gledanje zalaska sunca uz zvukove morskih orgulja. Romantična i mirna atmosfera '
-          'idealna za nove upoznaje dok nebo mijenja boje iznad Jadrana.',
-      categories: ['Priroda', 'Druženja'],
-      cardColor: Color(0xFF95D5B2),
+      description: 'Gledanje zalaska sunca uz zvukove morskih orgulja.',
+      categories: ['Priroda', 'Druženja'], cardColor: Color(0xFF95D5B2),
+      ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.female,
     ),
     const EventData(
-      title: 'Vinska večer',
-      location: 'Stari grad, Zadar',
-      dateDay: '19.', dateMonth: '04.',
-      time: '19:00 – 22:00',
-      attendees: 25,
+      title: 'Vinska večer', location: 'Stari grad, Zadar',
+      specificLocation: 'Konoba Stomorica, Stomorica 12, Zadar',
+      dateDay: '19.', dateMonth: '04.', time: '19:00 – 22:00', attendees: 25,
       coordinates: LatLng(44.1164, 15.2272),
-      description:
-      'Degustacija dalmatinskih vina u konobi u srcu starog Zadra. '
-          'Odlični vino, dobra ekipa i priče koje traju do ponoći.',
-      categories: ['Hrana'],
-      cardColor: Color(0xFFFFB3C6),
+      description: 'Degustacija dalmatinskih vina u konobi u srcu starog Zadra.',
+      categories: ['Hrana'], cardColor: Color(0xFFFFB3C6),
+      ageGroup: AgeGroup.g36_45, genderGroup: GenderGroup.all,
     ),
   ],
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN SCREEN
+// FILTER CHIP DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _FChip {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _FChip(this.label, this.selected, this.onTap);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVENTS NEARBY SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class EventsNearbyScreen extends StatefulWidget {
   const EventsNearbyScreen({super.key});
-  @override
-  State<EventsNearbyScreen> createState() => _EventsNearbyScreenState();
+  @override State<EventsNearbyScreen> createState() => _EventsNearbyState();
 }
 
-class _EventsNearbyScreenState extends State<EventsNearbyScreen>
-    with TickerProviderStateMixin {
+class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderStateMixin {
 
-  int     _cityIndex      = 0;
-  String? _selectedCat;
-  final   TextEditingController _searchCtrl = TextEditingController();
-  String  _searchQuery    = '';
-  int     _currentPage    = 0;
-  bool    _showCityPicker = false;
+  int _cityIdx        = 0;
+  String? _selCat;
+  AgeGroup _selAge    = AgeGroup.all;
+  GenderGroup _selGen = GenderGroup.all;
+  String _search      = '';
+  int _page           = 0;
+  bool _showCity      = false;
+  bool _showFilters   = false;
+
+  final _searchCtrl = TextEditingController();
 
   late final AnimationController _entryCtrl;
-  late final AnimationController _cityPickerCtrl;
+  late final AnimationController _cityCtrl;
   late final AnimationController _cardCtrl;
+  late final AnimationController _filterCtrl;
   late final List<AnimationController> _catCtrls;
 
   late final Animation<double> _entryFade;
   late final Animation<Offset> _entrySlide;
-  late final Animation<double> _cityPickerAnim;
-
+  late final Animation<double> _cityAnim;
+  late final Animation<double> _filterAnim;
   late Animation<Offset>  _cardSlide;
   late Animation<double>  _cardFade;
   late Animation<double>  _cardScale;
@@ -287,8 +287,11 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
 
-    _cityPickerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
-    _cityPickerAnim = CurvedAnimation(parent: _cityPickerCtrl, curve: Curves.easeOutCubic);
+    _cityCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _cityAnim = CurvedAnimation(parent: _cityCtrl, curve: Curves.easeOutCubic);
+
+    _filterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _filterAnim = CurvedAnimation(parent: _filterCtrl, curve: Curves.easeOutCubic);
 
     _cardCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
     _buildCardAnims(1);
@@ -315,142 +318,132 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
   @override
   void dispose() {
     ThemeState.instance.removeListener(_onTheme);
-    _entryCtrl.dispose();
-    _cityPickerCtrl.dispose();
-    _cardCtrl.dispose();
+    _entryCtrl.dispose(); _cityCtrl.dispose(); _filterCtrl.dispose(); _cardCtrl.dispose();
     for (final c in _catCtrls) c.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  // ── Spoji statičke i user evente za trenutni grad ────────────────────────────
   List<EventData> get _cityEvents {
-    final cityName = _cities[_cityIndex].name;
-    final staticEvents = _eventsByCity[_cityIndex] ?? [];
-    final userEvents = _userEventsByCity[cityName] ?? [];
-    return [...userEvents, ...staticEvents];
+    final name = _cities[_cityIdx].name;
+    final stat = _eventsByCity[_cityIdx] ?? [];
+    final user = _userEventsByCity[name] ?? [];
+    return [...user, ...stat];
   }
 
   List<EventData> get _filtered {
     return _cityEvents.where((e) {
-      final matchesCat = _selectedCat == null || e.categories.contains(_selectedCat);
-      final q = _searchQuery.toLowerCase();
-      final matchesSearch = q.isEmpty ||
-          e.title.toLowerCase().contains(q) ||
-          e.location.toLowerCase().contains(q);
-      return matchesCat && matchesSearch;
+      final matchCat = _selCat == null || e.categories.contains(_selCat);
+      final matchAge = _selAge == AgeGroup.all || e.ageGroup == _selAge || e.ageGroup == AgeGroup.all;
+      final matchGen = _selGen == GenderGroup.all || e.genderGroup == _selGen || e.genderGroup == GenderGroup.all;
+      final q = _search.toLowerCase();
+      final matchSearch = q.isEmpty || e.title.toLowerCase().contains(q) || e.location.toLowerCase().contains(q);
+      return matchCat && matchAge && matchGen && matchSearch;
     }).toList();
   }
 
-  void _animateCardSwap(int dir) {
+  bool get _hasFilters => _selAge != AgeGroup.all || _selGen != GenderGroup.all;
+
+  void _swap(int dir) {
     _buildCardAnims(dir);
     _cardCtrl.forward(from: 0);
     HapticFeedback.lightImpact();
   }
 
-  void _nextCard() {
-    final events = _filtered;
-    if (_currentPage >= events.length - 1) return;
-    setState(() => _currentPage++);
-    _animateCardSwap(1);
+  void _next() {
+    final ev = _filtered;
+    if (_page >= ev.length - 1) return;
+    setState(() => _page++);
+    _swap(1);
   }
 
-  void _prevCard() {
-    if (_currentPage <= 0) return;
-    setState(() => _currentPage--);
-    _animateCardSwap(-1);
+  void _prev() {
+    if (_page <= 0) return;
+    setState(() => _page--);
+    _swap(-1);
   }
 
-  void _toggleCityPicker() {
+  void _toggleCity() {
     HapticFeedback.selectionClick();
-    setState(() => _showCityPicker = !_showCityPicker);
-    _showCityPicker ? _cityPickerCtrl.forward() : _cityPickerCtrl.reverse();
+    setState(() => _showCity = !_showCity);
+    _showCity ? _cityCtrl.forward() : _cityCtrl.reverse();
   }
 
-  void _selectCity(int idx) {
-    if (idx == _cityIndex) { _toggleCityPicker(); return; }
+  void _toggleFilters() {
     HapticFeedback.selectionClick();
-    setState(() {
-      _cityIndex = idx; _showCityPicker = false;
-      _currentPage = 0; _selectedCat = null;
-    });
-    _cityPickerCtrl.reverse();
-    _buildCardAnims(1);
-    _cardCtrl.forward(from: 0);
+    setState(() => _showFilters = !_showFilters);
+    _showFilters ? _filterCtrl.forward() : _filterCtrl.reverse();
   }
 
-  void _openEventDetail(EventData event) {
+  void _selectCity(int i) {
+    if (i == _cityIdx) { _toggleCity(); return; }
+    HapticFeedback.selectionClick();
+    setState(() { _cityIdx = i; _showCity = false; _page = 0; _selCat = null; });
+    _cityCtrl.reverse();
+    _buildCardAnims(1); _cardCtrl.forward(from: 0);
+  }
+
+  void _openDetail(EventData e) {
     HapticFeedback.mediumImpact();
     Navigator.push(context, PageRouteBuilder(
-      pageBuilder: (_, a, __) => EventDetailScreen(event: event),
-      transitionsBuilder: (_, a, __, child) {
-        final curved = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-                .animate(curved),
-            child: child,
-          ),
-        );
-      },
+      pageBuilder: (_, a, __) => EventDetailScreen(event: e),
+      transitionsBuilder: (_, a, __, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+              .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
       transitionDuration: const Duration(milliseconds: 380),
     )).then((_) => setState(() {}));
   }
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    final mq    = MediaQuery.of(context);
     final isDark = ThemeState.instance.isDark;
-    final bg = isDark ? kDarkBg : Colors.white;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
-      color: bg,
+      color: isDark ? kDarkBg : Colors.white,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: FadeTransition(
           opacity: _entryFade,
           child: SlideTransition(
             position: _entrySlide,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(mq),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 14),
-                          _buildLocationBar(),
-                          const SizedBox(height: 12),
-                          _buildCategoryChips(),
-                          const SizedBox(height: 10),
-                          Expanded(child: _buildCardArea()),
-                          _buildSearchBar(mq),
-                        ],
-                      ),
-                      if (_showCityPicker) _buildCityPickerOverlay(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: Column(children: [
+              _header(mq),
+              Expanded(
+                child: Stack(children: [
+                  Column(children: [
+                    const SizedBox(height: 14),
+                    _locationBar(),
+                    const SizedBox(height: 10),
+                    _catChips(),
+                    const SizedBox(height: 6),
+                    _filterPanel(),
+                    Expanded(child: _cardArea()),
+                    _searchBar(mq),
+                  ]),
+                  if (_showCity) _cityOverlay(),
+                ]),
+              ),
+            ]),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(MediaQueryData mq) {
+  // ── HEADER ──────────────────────────────────────────────────────────────────
+  Widget _header(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
     final cardBg  = isDark ? kDarkCard : Colors.white;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 380),
-      color: cardBg,
-      padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 18, bottom: 6),
+      duration: const Duration(milliseconds: 380), color: cardBg,
+      padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 12, bottom: 6),
       child: Row(children: [
         IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: primary, size: 20),
@@ -458,76 +451,84 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
           padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
         ),
         const SizedBox(width: 2),
-        Expanded(
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 300),
-            style: TextStyle(color: primary, fontSize: 21,
-                fontWeight: FontWeight.w800, letterSpacing: -0.5),
-            child: const Text('Pronađi događanja za sebe'),
+        Expanded(child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: primary, fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+          child: const Text('Pronađi događanja'),
+        )),
+        // ── Filter gumb ────────────────────────────────────────────────────
+        GestureDetector(
+          onTap: _toggleFilters,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: 38, height: 38,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: _hasFilters ? primary : primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _hasFilters ? primary : primary.withOpacity(0.12)),
+            ),
+            child: Stack(alignment: Alignment.center, children: [
+              Icon(Icons.tune_rounded,
+                  color: _hasFilters ? Colors.white : primary, size: 18),
+              if (_hasFilters)
+                Positioned(top: 6, right: 6,
+                    child: Container(
+                      width: 7, height: 7,
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    )),
+            ]),
           ),
         ),
       ]),
     );
   }
 
-  Widget _buildLocationBar() {
-    final isDark   = ThemeState.instance.isDark;
-    final primary  = isDark ? kDarkPrimary : _bordo;
-    final inactiveBg     = isDark ? kDarkCard : const Color(0xFFF4EDED);
-    final inactiveBorder = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
+  // ── LOCATION BAR ────────────────────────────────────────────────────────────
+  Widget _locationBar() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final inBg    = isDark ? kDarkCard : const Color(0xFFF4EDED);
+    final inBdr   = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: GestureDetector(
-        onTap: _toggleCityPicker,
+        onTap: _toggleCity,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: _showCityPicker ? primary : inactiveBg,
+            color: _showCity ? primary : inBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: _showCityPicker ? primary : inactiveBorder, width: 1.5),
-            boxShadow: _showCityPicker
-                ? [BoxShadow(color: primary.withOpacity(0.20), blurRadius: 14, offset: const Offset(0, 4))]
-                : [],
+            border: Border.all(color: _showCity ? primary : inBdr, width: 1.5),
+            boxShadow: _showCity ? [BoxShadow(color: primary.withOpacity(0.20), blurRadius: 14, offset: const Offset(0,4))] : [],
           ),
           child: Row(children: [
             Icon(Icons.location_on_rounded,
-                color: _showCityPicker ? (isDark ? kDarkBg : Colors.white) : primary, size: 18),
+                color: _showCity ? (isDark ? kDarkBg : Colors.white) : primary, size: 18),
             const SizedBox(width: 9),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Tvoja lokacija',
-                      style: TextStyle(
-                        color: _showCityPicker
-                            ? (isDark ? kDarkBg : Colors.white).withOpacity(0.65)
-                            : primary.withOpacity(0.50),
-                        fontSize: 10.5, fontWeight: FontWeight.w500,
-                      )),
-                  const SizedBox(height: 1),
-                  Text(_cities[_cityIndex].name,
-                      style: TextStyle(
-                        color: _showCityPicker ? (isDark ? kDarkBg : Colors.white) : primary,
-                        fontSize: 16, fontWeight: FontWeight.w800,
-                      )),
-                ]),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('Tvoja lokacija', style: TextStyle(
+                  color: (_showCity ? (isDark ? kDarkBg : Colors.white) : primary).withOpacity(0.55),
+                  fontSize: 10.5, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 1),
+              Text(_cities[_cityIdx].name, style: TextStyle(
+                  color: _showCity ? (isDark ? kDarkBg : Colors.white) : primary,
+                  fontSize: 16, fontWeight: FontWeight.w800)),
+            ]),
             const Spacer(),
             AnimatedRotation(
-              turns: _showCityPicker ? 0.5 : 0,
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeOutCubic,
-              child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: _showCityPicker
-                      ? (isDark ? kDarkBg : Colors.white).withOpacity(0.80)
-                      : primary.withOpacity(0.55), size: 22),
-            ),
+                turns: _showCity ? 0.5 : 0, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
+                child: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: (_showCity ? (isDark ? kDarkBg : Colors.white) : primary).withOpacity(0.70), size: 22)),
           ]),
         ),
       ),
     );
   }
 
-  Widget _buildCityPickerOverlay() {
+  // ── CITY OVERLAY ────────────────────────────────────────────────────────────
+  Widget _cityOverlay() {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
     final border  = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
@@ -535,33 +536,24 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     return Positioned(
       top: 14 + 62 + 4, left: 18, right: 18,
       child: FadeTransition(
-        opacity: _cityPickerAnim,
+        opacity: _cityAnim,
         child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, -0.04), end: Offset.zero)
-              .animate(_cityPickerAnim),
+          position: Tween<Offset>(begin: const Offset(0, -0.04), end: Offset.zero).animate(_cityAnim),
           child: Material(
             color: Colors.transparent,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 340),
+            child: Container(
               decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
+                color: cardBg, borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: border, width: 1.5),
-                boxShadow: [
-                  BoxShadow(color: primary.withOpacity(0.13), blurRadius: 22, offset: const Offset(0, 8)),
-                ],
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.13), blurRadius: 22, offset: const Offset(0, 8))],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(_cities.length, (i) => _CityTile(
-                    name: _cities[i].name,
-                    isSelected: i == _cityIndex,
-                    onTap: () => _selectCity(i),
-                    showDivider: i < _cities.length - 1,
-                  )),
-                ),
+                child: Column(mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_cities.length, (i) => _CityTile(
+                      name: _cities[i].name, isSelected: i == _cityIdx,
+                      onTap: () => _selectCity(i), showDivider: i < _cities.length - 1,
+                    ))),
               ),
             ),
           ),
@@ -570,7 +562,8 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  Widget _buildCategoryChips() {
+  // ── CATEGORY CHIPS ───────────────────────────────────────────────────────────
+  Widget _catChips() {
     return SizedBox(
       height: 36,
       child: ListView.separated(
@@ -580,18 +573,18 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
         separatorBuilder: (_, __) => const SizedBox(width: 7),
         itemBuilder: (_, i) {
           final cat = _categories[i];
-          final sel = _selectedCat == cat.label;
+          final sel = _selCat == cat.label;
           final isDark  = ThemeState.instance.isDark;
           final primary = isDark ? kDarkPrimary : _bordo;
           final chipBg  = isDark ? kDarkCard : Colors.white;
           final chipBdr = isDark ? kDarkCardEl : const Color(0xFFDDC8CB);
-          final fgColor = isDark ? kDarkBg : Colors.white;
+          final fg      = isDark ? kDarkBg : Colors.white;
           return GestureDetector(
             onTapDown: (_) => _catCtrls[i].forward(),
             onTapUp: (_) {
               _catCtrls[i].reverse();
               HapticFeedback.selectionClick();
-              setState(() { _selectedCat = sel ? null : cat.label; _currentPage = 0; });
+              setState(() { _selCat = sel ? null : cat.label; _page = 0; });
               if (!sel) { _buildCardAnims(1); _cardCtrl.forward(from: 0); }
             },
             onTapCancel: () => _catCtrls[i].reverse(),
@@ -601,29 +594,17 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
                 scale: 1.0 - _catCtrls[i].value * 0.07,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
                   decoration: BoxDecoration(
                     color: sel ? primary : chipBg,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: sel ? primary : chipBdr, width: 1.2),
-                    boxShadow: sel
-                        ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
-                        : [],
+                    boxShadow: sel ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0,3))] : [],
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    if (cat.icon != null) ...[
-                      Icon(cat.icon, size: 13, color: sel ? fgColor : primary),
-                      const SizedBox(width: 4),
-                    ] else if (cat.emoji != null) ...[
-                      Text(cat.emoji!, style: const TextStyle(fontSize: 12)),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(cat.label,
-                        style: TextStyle(
-                          color: sel ? fgColor : primary,
-                          fontSize: 12.5, fontWeight: FontWeight.w600,
-                        )),
+                    if (cat.icon != null) ...[Icon(cat.icon, size: 13, color: sel ? fg : primary), const SizedBox(width: 4)]
+                    else if (cat.emoji != null) ...[Text(cat.emoji!, style: const TextStyle(fontSize: 12)), const SizedBox(width: 4)],
+                    Text(cat.label, style: TextStyle(color: sel ? fg : primary, fontSize: 12.5, fontWeight: FontWeight.w600)),
                   ]),
                 ),
               ),
@@ -634,162 +615,199 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
     );
   }
 
-  Widget _buildCardArea() {
-    final events = _filtered;
-    final cityEmpty = _cityEvents.isEmpty;
-    final isDark   = ThemeState.instance.isDark;
-    final primary  = isDark ? kDarkPrimary : _bordo;
-    final emptyBg  = isDark ? kDarkCardEl  : _bordoLight;
+  // ── FILTER ROW ───────────────────────────────────────────────────────────────
+  Widget _filterRow() {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final bg      = isDark ? kDarkCard : Colors.white;
+    final border  = isDark ? kDarkCardEl : const Color(0xFFDDC8CB);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: GestureDetector(
+        onTap: _toggleFilters,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: _hasFilters ? primary : bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _hasFilters ? primary : border, width: 1.2),
+          ),
+          child: Row(children: [
+            Icon(Icons.tune_rounded, color: _hasFilters ? Colors.white : primary, size: 16),
+            const SizedBox(width: 8),
+            Text('Filtri', style: TextStyle(color: _hasFilters ? Colors.white : primary, fontSize: 13, fontWeight: FontWeight.w600)),
+            if (_hasFilters) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(8)),
+                child: const Text('aktivni', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            ],
+            const Spacer(),
+            AnimatedRotation(
+                turns: _showFilters ? 0.5 : 0, duration: const Duration(milliseconds: 240),
+                child: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: _hasFilters ? Colors.white : primary.withOpacity(0.55), size: 20)),
+          ]),
+        ),
+      ),
+    );
+  }
 
-    if (cityEmpty || events.isEmpty) {
-      return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 340),
-            width: 72, height: 72,
-            decoration: BoxDecoration(color: emptyBg, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: primary.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 6))]),
-            child: Icon(cityEmpty ? Icons.location_off_rounded : Icons.search_off_rounded,
-                color: primary.withOpacity(0.55), size: 32),
-          ),
-          const SizedBox(height: 16),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 300),
-            style: TextStyle(color: primary.withOpacity(0.65), fontSize: 15,
-                fontWeight: FontWeight.w600, height: 1.4),
-            child: Text(
-              cityEmpty ? 'Nema događanja u\nodabranom gradu!' : 'Nema rezultata',
-              textAlign: TextAlign.center,
-            ),
-          ),
-          if (cityEmpty) ...[
-            const SizedBox(height: 8),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13),
-              child: const Text('Provjeri drugi grad 👆'),
-            ),
-          ],
+  Widget _filterPanel() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      clipBehavior: Clip.hardEdge,
+      child: _showFilters
+          ? Padding(
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _fChipRow('Dob:', AgeGroup.values.map((g) =>
+              _FChip(g.label, g == _selAge, () => setState(() { _selAge = g; _page = 0; HapticFeedback.selectionClick(); }))).toList()),
+          const SizedBox(height: 5),
+          _fChipRow('Spol:', GenderGroup.values.map((g) =>
+              _FChip('${g.emoji} ${g.label}', g == _selGen, () => setState(() { _selGen = g; _page = 0; HapticFeedback.selectionClick(); }))).toList()),
+          const SizedBox(height: 4),
         ]),
-      );
+      )
+          : const SizedBox(width: double.infinity),
+    );
+  }
+
+  Widget _fChipRow(String label, List<_FChip> chips) {
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    return Row(children: [
+      Text(label, style: TextStyle(color: primary.withOpacity(0.55), fontSize: 11.5, fontWeight: FontWeight.w600)),
+      const SizedBox(width: 8),
+      Expanded(child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: chips.map((c) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: GestureDetector(
+            onTap: c.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: c.selected ? primary : (isDark ? kDarkCard : Colors.white),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: c.selected ? primary : primary.withOpacity(0.20), width: 1.2),
+              ),
+              child: Text(c.label, style: TextStyle(
+                  color: c.selected ? Colors.white : primary, fontSize: 11.5, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        )).toList()),
+      )),
+    ]);
+  }
+
+  // ── CARD AREA ────────────────────────────────────────────────────────────────
+  Widget _cardArea() {
+    final ev     = _filtered;
+    final isDark = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final emptyBg = isDark ? kDarkCardEl : _bordoLight;
+
+    if (ev.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(width: 72, height: 72,
+            decoration: BoxDecoration(color: emptyBg, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.12), blurRadius: 20, offset: const Offset(0,6))]),
+            child: Icon(_cityEvents.isEmpty ? Icons.location_off_rounded : Icons.search_off_rounded,
+                color: primary.withOpacity(0.55), size: 32)),
+        const SizedBox(height: 16),
+        Text(_cityEvents.isEmpty ? 'Nema događanja\nu odabranom gradu!' : 'Nema rezultata',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: primary.withOpacity(0.65), fontSize: 15, fontWeight: FontWeight.w600, height: 1.4)),
+        if (_hasFilters) ...[
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => setState(() { _selAge = AgeGroup.all; _selGen = GenderGroup.all; _page = 0; }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(14)),
+              child: const Text('Ukloni filtre', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ]));
     }
 
-    final page = _currentPage.clamp(0, events.length - 1);
-
-    return LayoutBuilder(builder: (ctx, box) {
+    final page = _page.clamp(0, ev.length - 1);
+    return LayoutBuilder(builder: (_, box) {
       final cardW = box.maxWidth - 40;
       final cardH = (box.maxHeight * 0.88).clamp(0.0, 440.0);
-
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragEnd: (d) {
           final v = d.primaryVelocity ?? 0;
-          if (v < -200) _nextCard();
-          if (v > 200)  _prevCard();
+          if (v < -200) _next();
+          if (v > 200)  _prev();
         },
-        child: Center(
-          child: SizedBox(
-            width: cardW,
-            height: box.maxHeight,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                if (events.length > page + 2)
-                  Positioned(
-                    top: 16, left: 12, right: 12, height: cardH,
-                    child: Container(
+        child: Center(child: SizedBox(width: cardW, height: box.maxHeight,
+          child: Stack(alignment: Alignment.topCenter, children: [
+            if (ev.length > page + 2)
+              Positioned(top: 16, left: 12, right: 12, height: cardH,
+                  child: Container(decoration: BoxDecoration(
+                      color: ev[(page+2).clamp(0,ev.length-1)].cardColor.withOpacity(0.45),
+                      borderRadius: BorderRadius.circular(26)))),
+            if (ev.length > page + 1)
+              Positioned(top: 8, left: 6, right: 6, height: cardH,
+                  child: Container(decoration: BoxDecoration(
+                      color: ev[(page+1).clamp(0,ev.length-1)].cardColor.withOpacity(0.70),
+                      borderRadius: BorderRadius.circular(26)))),
+            Positioned(top: 0, left: 0, right: 0, height: cardH,
+                child: AnimatedBuilder(
+                  animation: _cardCtrl,
+                  builder: (_, child) => FadeTransition(opacity: _cardFade,
+                      child: SlideTransition(position: _cardSlide,
+                          child: ScaleTransition(scale: _cardScale, child: child))),
+                  child: GestureDetector(
+                      onTap: () => _openDetail(ev[page]),
+                      child: _EventCard(key: ValueKey('$page-$_cityIdx'), event: ev[page])),
+                )),
+            if (ev.length > 1)
+              Positioned(bottom: 6, child: Row(mainAxisSize: MainAxisSize.min,
+                  children: List.generate(ev.length.clamp(0, 6), (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: i == page ? 16 : 5, height: 5,
                       decoration: BoxDecoration(
-                        color: events[(page + 2).clamp(0, events.length - 1)]
-                            .cardColor.withOpacity(0.45),
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                    ),
-                  ),
-                if (events.length > page + 1)
-                  Positioned(
-                    top: 8, left: 6, right: 6, height: cardH,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: events[(page + 1).clamp(0, events.length - 1)]
-                            .cardColor.withOpacity(0.70),
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  top: 0, left: 0, right: 0, height: cardH,
-                  child: AnimatedBuilder(
-                    animation: _cardCtrl,
-                    builder: (_, child) => FadeTransition(
-                      opacity: _cardFade,
-                      child: SlideTransition(
-                        position: _cardSlide,
-                        child: ScaleTransition(scale: _cardScale, child: child),
-                      ),
-                    ),
-                    child: GestureDetector(
-                      onTap: () => _openEventDetail(events[page]),
-                      child: _EventCard(
-                        key: ValueKey('$page-$_cityIndex-${events[page].title}'),
-                        event: events[page],
-                      ),
-                    ),
-                  ),
-                ),
-                if (events.length > 1)
-                  Positioned(
-                    bottom: 6,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(events.length.clamp(0, 6), (i) =>
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: i == page ? 16 : 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: i == page ? _bordo : _bordo.withOpacity(0.22),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+                          color: i == page ? _bordo : _bordo.withOpacity(0.22),
+                          borderRadius: BorderRadius.circular(3)))))),
+          ]),
+        )),
       );
     });
   }
 
-  Widget _buildSearchBar(MediaQueryData mq) {
+  // ── SEARCH BAR ───────────────────────────────────────────────────────────────
+  Widget _searchBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
     final bg      = isDark ? kDarkCard : const Color(0xFFF0E8EA);
     final border  = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFDDC8CB);
     return Padding(
       padding: EdgeInsets.fromLTRB(54, 6, 54, mq.padding.bottom + 10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 340),
+      child: Container(
         height: 40,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border, width: 1),
-        ),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: border, width: 1)),
         child: TextField(
           controller: _searchCtrl,
-          onChanged: (v) => setState(() { _searchQuery = v; _currentPage = 0; }),
+          onChanged: (v) => setState(() { _search = v; _page = 0; }),
           style: TextStyle(color: primary, fontSize: 13),
           decoration: InputDecoration(
-            hintText: 'Pretraži događanja',
-            hintStyle: TextStyle(color: primary.withOpacity(0.35), fontSize: 13),
-            suffixIcon: Icon(Icons.search_rounded, color: primary.withOpacity(0.45), size: 18),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            isDense: true,
-          ),
+              hintText: 'Pretraži događanja',
+              hintStyle: TextStyle(color: primary.withOpacity(0.35), fontSize: 13),
+              suffixIcon: Icon(Icons.search_rounded, color: primary.withOpacity(0.45), size: 18),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11), isDense: true),
         ),
       ),
     );
@@ -797,8 +815,9 @@ class _EventsNearbyScreenState extends State<EventsNearbyScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EVENT CARD — s user event badge-om
+// EVENT CARD
 // ═══════════════════════════════════════════════════════════════════════════════
+
 class _EventCard extends StatefulWidget {
   final EventData event;
   const _EventCard({super.key, required this.event});
@@ -806,245 +825,165 @@ class _EventCard extends StatefulWidget {
 }
 
 class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _shimCtrl;
-
-  @override void initState() {
-    super.initState();
-    _shimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))
-      ..repeat();
-  }
-  @override void dispose() { _shimCtrl.dispose(); super.dispose(); }
+  late final AnimationController _shim;
+  @override void initState() { super.initState(); _shim = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..repeat(); }
+  @override void dispose() { _shim.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    final c = widget.event.cardColor;
-    final isUser = widget.event.isUserEvent;
-    final hasUserImage = widget.event.userImagePath != null &&
-        widget.event.userImagePath!.isNotEmpty;
+    final e      = widget.event;
+    final c      = e.cardColor;
+    final isUser = e.isUserEvent;
+    final hasImg = e.userImagePath != null && e.userImagePath!.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: c,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(color: c.withOpacity(0.38), blurRadius: 20, offset: const Offset(0, 8)),
-          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 3)),
-        ],
-      ),
-      child: Column(children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-            child: Stack(fit: StackFit.expand, children: [
-              // Slika ili boja
-              if (hasUserImage)
-                Image.file(File(widget.event.userImagePath!), fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: c))
-              else if (widget.event.imagePath.isNotEmpty)
-                Image.asset(widget.event.imagePath, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: c))
-              else
-                Container(color: c),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Stack(children: [
+        // Cijela slika/boja — puna visina kartice
+        Positioned.fill(
+          child: hasImg
+              ? Image.file(File(e.userImagePath!), fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: c))
+              : e.imagePath.isNotEmpty
+              ? Image.asset(e.imagePath, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: c))
+              : Container(color: c),
+        ),
 
-              // Shimmer
-              AnimatedBuilder(
-                animation: _shimCtrl,
-                builder: (_, __) {
-                  final t = _shimCtrl.value;
-                  return Positioned(
-                    left: -80 + t * (MediaQuery.of(context).size.width + 160),
-                    top: 0, bottom: 0,
-                    child: Container(
-                      width: 80,
-                      decoration: BoxDecoration(gradient: LinearGradient(colors: [
-                        Colors.white.withOpacity(0),
-                        Colors.white.withOpacity(0.09),
-                        Colors.white.withOpacity(0),
-                      ])),
-                    ),
-                  );
-                },
-              ),
+        // Shimmer
+        Positioned.fill(child: AnimatedBuilder(animation: _shim, builder: (_, __) => Positioned(
+            left: -80 + _shim.value * (MediaQuery.of(context).size.width + 160), top: 0, bottom: 0,
+            child: Container(width: 80, decoration: BoxDecoration(gradient: LinearGradient(colors: [
+              Colors.white.withOpacity(0), Colors.white.withOpacity(0.09), Colors.white.withOpacity(0)])))))),
 
-              // Clouds
-              _cloud(top: 18, left: 14, w: 52, h: 24),
-              _cloud(top: 8,  right: 46, w: 38, h: 18),
-              _cloud(top: 44, right: 10, w: 28, h: 14),
-              _cloud(bottom: 72, left: 22, w: 32, h: 16),
+        // Clouds
+        _cloud(top: 18, left: 14, w: 52, h: 24),
+        _cloud(top: 8, right: 46, w: 38, h: 18),
+        _cloud(top: 44, right: 10, w: 28, h: 14),
 
-              // User event badge
-              if (isUser)
-                Positioned(
-                  top: 12, left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _bordo,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8)],
-                    ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.star_rounded, color: Colors.white, size: 12),
-                      SizedBox(width: 4),
-                      Text('Moj event', style: TextStyle(
-                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700,
-                      )),
-                    ]),
-                  ),
-                ),
-
-              // Max people badge (samo za user evente)
-              if (isUser && widget.event.maxAttendees > 0)
-                Positioned(
-                  top: 12, right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.people_rounded, color: Colors.white, size: 12),
-                      const SizedBox(width: 4),
-                      Text('max ${widget.event.maxAttendees}', style: const TextStyle(
-                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600,
-                      )),
-                    ]),
-                  ),
-                ),
-
-              // Detalji hint
-              Positioned(
-                bottom: 12, right: 12,
-                child: Container(
+        // Max people top-right
+        if (isUser && e.maxAttendees > 0)
+          Positioned(top: 12, right: 12,
+              child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.22),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.people_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
+                    Text('max ${e.maxAttendees}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ]))),
+
+        // "Moj event" badge top-left
+        if (isUser)
+          Positioned(top: 12, left: 12,
+              child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(20)),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.touch_app_rounded, color: Colors.white, size: 13),
-                    SizedBox(width: 4),
-                    Text('detalji', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-              ),
+                    Icon(Icons.star_rounded, color: Colors.white, size: 12), SizedBox(width: 4),
+                    Text('Moj event', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                  ]))),
+
+        // Detalji hint — iznad bordo bara (bar je ~70px + 8px margin od dna)
+        Positioned(bottom: 90, right: 12,
+            child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.28), borderRadius: BorderRadius.circular(20)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.touch_app_rounded, color: Colors.white, size: 13), SizedBox(width: 4),
+                  Text('detalji', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                ]))),
+
+        // Bordo pravokutnik — direktno na slici, s malom sjenom iznad
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+            decoration: BoxDecoration(
+              color: _bordo,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, -2)),
+              ],
+            ),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(e.title, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                const SizedBox(height: 2),
+                Row(children: [
+                  Icon(Icons.location_on_rounded, color: Colors.white.withOpacity(0.55), size: 11), const SizedBox(width: 2),
+                  Text(e.location, style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12)),
+                ]),
+              ])),
+              const SizedBox(width: 8),
+              Container(
+                  width: 54, height: 54,
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text(e.dateDay, style: const TextStyle(color: _bordo, fontSize: 17, fontWeight: FontWeight.w900, height: 1.0)),
+                    Text(e.dateMonth, style: const TextStyle(color: _bordo, fontSize: 17, fontWeight: FontWeight.w900, height: 1.0)),
+                  ])),
             ]),
           ),
-        ),
-        Container(
-          margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: _bordo,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: _bordo.withOpacity(0.28), blurRadius: 12, offset: const Offset(0, 5))],
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min, children: [
-                  Text(widget.event.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 19,
-                          fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    Icon(Icons.location_on_rounded, color: Colors.white.withOpacity(0.55), size: 11),
-                    const SizedBox(width: 2),
-                    Text(widget.event.location,
-                        style: TextStyle(color: Colors.white.withOpacity(0.62), fontSize: 12)),
-                  ]),
-                ])),
-            const SizedBox(width: 8),
-            Container(
-              width: 54, height: 54,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 6, offset: const Offset(0, 2))]),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text(widget.event.dateDay,
-                    style: const TextStyle(color: _bordo, fontSize: 17, fontWeight: FontWeight.w900, height: 1.0)),
-                Text(widget.event.dateMonth,
-                    style: const TextStyle(color: _bordo, fontSize: 17, fontWeight: FontWeight.w900, height: 1.0)),
-              ]),
-            ),
-          ]),
         ),
       ]),
     );
   }
 
-  Widget _cloud({double? top, double? bottom, double? left, double? right,
-    required double w, required double h}) {
-    return Positioned(top: top, bottom: bottom, left: left, right: right,
-        child: Container(width: w, height: h,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.52),
-              borderRadius: BorderRadius.circular(h / 2),
-            )));
-  }
+  Widget _badge(String t) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(14)),
+      child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600)));
+
+  Widget _cloud({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
+      Positioned(top: top, bottom: bottom, left: left, right: right,
+          child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.52), borderRadius: BorderRadius.circular(h/2))));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CITY TILE
 // ═══════════════════════════════════════════════════════════════════════════════
+
 class _CityTile extends StatefulWidget {
-  final String name;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final bool showDivider;
+  final String name; final bool isSelected; final VoidCallback onTap; final bool showDivider;
   const _CityTile({required this.name, required this.isSelected, required this.onTap, required this.showDivider});
   @override State<_CityTile> createState() => _CityTileState();
 }
 
 class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  @override void initState() {
-    super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 80));
-  }
+  @override void initState() { super.initState(); _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 80)); }
   @override void dispose() { _c.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    final isDark   = ThemeState.instance.isDark;
-    final primary  = isDark ? kDarkPrimary : _bordo;
-    final tileBg   = isDark ? kDarkCard    : Colors.white;
-    final hoverBg  = isDark ? kDarkCardEl  : const Color(0xFFF4EDED);
-    final divColor = isDark ? kDarkCardEl  : const Color(0xFFE8D5D8);
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : _bordo;
+    final tileBg  = isDark ? kDarkCard : Colors.white;
+    final hoverBg = isDark ? kDarkCardEl : const Color(0xFFF4EDED);
+    final divCol  = isDark ? kDarkCardEl : const Color(0xFFE8D5D8);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       GestureDetector(
         onTapDown: (_) => _c.forward(),
         onTapUp: (_) { _c.reverse(); widget.onTap(); },
         onTapCancel: () => _c.reverse(),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (_, __) => AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            color: widget.isSelected
-                ? primary.withOpacity(0.08)
-                : Color.lerp(tileBg, hoverBg, _c.value),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-            child: Row(children: [
-              AnimatedDefaultTextStyle(
+        child: AnimatedBuilder(animation: _c, builder: (_, __) => AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          color: widget.isSelected ? primary.withOpacity(0.08) : Color.lerp(tileBg, hoverBg, _c.value),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+          child: Row(children: [
+            AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: primary, fontSize: 14.5,
-                    fontWeight: widget.isSelected ? FontWeight.w800 : FontWeight.w500),
-                child: Text(widget.name),
-              ),
-              const Spacer(),
-              if (widget.isSelected)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: 20, height: 20,
-                  decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
-                  child: Icon(Icons.check_rounded,
-                      color: isDark ? kDarkBg : Colors.white, size: 13),
-                ),
-            ]),
-          ),
-        ),
+                style: TextStyle(color: primary, fontSize: 14.5, fontWeight: widget.isSelected ? FontWeight.w800 : FontWeight.w500),
+                child: Text(widget.name)),
+            const Spacer(),
+            if (widget.isSelected) Container(width: 20, height: 20,
+                decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+                child: Icon(Icons.check_rounded, color: isDark ? kDarkBg : Colors.white, size: 13)),
+          ]),
+        )),
       ),
-      if (widget.showDivider)
-        Divider(height: 1, thickness: 0.5, color: divColor, indent: 18, endIndent: 18),
+      if (widget.showDivider) Divider(height: 1, thickness: 0.5, color: divCol, indent: 18, endIndent: 18),
     ]);
   }
 }
@@ -1052,29 +991,19 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
 // ═══════════════════════════════════════════════════════════════════════════════
 // EVENT DETAIL SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
+
 class EventDetailScreen extends StatefulWidget {
   final EventData event;
   const EventDetailScreen({super.key, required this.event});
-  @override State<EventDetailScreen> createState() => _EventDetailScreenState();
+  @override State<EventDetailScreen> createState() => _EventDetailState();
 }
 
-class _EventDetailScreenState extends State<EventDetailScreen>
-    with TickerProviderStateMixin {
-
+class _EventDetailState extends State<EventDetailScreen> with TickerProviderStateMixin {
   bool get _joined => _attendanceState[widget.event.title] ?? false;
 
-  late final AnimationController _entryCtrl;
-  late final AnimationController _heroCtrl;
-  late final AnimationController _btnCtrl;
-  late final AnimationController _countCtrl;
-  late final AnimationController _mapCtrl;
-
-  late final Animation<double> _entryFade;
+  late final AnimationController _entryCtrl, _heroCtrl, _btnCtrl, _countCtrl, _mapCtrl;
+  late final Animation<double> _entryFade, _heroScale, _btnScale, _countAnim;
   late final Animation<Offset> _contentSlide;
-  late final Animation<double> _heroScale;
-  late final Animation<double> _btnScale;
-  late final Animation<double> _countAnim;
-
   bool _mapExpanded = false;
   late final MapController _mapController;
 
@@ -1083,27 +1012,20 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     super.initState();
     _mapController = MapController();
     ThemeState.instance.addListener(_onTheme);
-
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _contentSlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-
     _heroCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
     _heroScale = Tween<double>(begin: 1.06, end: 1.0)
         .animate(CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOutCubic));
-
     _btnCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 160));
     _btnScale = Tween<double>(begin: 1.0, end: 0.92)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
-
     _countCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _countAnim = CurvedAnimation(parent: _countCtrl, curve: Curves.easeOutBack);
-
     _mapCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
-
-    _entryCtrl.forward();
-    _heroCtrl.forward();
+    _entryCtrl.forward(); _heroCtrl.forward();
   }
 
   void _onTheme() { if (mounted) setState(() {}); }
@@ -1111,78 +1033,49 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   @override
   void dispose() {
     ThemeState.instance.removeListener(_onTheme);
-    _entryCtrl.dispose(); _heroCtrl.dispose(); _btnCtrl.dispose();
-    _countCtrl.dispose(); _mapCtrl.dispose();
+    _entryCtrl.dispose(); _heroCtrl.dispose(); _btnCtrl.dispose(); _countCtrl.dispose(); _mapCtrl.dispose();
     super.dispose();
   }
 
   void _toggleJoin() async {
-    // Provjeri max attendees za user evente
     if (!_joined && widget.event.isUserEvent && widget.event.maxAttendees > 0) {
-      final current = _effectiveAttendees(widget.event);
-      if (current >= widget.event.maxAttendees) {
-        _showFullDialog();
-        return;
-      }
+      if (_effectiveAttendees(widget.event) >= widget.event.maxAttendees) { _showFull(); return; }
     }
     HapticFeedback.mediumImpact();
-    await _btnCtrl.forward();
-    await _btnCtrl.reverse();
-    final wasJoined = _joined;
-    setState(() { _attendanceState[widget.event.title] = !wasJoined; });
+    await _btnCtrl.forward(); await _btnCtrl.reverse();
+    final was = _joined;
+    setState(() { _attendanceState[widget.event.title] = !was; });
     _countCtrl.forward(from: 0);
-    NotificationState.instance.onAttendanceChanged(
-      widget.event.title,
-      widget.event.location,
-      widget.event.cardColor,
-      !wasJoined,
-    );
+    NotificationState.instance.onAttendanceChanged(widget.event.title, widget.event.location, widget.event.cardColor, !was);
   }
 
-  void _showFullDialog() {
+  void _showFull() {
     HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.0),
-          duration: const Duration(milliseconds: 380),
-          curve: Curves.easeOutBack,
-          builder: (_, v, child) => Transform.scale(scale: v, child: child),
-          child: Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 32, offset: const Offset(0, 12))],
-            ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 60, height: 60,
-                  decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
-                  child: const Icon(Icons.group_off_rounded, color: _bordo, size: 28)),
-              const SizedBox(height: 16),
-              const Text('Event je popunjen!', style: TextStyle(color: _bordo,
-                  fontWeight: FontWeight.w800, fontSize: 18)),
-              const SizedBox(height: 8),
-              Text('Ovaj meetup je dostigao maksimalan broj sudionika (${widget.event.maxAttendees}).',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 13.5, height: 1.5)),
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(23)),
-                  child: const Center(child: Text('Razumijem', style: TextStyle(
-                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
-                ),
-              ),
-            ]),
-          ),
+    showDialog(context: context, builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.8, end: 1.0), duration: const Duration(milliseconds: 380), curve: Curves.easeOutBack,
+        builder: (_, v, child) => Transform.scale(scale: v, child: child),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 32, offset: const Offset(0,12))]),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 60, height: 60, decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
+                child: const Icon(Icons.group_off_rounded, color: _bordo, size: 28)),
+            const SizedBox(height: 16),
+            const Text('Event je popunjen!', style: TextStyle(color: _bordo, fontWeight: FontWeight.w800, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text('Dostignut je maksimalan broj sudionika (${widget.event.maxAttendees}).',
+                textAlign: TextAlign.center, style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 13.5, height: 1.5)),
+            const SizedBox(height: 20),
+            GestureDetector(onTap: () => Navigator.pop(context),
+                child: Container(height: 46, decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(23)),
+                    child: const Center(child: Text('Razumijem', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))))),
+          ]),
         ),
       ),
-    );
+    ));
   }
 
   void _toggleMap() {
@@ -1193,424 +1086,296 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final event = widget.event;
-    final c = event.cardColor;
-    final attendees = _effectiveAttendees(event);
-    final isDark  = ThemeState.instance.isDark;
-    final bgColor = isDark ? kDarkBg : Colors.white;
+    final mq     = MediaQuery.of(context);
+    final e      = widget.event;
+    final c      = e.cardColor;
+    final att    = _effectiveAttendees(e);
+    final isDark = ThemeState.instance.isDark;
+    final bgCol  = isDark ? kDarkBg : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordoDark;
-    final textMuted = isDark ? kDarkTextSub : Colors.black.withOpacity(0.55);
-    final hasUserImage = event.userImagePath != null && event.userImagePath!.isNotEmpty;
+    final hasImg = e.userImagePath != null && e.userImagePath!.isNotEmpty;
+    final locDisplay = e.specificLocation.isNotEmpty ? e.specificLocation : e.location;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 380),
-      color: bgColor,
+      duration: const Duration(milliseconds: 380), color: bgCol,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: ScaleTransition(
-                    scale: _heroScale,
-                    child: Container(
-                      height: mq.size.height * 0.42,
-                      color: c,
+        body: Stack(children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // HERO
+              SliverToBoxAdapter(child: ScaleTransition(scale: _heroScale,
+                  child: Container(height: mq.size.height * 0.42, color: c,
                       child: Stack(fit: StackFit.expand, children: [
-                        if (hasUserImage)
-                          Image.file(File(event.userImagePath!), fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: c))
-                        else if (event.imagePath.isNotEmpty)
-                          Image.asset(event.imagePath, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: c))
-                        else
-                          Container(color: c),
-
-                        Positioned(
-                          bottom: 0, left: 0, right: 0, height: 100,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(gradient: LinearGradient(
-                              begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Colors.black.withOpacity(0.18)],
-                            )),
-                          ),
-                        ),
-
-                        // User event badge u detalj screenu
-                        if (event.isUserEvent)
-                          Positioned(
-                            bottom: 110, left: 20,
+                        if (hasImg) Image.file(File(e.userImagePath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
+                        else if (e.imagePath.isNotEmpty) Image.asset(e.imagePath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
+                        else Container(color: c),
+                        Positioned(bottom: 0, left: 0, right: 0, height: 100,
+                            child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, Colors.black.withOpacity(0.18)])))),
+                        // "Moj event" badge at bottom
+                        if (e.isUserEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: _bordo,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 10)],
-                              ),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.star_rounded, color: Colors.white, size: 14),
-                                const SizedBox(width: 5),
-                                Text(
-                                  event.maxAttendees > 0
-                                      ? 'Tvoj event · max ${event.maxAttendees} ljudi'
-                                      : 'Tvoj osobni event',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12,
-                                      fontWeight: FontWeight.w700),
-                                ),
-                              ]),
-                            ),
-                          ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 10)]),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(Icons.star_rounded, color: Colors.white, size: 14), const SizedBox(width: 5),
+                                  Text(e.maxAttendees > 0 ? 'Tvoj event · max ${e.maxAttendees} ljudi' : 'Tvoj osobni event',
+                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                                ]))),
+                        _cw(top: 28, left: 18, w: 70, h: 32), _cw(top: 14, right: 60, w: 50, h: 24),
+                        _cw(top: 60, right: 16, w: 36, h: 18),
+                      ])))),
 
-                        _cloudWidget(top: 28, left: 18, w: 70, h: 32),
-                        _cloudWidget(top: 14, right: 60, w: 50, h: 24),
-                        _cloudWidget(top: 60, right: 16, w: 36, h: 18),
-                        _cloudWidget(bottom: 100, left: 30, w: 44, h: 22),
-                      ]),
-                    ),
-                  ),
-                ),
-
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _entryFade,
-                    child: SlideTransition(
-                      position: _contentSlide,
+              // CONTENT
+              SliverToBoxAdapter(child: FadeTransition(opacity: _entryFade,
+                  child: SlideTransition(position: _contentSlide,
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(20, 22, 20, mq.padding.bottom + 100),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 300),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300),
                                   style: TextStyle(color: isDark ? kDarkText : Colors.black87,
-                                      fontSize: 30, fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.8, height: 1.1),
-                                  child: Text(event.title),
-                                ),
-                                const SizedBox(height: 6),
-                                AnimatedBuilder(
-                                  animation: _countAnim,
-                                  builder: (_, __) => Row(children: [
-                                    Transform.scale(
-                                      scale: 1.0 + _countAnim.value * 0.12,
-                                      child: Text('$attendees',
-                                          style: TextStyle(color: primary, fontSize: 16,
-                                              fontWeight: FontWeight.w800)),
-                                    ),
-                                    Text(' ljudi se pridružilo',
-                                        style: TextStyle(color: textMuted, fontSize: 14,
-                                            fontWeight: FontWeight.w500)),
-                                  ]),
-                                ),
-                              ]),
-                            ),
+                                      fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.8, height: 1.1),
+                                  child: Text(e.title)),
+                              const SizedBox(height: 6),
+                              AnimatedBuilder(animation: _countAnim, builder: (_, __) => Row(children: [
+                                Transform.scale(scale: 1.0 + _countAnim.value * 0.12,
+                                    child: Text('$att', style: TextStyle(color: primary, fontSize: 16, fontWeight: FontWeight.w800))),
+                                Text(' ljudi se pridružilo',
+                                    style: TextStyle(color: isDark ? kDarkTextSub : Colors.black.withOpacity(0.55), fontSize: 14)),
+                              ])),
+                            ])),
                             const SizedBox(width: 12),
-                            Container(
-                              width: 68, height: 68,
-                              decoration: BoxDecoration(
-                                color: _bordo, borderRadius: BorderRadius.circular(16),
-                                boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))],
-                              ),
-                              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Text(event.dateDay, style: const TextStyle(color: Colors.white,
-                                    fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
-                                Text(event.dateMonth, style: const TextStyle(color: Colors.white,
-                                    fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
-                              ]),
-                            ),
+                            Container(width: 68, height: 68,
+                                decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0,5))]),
+                                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                  Text(e.dateDay, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
+                                  Text(e.dateMonth, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
+                                ])),
                           ]),
 
                           const SizedBox(height: 20),
 
-                          GestureDetector(
-                            onTap: _toggleMap,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic,
-                              decoration: BoxDecoration(
-                                color: isDark ? kDarkCard : _bordoLight,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: primary.withOpacity(0.12), width: 1),
-                                boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4))],
-                              ),
-                              child: Column(children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(children: [
-                                    Expanded(
-                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                        Row(children: [
-                                          Icon(Icons.access_time_rounded, color: primary.withOpacity(0.70), size: 15),
-                                          const SizedBox(width: 6),
-                                          AnimatedDefaultTextStyle(
-                                            duration: const Duration(milliseconds: 300),
-                                            style: TextStyle(color: isDark ? kDarkText : _bordoDark,
-                                                fontSize: 17, fontWeight: FontWeight.w800),
-                                            child: Text(event.time),
-                                          ),
-                                        ]),
-                                        const SizedBox(height: 6),
-                                        Row(children: [
-                                          Icon(Icons.location_on_rounded, color: primary.withOpacity(0.70), size: 15),
-                                          const SizedBox(width: 6),
-                                          Expanded(child: AnimatedDefaultTextStyle(
-                                            duration: const Duration(milliseconds: 300),
-                                            style: TextStyle(color: isDark ? kDarkText : _bordoDark,
-                                                fontSize: 17, fontWeight: FontWeight.w700),
-                                            child: Text(event.location),
-                                          )),
-                                        ]),
-                                      ]),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: SizedBox(
-                                        width: 90, height: 70,
-                                        child: Stack(children: [
-                                          FlutterMap(
-                                            mapController: _mapController,
-                                            options: MapOptions(
-                                              initialCenter: event.coordinates,
-                                              initialZoom: 14.5,
-                                              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                                            ),
-                                            children: [
-                                              TileLayer(
-                                                urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                                subdomains: const ['a', 'b', 'c', 'd'],
-                                                userAgentPackageName: 'com.meetcute.app',
-                                              ),
-                                              MarkerLayer(markers: [
-                                                Marker(
-                                                  point: event.coordinates, width: 22, height: 22,
-                                                  child: Container(
-                                                    decoration: BoxDecoration(
-                                                      color: _bordo, shape: BoxShape.circle,
-                                                      border: Border.all(color: Colors.white, width: 2),
-                                                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6)],
-                                                    ),
+                          // MAP CARD
+                          GestureDetector(onTap: _toggleMap,
+                              child: AnimatedContainer(duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic,
+                                decoration: BoxDecoration(
+                                    color: isDark ? kDarkCard : _bordoLight,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: primary.withOpacity(0.12), width: 1),
+                                    boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0,4))]),
+                                child: Column(children: [
+                                  Padding(padding: const EdgeInsets.all(16),
+                                      child: Row(children: [
+                                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                          Row(children: [
+                                            Icon(Icons.access_time_rounded, color: primary.withOpacity(0.70), size: 15), const SizedBox(width: 6),
+                                            Text(e.time, style: TextStyle(color: isDark ? kDarkText : _bordoDark, fontSize: 17, fontWeight: FontWeight.w800)),
+                                          ]),
+                                          const SizedBox(height: 6),
+                                          Row(children: [
+                                            Icon(Icons.location_on_rounded, color: primary.withOpacity(0.70), size: 15), const SizedBox(width: 6),
+                                            Expanded(child: Text(locDisplay,
+                                                style: TextStyle(color: isDark ? kDarkText : _bordoDark, fontSize: 14, fontWeight: FontWeight.w700))),
+                                          ]),
+                                        ])),
+                                        const SizedBox(width: 12),
+                                        ClipRRect(borderRadius: BorderRadius.circular(12),
+                                            child: SizedBox(width: 90, height: 70,
+                                                child: Stack(children: [
+                                                  FlutterMap(
+                                                    mapController: _mapController,
+                                                    options: MapOptions(initialCenter: e.coordinates, initialZoom: 14.5,
+                                                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none)),
+                                                    children: [
+                                                      TileLayer(urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                                          subdomains: const ['a','b','c','d'], userAgentPackageName: 'com.meetcute.app'),
+                                                      MarkerLayer(markers: [Marker(point: e.coordinates, width: 22, height: 22,
+                                                          child: Container(decoration: BoxDecoration(color: _bordo, shape: BoxShape.circle,
+                                                              border: Border.all(color: Colors.white, width: 2),
+                                                              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 6)])))]),
+                                                    ],
                                                   ),
-                                                ),
-                                              ]),
-                                            ],
-                                          ),
-                                          Positioned.fill(
-                                            child: Container(
-                                              decoration: BoxDecoration(gradient: LinearGradient(
-                                                colors: [Colors.transparent, Colors.black.withOpacity(0.12)],
-                                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                                              )),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            bottom: 4, right: 4,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(0.85),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Icon(
-                                                _mapExpanded ? Icons.zoom_in_map_rounded : Icons.zoom_out_map_rounded,
-                                                size: 12, color: _bordo,
-                                              ),
-                                            ),
-                                          ),
-                                        ]),
-                                      ),
-                                    ),
-                                  ]),
-                                ),
-                                AnimatedBuilder(
-                                  animation: _mapCtrl,
-                                  builder: (_, __) {
+                                                  Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(
+                                                      colors: [Colors.transparent, Colors.black.withOpacity(0.12)],
+                                                      begin: Alignment.topCenter, end: Alignment.bottomCenter)))),
+                                                  Positioned(bottom: 4, right: 4, child: Container(
+                                                      padding: const EdgeInsets.all(3),
+                                                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.85), borderRadius: BorderRadius.circular(6)),
+                                                      child: Icon(_mapExpanded ? Icons.zoom_in_map_rounded : Icons.zoom_out_map_rounded, size: 12, color: _bordo))),
+                                                ]))),
+                                      ])),
+                                  AnimatedBuilder(animation: _mapCtrl, builder: (_, __) {
                                     final h = _mapCtrl.value * 220.0;
                                     if (h < 1) return const SizedBox.shrink();
-                                    return ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-                                      child: SizedBox(
-                                        height: h,
-                                        child: FlutterMap(
-                                          options: MapOptions(
-                                            initialCenter: event.coordinates, initialZoom: 15.0,
-                                            interactionOptions: const InteractionOptions(
-                                              flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-                                            ),
-                                          ),
+                                    return ClipRRect(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                                        child: SizedBox(height: h, child: FlutterMap(
+                                          options: MapOptions(initialCenter: e.coordinates, initialZoom: 15.0,
+                                              interactionOptions: const InteractionOptions(flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag)),
                                           children: [
-                                            TileLayer(
-                                              urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                                              subdomains: const ['a', 'b', 'c', 'd'],
-                                              userAgentPackageName: 'com.meetcute.app',
-                                            ),
-                                            MarkerLayer(markers: [
-                                              Marker(
-                                                point: event.coordinates, width: 36, height: 36,
+                                            TileLayer(urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                                                subdomains: const ['a','b','c','d'], userAgentPackageName: 'com.meetcute.app'),
+                                            MarkerLayer(markers: [Marker(point: e.coordinates, width: 36, height: 36,
                                                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                                  Container(
-                                                    width: 26, height: 26,
-                                                    decoration: BoxDecoration(
-                                                      color: _bordo, shape: BoxShape.circle,
+                                                  Container(width: 26, height: 26, decoration: BoxDecoration(color: _bordo, shape: BoxShape.circle,
                                                       border: Border.all(color: Colors.white, width: 3),
-                                                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 8)],
-                                                    ),
-                                                  ),
-                                                  Container(width: 3, height: 7,
-                                                      decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(2))),
-                                                ]),
-                                              ),
-                                            ]),
+                                                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.5), blurRadius: 8)])),
+                                                  Container(width: 3, height: 7, decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(2))),
+                                                ]))]),
                                           ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ]),
-                            ),
-                          ),
+                                        )));
+                                  }),
+                                ]),
+                              )),
 
                           const SizedBox(height: 24),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 300),
-                            style: TextStyle(color: isDark ? kDarkText : Colors.black87,
-                                fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2),
-                            child: const Text('Opis'),
-                          ),
+                          Text('Opis', style: TextStyle(color: isDark ? kDarkText : Colors.black87,
+                              fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                           const SizedBox(height: 10),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 300),
-                            style: TextStyle(
-                              color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65),
-                              fontSize: 15, height: 1.65,
-                            ),
-                            child: Text(
-                              event.description.isNotEmpty
-                                  ? event.description
-                                  : 'Više informacija o eventu uskoro.',
+                          Text(e.description.isNotEmpty ? e.description : 'Više informacija uskoro.',
                               textAlign: TextAlign.justify,
+                              style: TextStyle(color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65), fontSize: 15, height: 1.65)),
+
+                          // ── Dobna skupina & spol ──────────────────────────────
+                          if (e.ageGroup != AgeGroup.all || e.genderGroup != GenderGroup.all) ...[
+                            const SizedBox(height: 24),
+                            Text('Detalji eventi', style: TextStyle(color: isDark ? kDarkText : Colors.black87,
+                                fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isDark ? kDarkCard : _bordoLight,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: primary.withOpacity(0.10)),
+                              ),
+                              child: Column(children: [
+                                if (e.ageGroup != AgeGroup.all)
+                                  _detailRow(isDark, Icons.cake_outlined, 'Dobna skupina', e.ageGroup.label, primary),
+                                if (e.ageGroup != AgeGroup.all && e.genderGroup != GenderGroup.all)
+                                  Divider(height: 20, thickness: 0.5, color: primary.withOpacity(0.10)),
+                                if (e.genderGroup != GenderGroup.all)
+                                  _detailRow(isDark, Icons.people_outline_rounded, 'Tražena grupa', e.genderGroup.label, primary),
+                              ]),
                             ),
-                          ),
+                          ],
                         ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                      )))),
+            ],
+          ),
 
-            Positioned(
-              top: mq.padding.top + 14, left: 14,
-              child: FadeTransition(
-                opacity: _entryFade,
-                child: _BackButton(onTap: () => Navigator.pop(context)),
-              ),
-            ),
+          // BACK BUTTON
+          Positioned(top: mq.padding.top + 14, left: 14,
+              child: FadeTransition(opacity: _entryFade, child: _BackBtn(onTap: () => Navigator.pop(context)))),
 
-            Positioned(
-              bottom: 0, left: 0, right: 0,
-              child: _buildJoinBar(mq),
-            ),
-          ],
-        ),
+          // JOIN BAR
+          Positioned(bottom: 0, left: 0, right: 0, child: _joinBar(mq)),
+        ]),
       ),
     );
   }
 
-  Widget _buildJoinBar(MediaQueryData mq) {
+  Widget _detailRow(bool isDark, IconData icon, String label, String value, Color primary) {
+    return Row(children: [
+      Container(
+        width: 34, height: 34,
+        decoration: BoxDecoration(
+          color: primary.withOpacity(isDark ? 0.18 : 0.10),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: primary, size: 17),
+      ),
+      const SizedBox(width: 12),
+      Text(label, style: TextStyle(
+        color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.55),
+        fontSize: 14,
+      )),
+      const Spacer(),
+      Text(value, style: TextStyle(
+        color: primary, fontSize: 14, fontWeight: FontWeight.w700,
+      )),
+    ]);
+  }
+
+  Widget _heroBadge(String t) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
+      child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)));
+
+  Widget _cw({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
+      Positioned(top: top, bottom: bottom, left: left, right: right,
+          child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.50), borderRadius: BorderRadius.circular(h/2))));
+
+  Widget _joinBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordo;
-    final isFull  = widget.event.isUserEvent &&
-        widget.event.maxAttendees > 0 &&
-        _effectiveAttendees(widget.event) >= widget.event.maxAttendees &&
-        !_joined;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 380),
-      decoration: BoxDecoration(
-        color: cardBg,
-        boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))],
-      ),
+    // Vlastiti event — nema gumba, samo prazan prostor
+    if (widget.event.isUserEvent) {
+      return const SizedBox.shrink();
+    }
+
+    final isFull = widget.event.maxAttendees > 0 &&
+        _effectiveAttendees(widget.event) >= widget.event.maxAttendees && !_joined;
+
+    return AnimatedContainer(duration: const Duration(milliseconds: 380),
+      decoration: BoxDecoration(color: cardBg,
+          boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0,-4))]),
       padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
-      child: AnimatedBuilder(
-        animation: _btnScale,
+      child: AnimatedBuilder(animation: _btnScale,
         builder: (_, child) => Transform.scale(scale: _btnScale.value, child: child),
         child: GestureDetector(
-          onTap: isFull ? _showFullDialog : _toggleJoin,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic,
-            height: 54,
+          onTap: isFull ? _showFull : _toggleJoin,
+          child: AnimatedContainer(duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic, height: 54,
             decoration: BoxDecoration(
-              color: isFull
-                  ? Colors.grey.withOpacity(0.35)
-                  : _joined
-                  ? (isDark ? const Color(0xFF3A3A42) : const Color(0xFF2C2C2C))
-                  : primary,
-              borderRadius: BorderRadius.circular(27),
-              boxShadow: [BoxShadow(
-                color: (isFull ? Colors.grey : _joined ? Colors.black : primary).withOpacity(0.28),
-                blurRadius: 16, offset: const Offset(0, 6),
-              )],
-            ),
-            child: Center(
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
+                color: isFull ? Colors.grey.withOpacity(0.35)
+                    : _joined ? (isDark ? const Color(0xFF3A3A42) : const Color(0xFF2C2C2C))
+                    : primary,
+                borderRadius: BorderRadius.circular(27),
+                boxShadow: [BoxShadow(
+                    color: (isFull ? Colors.grey : _joined ? Colors.black : primary).withOpacity(0.28),
+                    blurRadius: 16, offset: const Offset(0,6))]),
+            child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+              AnimatedSwitcher(duration: const Duration(milliseconds: 250),
                   transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                  child: Icon(
-                    isFull ? Icons.group_off_rounded : _joined ? Icons.close_rounded : Icons.check_rounded,
-                    key: ValueKey(isFull ? 'full' : _joined),
-                    color: isDark ? kDarkBg : Colors.white, size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Text(
-                    isFull ? 'Popunjeno' : _joined ? 'Otkaži prijavu' : 'Ja sam za!',
-                    key: ValueKey(isFull ? 'full' : _joined),
-                    style: TextStyle(color: isDark ? kDarkBg : Colors.white,
-                        fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.1),
-                  ),
-                ),
-              ]),
-            ),
+                  child: Icon(isFull ? Icons.group_off_rounded : _joined ? Icons.close_rounded : Icons.check_rounded,
+                      key: ValueKey(isFull ? 'full' : _joined), color: isDark ? kDarkBg : Colors.white, size: 20)),
+              const SizedBox(width: 10),
+              AnimatedSwitcher(duration: const Duration(milliseconds: 250),
+                  child: Text(isFull ? 'Popunjeno' : _joined ? 'Otkaži prijavu' : 'Ja sam za!',
+                      key: ValueKey(isFull ? 'full' : _joined),
+                      style: TextStyle(color: isDark ? kDarkBg : Colors.white,
+                          fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.1))),
+            ])),
           ),
         ),
       ),
     );
   }
-
-  Widget _cloudWidget({double? top, double? bottom, double? left, double? right,
-    required double w, required double h}) {
-    return Positioned(top: top, bottom: bottom, left: left, right: right,
-        child: Container(width: w, height: h,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.50),
-              borderRadius: BorderRadius.circular(h / 2),
-            )));
-  }
 }
 
-class _BackButton extends StatefulWidget {
+// ── BACK BUTTON ──────────────────────────────────────────────────────────────
+
+class _BackBtn extends StatefulWidget {
   final VoidCallback onTap;
-  const _BackButton({required this.onTap});
-  @override State<_BackButton> createState() => _BackButtonState();
+  const _BackBtn({required this.onTap});
+  @override State<_BackBtn> createState() => _BackBtnState();
 }
 
-class _BackButtonState extends State<_BackButton> with SingleTickerProviderStateMixin {
+class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   late final Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-    _s = Tween<double>(begin: 1.0, end: 0.86)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.86).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
 
@@ -1621,19 +1386,10 @@ class _BackButtonState extends State<_BackButton> with SingleTickerProviderState
       onTapUp: (_) { _c.reverse(); widget.onTap(); },
       onTapCancel: () => _c.reverse(),
       child: ScaleTransition(scale: _s,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.28),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
-          ),
-        ),
-      ),
+          child: Container(width: 40, height: 40,
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.28), borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16))),
     );
   }
 }

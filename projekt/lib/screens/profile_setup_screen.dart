@@ -113,6 +113,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   void _goNext() {
+    // ── Validate current step before proceeding ──────────────────────────────
+    final err = _validateStep(_step);
+    if (err != null) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: kPrimaryDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
+    }
+
     if (_step == 2) {
       widget.onSave(_data);
       Navigator.pop(context);
@@ -127,6 +142,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  String? _validateStep(int step) {
+    switch (step) {
+      case 0:
+        if (_data.photoPaths.length < 2) return 'Dodaj najmanje 2 fotografije.';
+        if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null)
+          return 'Datum rođenja je obavezan.';
+        final year = _data.birthYear!;
+        final now  = DateTime.now().year;
+        if (year < 1900 || year > now - 16) return 'Unesi ispravnu godinu rođenja.';
+        final month = _data.birthMonth!;
+        if (month < 1 || month > 12) return 'Unesi ispravan mjesec (1–12).';
+        final day = _data.birthDay!;
+        if (day < 1 || day > 31) return 'Unesi ispravan dan (1–31).';
+        if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
+        final h = int.tryParse(_data.height!);
+        if (h == null || h < 100 || h > 250) return 'Visina mora biti između 100 i 250 cm.';
+        if (_data.gender == null) return 'Spol je obavezan.';
+        if (_data.hairColor == null) return 'Boja kose je obavezna.';
+        if (_data.eyeColor == null) return 'Boja očiju je obavezna.';
+        if (_data.piercing == null) return 'Odaberi pirsing (da/ne).';
+        if (_data.tattoo == null) return 'Odaberi tetovažu (da/ne).';
+        return null;
+      case 1:
+        if (_data.interests.isEmpty) return 'Odaberi najmanje 1 interes.';
+        return null;
+      case 2:
+        if (_data.iceBreaker.trim().isEmpty) return 'Unesite icebreaker — kratki opis kako ti priđi.';
+        return null;
+    }
+    return null;
   }
 
   @override

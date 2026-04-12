@@ -280,7 +280,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _navigateTo(const OrganizeMeetupScreen());
+                  },
                   child: const Text('Nadogradi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 )),
               ]),
@@ -321,9 +324,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         body: FadeTransition(
           opacity: _entryFade,
           child: Stack(children: [
-            Positioned(
-              top: 0, left: 0, right: 0,
-              height: mapH,
+            Positioned(top: 0, left: 0, right: 0, height: mapH,
               child: _buildMapCard(mq, mapH),
             ),
             Positioned(
@@ -356,25 +357,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: GestureDetector(
                     onTap: () => _onNavTap(3),
                     child: Stack(alignment: Alignment.center, children: [
-                      Container(
-                        width: avatarD + 12, height: avatarD + 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: kPrimaryDark.withOpacity(0.08),
-                        ),
-                      ),
-                      Container(
-                        width: avatarD + 6, height: avatarD + 6,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                      ),
+                      Container(width: avatarD + 12, height: avatarD + 12,
+                          decoration: BoxDecoration(shape: BoxShape.circle,
+                              color: kPrimaryDark.withOpacity(0.08))),
+                      Container(width: avatarD + 6, height: avatarD + 6,
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
                       Container(
                         width: avatarD, height: avatarD,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: kPrimaryLight,
-                          boxShadow: [
-                            BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8)),
-                          ],
+                          shape: BoxShape.circle, color: kPrimaryLight,
+                          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8))],
                         ),
                         child: const Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
                       ),
@@ -383,10 +375,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            Positioned(
-              bottom: 0, left: 0, right: 0,
-              child: _buildNavBar(mq),
-            ),
+            Positioned(bottom: 0, left: 0, right: 0, child: _buildNavBar(mq)),
           ]),
         ),
       ),
@@ -436,11 +425,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            Positioned(
-              top: mq.padding.top + 16,
-              left: 16,
-              child: _AnimatedLogo(glowAnim: _logoGlow),
-            ),
+            Positioned(top: mq.padding.top + 16, left: 16,
+                child: _AnimatedLogo(glowAnim: _logoGlow)),
             Positioned(
               bottom: 0, left: 0, right: 0, height: 72,
               child: DecoratedBox(
@@ -467,8 +453,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.meetcute.app',
-                maxZoom: 20,
-                retinaMode: true,
+                maxZoom: 20, retinaMode: true,
               ),
               MarkerLayer(markers: [
                 Marker(point: _userLocation, width: 60, height: 60, child: _buildMarker()),
@@ -536,8 +521,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           duration: const Duration(milliseconds: 340),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(20),
+            color: cardBg, borderRadius: BorderRadius.circular(20),
             border: Border.all(color: primary.withOpacity(0.10), width: 1),
             boxShadow: [BoxShadow(color: primary.withOpacity(0.10), blurRadius: 14, offset: const Offset(0, 4))],
           ),
@@ -547,8 +531,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Icon(
                 _locationEnabled ? Icons.location_on_rounded : Icons.location_off_rounded,
                 key: ValueKey(_locationEnabled),
-                color: _locationEnabled ? primary : primary.withOpacity(0.28),
-                size: 15,
+                color: _locationEnabled ? primary : primary.withOpacity(0.28), size: 15,
               ),
             ),
             const SizedBox(width: 7),
@@ -576,9 +559,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     width: kToggleKnob, height: kToggleKnob,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _locationEnabled
-                          ? (isDark ? kDarkBg : Colors.white)
-                          : primary.withOpacity(0.28),
+                      color: _locationEnabled ? (isDark ? kDarkBg : Colors.white) : primary.withOpacity(0.28),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)],
                     ),
                   ),
@@ -610,14 +591,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMenuCard() {
-    final isDark = ThemeState.instance.isDark;
+    final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(kCardRadius),
+        color: cardBg, borderRadius: BorderRadius.circular(kCardRadius),
         border: Border.all(color: primary.withOpacity(0.06), width: 1),
         boxShadow: [
           BoxShadow(color: primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, 8)),
@@ -634,14 +614,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onTap: () => _navigateTo(const EventsNearbyScreen()),
           showDivider: true,
         ),
-        // ── ORGANIZIRAJ SUSRET — OTKLJUČANO ─────────────────────────────────
+        // ── ORGANIZIRAJ SUSRET — PRO LOCKED ─────────────────────────────────
         _buildMenuItem(
           index: 1,
           icon: Icons.coffee_rounded,
           label: 'Organiziraj susret',
           subtitle: 'Stvori vlastiti događaj ☕',
-          isLocked: false,                           // <-- unlock
-          onTap: () => _navigateTo(const OrganizeMeetupScreen()), // <-- novi screen
+          isLocked: true,
+          onTap: _showPremiumDialog,
           showDivider: true,
         ),
         _buildMenuItem(
@@ -681,10 +661,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   duration: const Duration(milliseconds: 340),
                   width: 48, height: 48,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      colors: [accent, primary.withOpacity(0.12)],
-                    ),
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [accent, primary.withOpacity(0.12)]),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: primary.withOpacity(0.08)),
                   ),
@@ -715,7 +693,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.lock_rounded, color: kGoldLock, size: 11),
                     SizedBox(width: 3),
-                    Text('PRO', style: TextStyle(color: kGoldLock, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                    Text('PRO', style: TextStyle(color: kGoldLock, fontSize: 10,
+                        fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                   ]),
                 ),
                 AnimatedContainer(
@@ -732,20 +711,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (showDivider) Container(
         margin: const EdgeInsets.symmetric(horizontal: kMenuPadH),
         height: 1,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [
-            Colors.transparent,
-            primary.withOpacity(0.08),
-            Colors.transparent,
-          ]),
-        ),
+        decoration: BoxDecoration(gradient: LinearGradient(colors: [
+          Colors.transparent, primary.withOpacity(0.08), Colors.transparent,
+        ])),
       ),
     ]);
   }
 
   Widget _buildNavBar(MediaQueryData mq) {
-    final isDark = ThemeState.instance.isDark;
-    final navBg  = isDark ? kDarkCard : Colors.white;
+    final isDark     = ThemeState.instance.isDark;
+    final navBg      = isDark ? kDarkCard : Colors.white;
     final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     return AnimatedBuilder(
       animation: _navBarSlide,
@@ -767,7 +742,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNavItem(int index) {
-    final isDark = ThemeState.instance.isDark;
+    final isDark     = ThemeState.instance.isDark;
     final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
     final item = kNavItems[index];
@@ -793,15 +768,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isSelected ? item.selected : item.unselected,
-                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
-                      size: kNavIconSize),
+                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25), size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4,
-                  child: NavBadge(count: chatUnread),
-                ),
-                if (showNotifBadge) Positioned(top: 2, right: 4,
-                  child: NavBadge(count: notifUnread),
-                ),
+                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
             AnimatedContainer(
@@ -818,7 +788,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 }
 
 
-// animirani logo
+// ── ANIMATED LOGO ─────────────────────────────────────────────────────────────
+
 class _AnimatedLogo extends StatefulWidget {
   final Animation<double> glowAnim;
   const _AnimatedLogo({required this.glowAnim});
@@ -827,7 +798,6 @@ class _AnimatedLogo extends StatefulWidget {
 
 class _AnimatedLogoState extends State<_AnimatedLogo>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _floatCtrl;
 
   @override
@@ -836,12 +806,7 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
     _floatCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 3200))..repeat(reverse: true);
   }
-
-  @override
-  void dispose() {
-    _floatCtrl.dispose();
-    super.dispose();
-  }
+  @override void dispose() { _floatCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -850,102 +815,44 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
       builder: (_, __) {
         final floatY = math.sin(_floatCtrl.value * math.pi) * 4.0;
         final aura   = widget.glowAnim.value;
-
         return Transform.translate(
           offset: Offset(0, floatY),
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 115, height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(26),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kPrimaryDark.withOpacity(0.30 + aura * 0.20),
-                      blurRadius: 20 + aura * 14,
-                      spreadRadius: -2,
-                    ),
-                  ],
-                ),
+          child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+            Container(
+              width: 115, height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [BoxShadow(
+                  color: kPrimaryDark.withOpacity(0.30 + aura * 0.20),
+                  blurRadius: 20 + aura * 14, spreadRadius: -2,
+                )],
               ),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: kPrimaryDark.withOpacity(0.72),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.14),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        height: 22,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  height: 40, padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: kPrimaryDark.withOpacity(0.72),
+                    border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
+                  ),
+                  child: Center(
+                    child: Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ]),
         );
       },
     );
   }
 }
 
-class _GlassMapBtn extends StatefulWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _GlassMapBtn({required this.icon, required this.onTap});
-  @override State<_GlassMapBtn> createState() => _GlassMapBtnState();
-}
-
-class _GlassMapBtnState extends State<_GlassMapBtn> with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _s;
-  @override void initState() {
-    super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-    _s = Tween<double>(begin: 1.0, end: 0.88).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
-  }
-  @override void dispose() { _c.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _c.forward(),
-      onTapUp: (_) { _c.reverse(); widget.onTap(); },
-      onTapCancel: () => _c.reverse(),
-      child: ScaleTransition(scale: _s,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.22),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.35), width: 1),
-              ),
-              child: Icon(widget.icon, color: Colors.white, size: 19),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ── NAV BADGE ─────────────────────────────────────────────────────────────────
 
 class NavBadge extends StatelessWidget {
   final int count;

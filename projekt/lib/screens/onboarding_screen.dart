@@ -17,19 +17,16 @@ class RegistrationState {
   RegistrationState._();
   bool isRegistered = false;
   String username = '';
+  String displayName = ''; // ime koje se prikazuje na profilu
 }
 
 ProfileSetupData globalProfileData = ProfileSetupData(
-  photoPaths: [
-    //'assets/images/profile_1.png',
-    //'assets/images/profile_2.png',
-    //'assets/images/profile_3.png',
-  ],
-  iceBreaker: '...',
+  photoPaths: [],
+  iceBreaker: '',
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SHARED HELPERS
+// SHARED PAINTERS & PARTICLES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _Particle {
@@ -49,7 +46,7 @@ class _BgPainter extends CustomPainter {
     final wave = math.sin(t * math.pi * 2);
     final gradient = LinearGradient(
       begin: Alignment(-0.4 + wave * 0.25, -1),
-      end:   Alignment(0.4 - wave * 0.18, 1),
+      end: Alignment(0.4 - wave * 0.18, 1),
       colors: const [
         Color(0xFF0D0003), Color(0xFF3A0610), Color(0xFF700D25),
         Color(0xFF3A0610), Color(0xFF060001),
@@ -121,21 +118,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       ));
     }
 
-    _bgCtrl       = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))..repeat();
+    _bgCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))..repeat();
     _particleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 9000))..repeat();
-    _heartCtrl    = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
+    _heartCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
 
-    _logoCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
+    _logoCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
     _logoBigFade = CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.0, 0.45, curve: Curves.easeOut));
-    _logoMoveUp  = CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.38, 0.78, curve: Curves.easeOutCubic));
-    _logoShrink  = CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.38, 0.78, curve: Curves.easeOutCubic));
+    _logoMoveUp = CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.38, 0.78, curve: Curves.easeOutCubic));
+    _logoShrink = CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.38, 0.78, curve: Curves.easeOutCubic));
 
     _contentCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 820));
     _contentFade = CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut);
     _contentSlide = Tween<Offset>(begin: const Offset(0, 0.09), end: Offset.zero)
         .animate(CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOutCubic));
 
-    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
+    _btnCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
     _btnScale = Tween<double>(begin: 1.0, end: 0.93)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
 
@@ -186,8 +183,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           builder: (_, child) => Stack(children: [
             Positioned.fill(child: CustomPaint(painter: _BgPainter(_bgCtrl.value))),
             ..._particles.map((p) {
-              final t   = (_particleCtrl.value + p.phase) % 1.0;
-              final yp  = (p.y - t * p.speed * 0.26 + 1.0) % 1.0;
+              final t = (_particleCtrl.value + p.phase) % 1.0;
+              final yp = (p.y - t * p.speed * 0.26 + 1.0) % 1.0;
               final pulse = math.sin(t * math.pi * 2) * 0.5 + 0.5;
               return Positioned(
                 left: p.x * sw, top: yp * sh,
@@ -209,7 +206,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child!,
           ]),
           child: Stack(children: [
-            // LOGO
             AnimatedBuilder(
               animation: Listenable.merge([_logoCtrl, _heartCtrl]),
               builder: (_, __) {
@@ -231,7 +227,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 );
               },
             ),
-            // CONTENT
             Positioned(
               top: mq.padding.top + 112, left: 0, right: 0, bottom: 0,
               child: FadeTransition(
@@ -249,25 +244,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildContent(MediaQueryData mq) {
-    // Feature list — plain list to avoid tuple map issues
     final features = <Map<String, String>>[
-      {'emoji': '', 'text': 'izaći i istraživati'},
-      {'emoji': '', 'text': 'otkriti događanja u blizini'},
-      {'emoji': '', 'text': 'organizirati vlastita događanja'},
+      {'emoji': '🗺️', 'text': 'izaći i istraživati'},
+      {'emoji': '🎉', 'text': 'otkriti događanja u blizini'},
+      {'emoji': '☕', 'text': 'organizirati vlastita događanja'},
     ];
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const SizedBox(height: 70),
-
-        // HELLO CUTIE
         ShaderMask(
           shaderCallback: (b) => const LinearGradient(
             colors: [Colors.white, Color(0xFFFFD0DC)],
             begin: Alignment.topLeft, end: Alignment.bottomRight,
           ).createShader(b),
-          child: const Text('Pozdrav!',
+          child: const Text('Pozdrav! 💘',
               style: TextStyle(
                 color: Colors.white, fontSize: 34,
                 fontWeight: FontWeight.w900, letterSpacing: -0.8, height: 1.1,
@@ -280,8 +272,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               fontSize: 17, fontWeight: FontWeight.w400, letterSpacing: 0.3,
             )),
         const SizedBox(height: 24),
-
-        // FEATURE LIST
         for (int i = 0; i < features.length; i++)
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
@@ -304,10 +294,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ]),
             ),
           ),
-
         const SizedBox(height: 14),
-
-        // and meet your match?
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 950),
@@ -327,8 +314,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   border: Border.all(color: Colors.white.withOpacity(0.16), width: 1),
                 ),
                 child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text('✨', style: TextStyle(fontSize: 22)),
                   SizedBox(width: 10),
-                  Text('I upoznati svoju osobu?', style: TextStyle(
+                  Text('i upoznati svoju osobu?', style: TextStyle(
                     color: Colors.white, fontSize: 18,
                     fontWeight: FontWeight.w800, letterSpacing: -0.2,
                   )),
@@ -337,10 +325,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
         ),
-
         const Spacer(),
-
-        // CTA BUTTON
         Padding(
           padding: EdgeInsets.fromLTRB(28, 0, 28, mq.padding.bottom + 30),
           child: ScaleTransition(
@@ -382,8 +367,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
                       SizedBox(width: 10),
                       Text('Napravi moj profil!', style: TextStyle(
-                          color: Colors.white, fontSize: 18,
-                          fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+                        color: Colors.white, fontSize: 18,
+                        fontWeight: FontWeight.w800, letterSpacing: 0.2,
+                      )),
                       SizedBox(width: 10),
                       Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
                     ]),
@@ -397,8 +383,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 }
-
-// ── LOGO ────────────────────────────────────────────────────────────────────
 
 class _LogoBadge extends StatelessWidget {
   final double heartT;
@@ -463,20 +447,37 @@ class RegistrationScreen extends StatefulWidget {
   @override State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
+
 class _RegistrationScreenState extends State<RegistrationScreen>
     with TickerProviderStateMixin {
 
-  final _usernameCtrl  = TextEditingController();
-  final _passwordCtrl  = TextEditingController();
-  final _confirmCtrl   = TextEditingController();
-  final _userFocus     = FocusNode();
-  final _passFocus     = FocusNode();
-  final _confirmFocus  = FocusNode();
+  // ── Controllers ─────────────────────────────────────────────────────────────
+  final _nameCtrl     = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl  = TextEditingController();
 
-  bool _obscurePass = true;
+  final _nameFocus    = FocusNode();
+  final _userFocus    = FocusNode();
+  final _passFocus    = FocusNode();
+  final _confirmFocus = FocusNode();
+
+  bool _obscurePass    = true;
   bool _obscureConfirm = true;
   String? _error;
 
+  // Password rules
+  bool get _hasMin8   => _passwordCtrl.text.length >= 8;
+  bool get _hasUpper  => _passwordCtrl.text.contains(RegExp(r'[A-Z]'));
+  bool get _hasNum    => _passwordCtrl.text.contains(RegExp(r'[0-9]'));
+  bool get _passMatch => _passwordCtrl.text == _confirmCtrl.text && _confirmCtrl.text.isNotEmpty;
+
+  bool get _valid =>
+      _nameCtrl.text.trim().length >= 2 &&
+          _usernameCtrl.text.trim().length >= 3 &&
+          _hasMin8 && _hasUpper && _hasNum && _passMatch;
+
+  // ── Animations ───────────────────────────────────────────────────────────────
   late final AnimationController _bgCtrl;
   late final AnimationController _entryCtrl;
   late final AnimationController _btnCtrl;
@@ -484,64 +485,84 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   late final Animation<Offset> _entrySlide;
   late final Animation<double> _btnScale;
 
+  // stagger for fields
+  late final List<AnimationController> _fieldCtrls;
+
   @override
   void initState() {
     super.initState();
-    _bgCtrl    = AnimationController(vsync: this, duration: const Duration(milliseconds: 3800))..repeat();
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
+    _bgCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..repeat();
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 130));
-    _btnScale = Tween<double>(begin: 1.0, end: 0.93)
+    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 120));
+    _btnScale = Tween<double>(begin: 1.0, end: 0.94)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
+
+    _fieldCtrls = List.generate(5,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 500)));
+
     _entryCtrl.forward();
+    Future.microtask(() async {
+      for (final c in _fieldCtrls) {
+        await Future.delayed(const Duration(milliseconds: 90));
+        if (mounted) c.forward();
+      }
+    });
+
+    for (final c in [_nameCtrl, _usernameCtrl, _passwordCtrl, _confirmCtrl]) {
+      c.addListener(() { if (mounted) setState(() => _error = null); });
+    }
   }
 
   @override
   void dispose() {
     _bgCtrl.dispose(); _entryCtrl.dispose(); _btnCtrl.dispose();
-    _usernameCtrl.dispose(); _passwordCtrl.dispose(); _confirmCtrl.dispose();
-    _userFocus.dispose(); _passFocus.dispose(); _confirmFocus.dispose();
+    for (final c in _fieldCtrls) c.dispose();
+    _nameCtrl.dispose(); _usernameCtrl.dispose();
+    _passwordCtrl.dispose(); _confirmCtrl.dispose();
+    _nameFocus.dispose(); _userFocus.dispose();
+    _passFocus.dispose(); _confirmFocus.dispose();
     super.dispose();
   }
 
-  bool get _valid =>
-      _usernameCtrl.text.trim().length >= 3 &&
-          _passwordCtrl.text.length >= 6 &&
-          _passwordCtrl.text == _confirmCtrl.text;
-
-  void _ch(String _) => setState(() => _error = null);
-
   void _submit() async {
     FocusScope.of(context).unfocus();
+    if (_nameCtrl.text.trim().length < 2) {
+      setState(() => _error = 'Ime mora imati najmanje 2 znaka.'); return;
+    }
     if (_usernameCtrl.text.trim().length < 3) {
       setState(() => _error = 'Username mora imati najmanje 3 znaka.'); return;
     }
-    if (_passwordCtrl.text.length < 6) {
-      setState(() => _error = 'Lozinka mora imati najmanje 6 znakova.'); return;
+    if (!_hasMin8 || !_hasUpper || !_hasNum) {
+      setState(() => _error = 'Lozinka ne zadovoljava uvjete.'); return;
     }
-    if (_passwordCtrl.text != _confirmCtrl.text) {
+    if (!_passMatch) {
       setState(() => _error = 'Lozinke se ne podudaraju.'); return;
     }
-    setState(() => _error = null);
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward(); await _btnCtrl.reverse();
-    RegistrationState.instance.username = _usernameCtrl.text.trim();
+    RegistrationState.instance.username    = _usernameCtrl.text.trim();
+    RegistrationState.instance.displayName = _nameCtrl.text.trim();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(PageRouteBuilder(
       pageBuilder: (_, a, __) => const RegistrationProfileSetupScreen(),
       transitionsBuilder: (_, a, __, child) => FadeTransition(
         opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
         child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero)
+          position: Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero)
               .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ),
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 420),
     ));
   }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ════════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -549,188 +570,366 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: AnimatedBuilder(
-          animation: _bgCtrl,
-          builder: (_, child) => Stack(children: [
-            Positioned.fill(child: CustomPaint(painter: _BgPainter(_bgCtrl.value))),
-            child!,
-          ]),
-          child: FadeTransition(
-            opacity: _entryFade,
-            child: SlideTransition(
-              position: _entrySlide,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(24, mq.padding.top + 16, 24, mq.padding.bottom + 24),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        backgroundColor: const Color(0xFF0A0005),
+        body: Stack(children: [
 
-                  // back
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.09),
-                        borderRadius: BorderRadius.circular(13),
-                        border: Border.all(color: Colors.white.withOpacity(0.13)),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 15),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+          // ── Animated background ───────────────────────────────────────────
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _bgCtrl,
+              builder: (_, __) {
+                final t = _bgCtrl.value;
+                return CustomPaint(painter: _RegBgPainter(t));
+              },
+            ),
+          ),
 
-                  ShaderMask(
-                    shaderCallback: (b) => const LinearGradient(
-                      colors: [Colors.white, Color(0xFFFFD0DC)],
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    ).createShader(b),
-                    child: const Text('Stvori\nračun',
-                        style: TextStyle(color: Colors.white, fontSize: 38,
-                            fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Samo još jedan korak do tvog Cutieja!',
-                      style: TextStyle(color: Colors.white.withOpacity(0.50), fontSize: 15)),
-                  const SizedBox(height: 34),
-
-                  // FORM CARD
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                      child: Container(
-                        padding: const EdgeInsets.all(22),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.07),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: Colors.white.withOpacity(0.13), width: 1),
-                        ),
-                        child: Column(children: [
-                          _field(_usernameCtrl, _userFocus, 'Username',
-                              Icons.person_rounded, next: _passFocus),
-                          const SizedBox(height: 12),
-                          _field(_passwordCtrl, _passFocus, 'Lozinka',
-                              Icons.lock_rounded, next: _confirmFocus,
-                              obs: _obscurePass,
-                              tog: () => setState(() => _obscurePass = !_obscurePass)),
-                          const SizedBox(height: 12),
-                          _field(_confirmCtrl, _confirmFocus, 'Potvrdi lozinku',
-                              Icons.lock_outline_rounded,
-                              obs: _obscureConfirm,
-                              tog: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                              action: TextInputAction.done,
-                              onSub: (_) => _submit()),
-
-                          if (_error != null) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withOpacity(0.13),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.redAccent.withOpacity(0.26)),
-                              ),
-                              child: Row(children: [
-                                const Icon(Icons.error_outline_rounded,
-                                    color: Colors.redAccent, size: 15),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(_error!,
-                                    style: const TextStyle(color: Colors.redAccent, fontSize: 12.5))),
-                              ]),
-                            ),
-                          ],
-                        ]),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // SUBMIT
-                  ScaleTransition(
-                    scale: _btnScale,
-                    child: GestureDetector(
-                      onTapDown: (_) { if (_valid) _btnCtrl.forward(); },
-                      onTapUp: (_) { _btnCtrl.reverse(); _submit(); },
-                      onTapCancel: () => _btnCtrl.reverse(),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: _valid
-                              ? const [Color(0xFFFF6B8A), Color(0xFF700D25)]
-                              : [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.04)]),
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: _valid ? [BoxShadow(
-                            color: const Color(0xFF700D25).withOpacity(0.46),
-                            blurRadius: 20, offset: const Offset(0, 8),
-                          )] : [],
-                          border: Border.all(color: _valid
-                              ? Colors.transparent : Colors.white.withOpacity(0.10)),
-                        ),
-                        child: Center(child: Text('Dalje →', style: TextStyle(
-                          color: _valid ? Colors.white : Colors.white.withOpacity(0.28),
-                          fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 0.3,
-                        ))),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                  Center(child: Text('🔒 Tvoji podaci su sigurni i privatni',
-                      style: TextStyle(color: Colors.white.withOpacity(0.28), fontSize: 12))),
-                ]),
+          // ── Main content ──────────────────────────────────────────────────
+          Positioned.fill(
+            child: FadeTransition(
+              opacity: _entryFade,
+              child: SlideTransition(
+                position: _entrySlide,
+                child: _buildContent(mq),
               ),
             ),
           ),
-        ),
+        ]),
       ),
     );
   }
 
-  Widget _field(TextEditingController ctrl, FocusNode focus,
-      String hint, IconData icon, {
-        FocusNode? next, bool obs = false, VoidCallback? tog,
-        TextInputAction action = TextInputAction.next,
-        void Function(String)? onSub,
-      }) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.10), width: 1),
+  Widget _buildContent(MediaQueryData mq) {
+    return Column(children: [
+
+      // ── TOP: logo + heading ───────────────────────────────────────────────
+      Expanded(
+        flex: 4,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(32, mq.padding.top + 20, 32, 0),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+            // back
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                ),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 14),
+              ),
+            ),
+
+            const Spacer(),
+
+            // logo mark
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: kPrimaryDark,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.55), blurRadius: 18, offset: const Offset(0, 6))],
+              ),
+              child: Center(
+                child: Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.favorite_rounded, color: Colors.white, size: 22)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const Text('Stvori račun',
+                style: TextStyle(color: Colors.white, fontSize: 32,
+                    fontWeight: FontWeight.w800, letterSpacing: -1.0, height: 1.1)),
+            const SizedBox(height: 8),
+            Text('Ispuni podatke i pronađi svoju osobu.',
+                style: TextStyle(color: Colors.white.withOpacity(0.42),
+                    fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: 0.1)),
+
+            const SizedBox(height: 28),
+          ]),
+        ),
       ),
-      child: Row(children: [
-        const SizedBox(width: 15),
-        Icon(icon, color: Colors.white.withOpacity(0.38), size: 19),
-        const SizedBox(width: 11),
-        Expanded(
-          child: TextField(
-            controller: ctrl, focusNode: focus, obscureText: obs,
-            onChanged: _ch, textInputAction: action,
+
+      // ── BOTTOM: form card ─────────────────────────────────────────────────
+      Expanded(
+        flex: 7,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 40, offset: const Offset(0, -8)),
+            ],
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(28, 32, 28, mq.padding.bottom + 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+              // ── Osobni podaci ─────────────────────────────────────────────
+              _staggerField(0, _regField(
+                ctrl: _nameCtrl, focus: _nameFocus, next: _userFocus,
+                label: 'Ime', hint: 'Npr. Ana, Luka...',
+                icon: Icons.person_outline_rounded,
+              )),
+              const SizedBox(height: 14),
+              _staggerField(1, _regField(
+                ctrl: _usernameCtrl, focus: _userFocus, next: _passFocus,
+                label: 'Username', hint: 'korisnickoime',
+                icon: Icons.alternate_email_rounded,
+              )),
+              const SizedBox(height: 24),
+
+              // ── Lozinka ───────────────────────────────────────────────────
+              _staggerField(2, _regField(
+                ctrl: _passwordCtrl, focus: _passFocus, next: _confirmFocus,
+                label: 'Lozinka', hint: '••••••••',
+                icon: Icons.lock_outline_rounded,
+                obscure: _obscurePass,
+                togObs: () => setState(() => _obscurePass = !_obscurePass),
+              )),
+              const SizedBox(height: 14),
+              _staggerField(3, _regField(
+                ctrl: _confirmCtrl, focus: _confirmFocus,
+                label: 'Ponovi lozinku', hint: '••••••••',
+                icon: Icons.lock_outline_rounded,
+                obscure: _obscureConfirm,
+                togObs: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                action: TextInputAction.done,
+                onSub: (_) => _submit(),
+              )),
+
+              // ── Pravila lozinke ispod oba unosa ───────────────────────────
+              const SizedBox(height: 16),
+              _staggerField(4, _passwordRules()),
+
+              // ── Error ─────────────────────────────────────────────────────
+              if (_error != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEEEE),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.30)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 15),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12.5))),
+                  ]),
+                ),
+              ],
+
+              const SizedBox(height: 28),
+
+              // ── Submit ────────────────────────────────────────────────────
+              ScaleTransition(
+                scale: _btnScale,
+                child: GestureDetector(
+                  onTapDown: (_) { if (_valid) _btnCtrl.forward(); },
+                  onTapUp: (_) { _btnCtrl.reverse(); _submit(); },
+                  onTapCancel: () => _btnCtrl.reverse(),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: _valid ? kPrimaryDark : const Color(0xFFE0D4D6),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: _valid ? [BoxShadow(
+                        color: kPrimaryDark.withOpacity(0.38),
+                        blurRadius: 18, offset: const Offset(0, 7),
+                      )] : [],
+                    ),
+                    child: Center(child: Text(
+                      'Nastavi',
+                      style: TextStyle(
+                        color: _valid ? Colors.white : Colors.white.withOpacity(0.50),
+                        fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.2,
+                      ),
+                    )),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              Center(child: Text('Tvoji podaci su sigurni i privatni.',
+                  style: TextStyle(color: Colors.black.withOpacity(0.28), fontSize: 12))),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  // ── Stagger wrapper ──────────────────────────────────────────────────────────
+  Widget _staggerField(int idx, Widget child) {
+    final ctrl = idx < _fieldCtrls.length ? _fieldCtrls[idx] : _fieldCtrls.last;
+    return AnimatedBuilder(
+      animation: ctrl,
+      builder: (_, c) {
+        final v = Curves.easeOutCubic.transform(ctrl.value.clamp(0.0, 1.0));
+        return Opacity(opacity: v, child: Transform.translate(offset: Offset(0, 18 * (1 - v)), child: c));
+      },
+      child: child,
+    );
+  }
+
+  // ── Field widget ─────────────────────────────────────────────────────────────
+  Widget _regField({
+    required TextEditingController ctrl,
+    required FocusNode focus,
+    FocusNode? next,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool obscure = false,
+    VoidCallback? togObs,
+    TextInputAction action = TextInputAction.next,
+    void Function(String)? onSub,
+  }) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(
+        color: Colors.black.withOpacity(0.55),
+        fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4,
+      )),
+      const SizedBox(height: 6),
+      Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F3F4),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1),
+        ),
+        child: Row(children: [
+          const SizedBox(width: 14),
+          Icon(icon, color: kPrimaryDark.withOpacity(0.38), size: 17),
+          const SizedBox(width: 10),
+          Expanded(child: TextField(
+            controller: ctrl, focusNode: focus, obscureText: obscure,
+            textInputAction: action,
+            onChanged: (_) { if (mounted) setState(() {}); },
             onSubmitted: onSub ?? (_) { next?.requestFocus(); },
-            style: const TextStyle(color: Colors.white, fontSize: 15),
+            style: const TextStyle(color: Color(0xFF1A0A12), fontSize: 15),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.26), fontSize: 15),
+              hintStyle: TextStyle(color: Colors.black.withOpacity(0.25), fontSize: 15),
               border: InputBorder.none, isDense: true,
             ),
+          )),
+          if (togObs != null) GestureDetector(
+            onTap: togObs,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: kPrimaryDark.withOpacity(0.30), size: 17),
+            ),
           ),
-        ),
-        if (tog != null) GestureDetector(
-          onTap: tog,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 13),
-            child: Icon(obs ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                color: Colors.white.withOpacity(0.30), size: 18),
-          ),
-        ),
+        ]),
+      ),
+    ]);
+  }
+
+  // ── Password rules ───────────────────────────────────────────────────────────
+  Widget _passwordRules() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F3F4),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Uvjeti za lozinku', style: TextStyle(
+          color: Colors.black.withOpacity(0.45),
+          fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5,
+        )),
+        const SizedBox(height: 10),
+        _rule('Najmanje 8 znakova', _hasMin8),
+        const SizedBox(height: 6),
+        _rule('Jedno veliko slovo (A–Z)', _hasUpper),
+        const SizedBox(height: 6),
+        _rule('Jedan broj (0–9)', _hasNum),
+        const SizedBox(height: 6),
+        _rule('Lozinke se podudaraju', _passMatch),
       ]),
     );
   }
+
+  Widget _rule(String text, bool ok) {
+    return Row(children: [
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: 16, height: 16,
+        decoration: BoxDecoration(
+          color: ok ? kPrimaryDark : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: ok ? kPrimaryDark : Colors.black.withOpacity(0.18),
+            width: 1.5,
+          ),
+        ),
+        child: ok ? const Icon(Icons.check_rounded, color: Colors.white, size: 9) : null,
+      ),
+      const SizedBox(width: 8),
+      Text(text, style: TextStyle(
+        color: ok ? kPrimaryDark : Colors.black.withOpacity(0.38),
+        fontSize: 12, fontWeight: ok ? FontWeight.w600 : FontWeight.w400,
+      )),
+    ]);
+  }
 }
+
+// ── Registration background painter ─────────────────────────────────────────
+
+class _RegBgPainter extends CustomPainter {
+  final double t;
+  _RegBgPainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Deep dark base
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0xFF0A0005));
+
+    // Subtle gradient overlay
+    final wave = math.sin(t * math.pi * 2);
+    final grad = LinearGradient(
+      begin: Alignment(wave * 0.3 - 0.2, -1),
+      end: Alignment(-wave * 0.2 + 0.2, 0.6),
+      colors: const [Color(0xFF2A0510), Color(0xFF0A0005)],
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height * 0.65),
+      Paint()..shader = grad.createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.65)),
+    );
+
+    // Single soft glow — top center
+    final glowPaint = Paint()..shader = RadialGradient(
+      colors: [
+        const Color(0xFF700D25).withOpacity(0.30 + wave.abs() * 0.08),
+        Colors.transparent,
+      ],
+    ).createShader(Rect.fromCenter(
+      center: Offset(size.width * 0.5, size.height * 0.18),
+      width: size.width * 1.2, height: size.height * 0.55,
+    ));
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.5, size.height * 0.18),
+        width: size.width * 1.2, height: size.height * 0.55,
+      ),
+      glowPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RegBgPainter o) => true;
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REGISTRATION PROFILE SETUP SCREEN
@@ -765,23 +964,37 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
   @override void dispose() { _progressCtrl.dispose(); _pageCtrl.dispose(); super.dispose(); }
 
   void _next() {
+    final err = _validateStep();
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: kPrimaryDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
+    }
+
     if (_step == 2) {
       globalProfileData = _data;
       RegistrationState.instance.isRegistered = true;
-      final username = RegistrationState.instance.username;
-      // Push welcome notification
+      final name = RegistrationState.instance.displayName.isNotEmpty
+          ? RegistrationState.instance.displayName
+          : RegistrationState.instance.username;
       NotificationState.instance.push(AppNotification(
         id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
         type: NotifType.general,
-        title: 'Dobrodošao/la na MeetCute, $username! ',
-        body: 'Tvoj profil je spreman! Istraži događanja oko sebe, organiziraj vlastita i pronađi svog Cutieja. Kreni van — avantura čeka!',
+        title: 'Dobrodošao/la na MeetCute, $name! 💘',
+        body: 'Tvoj profil je spreman! Istraži događanja oko sebe i pronađi svog Cutieja. 🚀✨',
         accentColor: const Color(0xFF700D25),
         timestamp: DateTime.now(),
         isRead: false,
       ));
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (ctx, a, __) => _WelcomeWrapper(username: username),
+          pageBuilder: (ctx, a, __) => _WelcomeWrapper(username: name),
           transitionsBuilder: (_, a, __, child) => FadeTransition(
               opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: child),
           transitionDuration: const Duration(milliseconds: 600),
@@ -795,6 +1008,34 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
     setState(() => _step++);
     _progressCtrl.animateTo((_step + 1) / 3,
         duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+  }
+
+  String? _validateStep() {
+    if (_step == 0) {
+      if (_data.photoPaths.length < 2) return 'Potrebne su najmanje 2 fotografije.';
+      if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null)
+        return 'Datum rođenja je obavezan.';
+      final y = _data.birthYear!;
+      final now = DateTime.now().year;
+      if (y < 1900 || y > now - 16) return 'Unesite ispravnu godinu (mora imati 16+ godina).';
+      if (_data.birthMonth! < 1 || _data.birthMonth! > 12) return 'Neispravan mjesec (1–12).';
+      if (_data.birthDay! < 1 || _data.birthDay! > 31) return 'Neispravan dan (1–31).';
+      if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
+      final h = int.tryParse(_data.height ?? '');
+      if (h == null || h < 100 || h > 250) return 'Unesite ispravnu visinu (100–250 cm).';
+      if (_data.gender == null) return 'Spol je obavezan.';
+      if (_data.hairColor == null) return 'Boja kose je obavezna.';
+      if (_data.eyeColor == null) return 'Boja očiju je obavezna.';
+      if (_data.piercing == null) return 'Odaberite opciju za pirsing.';
+      if (_data.tattoo == null) return 'Odaberite opciju za tetovažu.';
+    }
+    if (_step == 1) {
+      if (_data.interests.isEmpty) return 'Odaberi najmanje jedan interes.';
+    }
+    if (_step == 2) {
+      if (_data.iceBreaker.trim().isEmpty) return 'Icebreaker rečenica je obavezna.';
+    }
+    return null;
   }
 
   @override
@@ -812,40 +1053,30 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
 
   Widget _buildStep(MediaQueryData mq) {
     switch (_step) {
-      case 0:  return ProfileStep1(key: ValueKey('step1'), data: _data, onChange: (d) => setState(() => _data = d), mq: mq);
-      case 1:  return ProfileStep2(key: ValueKey('step2'), data: _data, onChange: (d) => setState(() => _data = d));
-      default: return ProfileStep3(key: ValueKey('step3'), data: _data, onChange: (d) => setState(() => _data = d));
+      case 0:  return ProfileStep1(key: const ValueKey('s1'), data: _data, onChange: (d) => setState(() => _data = d), mq: mq);
+      case 1:  return ProfileStep2(key: const ValueKey('s2'), data: _data, onChange: (d) => setState(() => _data = d));
+      default: return ProfileStep3(key: const ValueKey('s3'), data: _data, onChange: (d) => setState(() => _data = d));
     }
   }
 }
-
-// ── Shared header (identical look to ProfileSetupScreen) ────────────────────
 
 class _SetupHeader extends StatelessWidget {
   final int step;
   final AnimationController progressCtrl;
   final MediaQueryData mq;
   const _SetupHeader({required this.step, required this.progressCtrl, required this.mq});
-
-  static const _subtitles = [
-    'Slike & osobni podaci',
-    'Tvoji interesi',
-    'Tvoj icebreaker',
-  ];
-
+  static const _subs = ['Slike & osobni podaci', 'Tvoji interesi', 'Tvoj icebreaker'];
   @override
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.only(top: mq.padding.top + 16, left: 22, right: 22, bottom: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Izrada profila',
-            style: TextStyle(color: kPrimaryDark, fontSize: 28,
-                fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        Text('Izrada profila', style: TextStyle(color: kPrimaryDark, fontSize: 28,
+            fontWeight: FontWeight.w900, letterSpacing: -0.5)),
         const SizedBox(height: 2),
-        Text(_subtitles[step],
-            style: TextStyle(color: kPrimaryDark.withOpacity(0.45),
-                fontSize: 13.5, fontWeight: FontWeight.w500)),
+        Text(_subs[step], style: TextStyle(color: kPrimaryDark.withOpacity(0.45),
+            fontSize: 13.5, fontWeight: FontWeight.w500)),
         const SizedBox(height: 14),
         AnimatedBuilder(
           animation: progressCtrl,
@@ -870,24 +1101,18 @@ class _SetupHeader extends StatelessWidget {
 }
 
 class _SetupNextBtn extends StatefulWidget {
-  final int step;
-  final VoidCallback onTap;
-  final MediaQueryData mq;
+  final int step; final VoidCallback onTap; final MediaQueryData mq;
   const _SetupNextBtn({required this.step, required this.onTap, required this.mq});
   @override State<_SetupNextBtn> createState() => _SetupNextBtnState();
 }
-
 class _SetupNextBtnState extends State<_SetupNextBtn> with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _s;
+  late AnimationController _c; late Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _s = Tween<double>(begin: 1.0, end: 0.94)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.94).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-
   @override
   Widget build(BuildContext context) {
     final label = widget.step == 2 ? 'Završetak' : 'Iduće';
@@ -903,17 +1128,14 @@ class _SetupNextBtnState extends State<_SetupNextBtn> with SingleTickerProviderS
               height: 48, padding: const EdgeInsets.symmetric(horizontal: 32),
               decoration: BoxDecoration(
                 color: kPrimaryDark, borderRadius: BorderRadius.circular(28),
-                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.30),
-                    blurRadius: 16, offset: const Offset(0, 5))],
+                boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.30), blurRadius: 16, offset: const Offset(0, 5))],
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(label, style: const TextStyle(
-                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(width: 10),
                 Container(
                   width: 28, height: 28,
-                  decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.20), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.20), shape: BoxShape.circle),
                   child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
                 ),
               ]),
@@ -926,7 +1148,7 @@ class _SetupNextBtnState extends State<_SetupNextBtn> with SingleTickerProviderS
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// WELCOME WRAPPER
+// WELCOME WRAPPER + DIALOG
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _WelcomeWrapper extends StatefulWidget {
@@ -934,14 +1156,12 @@ class _WelcomeWrapper extends StatefulWidget {
   const _WelcomeWrapper({required this.username});
   @override State<_WelcomeWrapper> createState() => _WelcomeWrapperState();
 }
-
 class _WelcomeWrapperState extends State<_WelcomeWrapper> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showDialog());
   }
-
   void _showDialog() {
     showGeneralDialog(
       context: context,
@@ -964,42 +1184,31 @@ class _WelcomeWrapperState extends State<_WelcomeWrapper> {
       },
     );
   }
-
   @override
   Widget build(BuildContext context) => const HomeScreen();
 }
 
-// ── WELCOME DIALOG ────────────────────────────────────────────────────────────
-
 class _WelcomeDialog extends StatefulWidget {
-  final String username;
-  final VoidCallback onClose;
+  final String username; final VoidCallback onClose;
   const _WelcomeDialog({required this.username, required this.onClose});
   @override State<_WelcomeDialog> createState() => _WelcomeDialogState();
 }
-
 class _WelcomeDialogState extends State<_WelcomeDialog> with TickerProviderStateMixin {
   late final AnimationController _sparkCtrl;
   late final AnimationController _floatCtrl;
   final _rng = math.Random(17);
   final List<_Particle> _sparks = [];
-
   @override
   void initState() {
     super.initState();
     for (int i = 0; i < 14; i++) {
-      _sparks.add(_Particle(
-        x: _rng.nextDouble(), y: _rng.nextDouble(),
-        size: 2.5 + _rng.nextDouble() * 5,
-        speed: 0.35 + _rng.nextDouble() * 0.5,
-        phase: _rng.nextDouble(),
-        opacity: 0.10 + _rng.nextDouble() * 0.20,
-      ));
+      _sparks.add(_Particle(x: _rng.nextDouble(), y: _rng.nextDouble(),
+          size: 2.5 + _rng.nextDouble() * 5, speed: 0.35 + _rng.nextDouble() * 0.5,
+          phase: _rng.nextDouble(), opacity: 0.10 + _rng.nextDouble() * 0.20));
     }
     _sparkCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
     _floatCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
   }
-
   @override void dispose() { _sparkCtrl.dispose(); _floatCtrl.dispose(); super.dispose(); }
 
   @override
@@ -1011,57 +1220,34 @@ class _WelcomeDialogState extends State<_WelcomeDialog> with TickerProviderState
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white, borderRadius: BorderRadius.circular(32),
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.22),
-                blurRadius: 48, offset: const Offset(0, 18))],
+            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.22), blurRadius: 48, offset: const Offset(0, 18))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(32),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-
-              // banner
               AnimatedBuilder(
                 animation: Listenable.merge([_sparkCtrl, _floatCtrl]),
-                builder: (_, __) => SizedBox(
-                  height: 118,
-                  child: Stack(children: [
-                    Positioned.fill(child: Container(decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [Color(0xFF700D25), Color(0xFF3A0610), Color(0xFF0D0003)],
-                      ),
-                    ))),
-                    ..._sparks.map((s) {
-                      final t  = (_sparkCtrl.value + s.phase) % 1.0;
-                      final op = math.sin(t * math.pi).clamp(0.0, 1.0);
-                      return Positioned(
-                        left: s.x * 340, top: s.y * 118,
+                builder: (_, __) => SizedBox(height: 118, child: Stack(children: [
+                  Positioned.fill(child: Container(decoration: const BoxDecoration(
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [Color(0xFF700D25), Color(0xFF3A0610), Color(0xFF0D0003)]),
+                  ))),
+                  ..._sparks.map((s) {
+                    final t = (_sparkCtrl.value + s.phase) % 1.0;
+                    final op = math.sin(t * math.pi).clamp(0.0, 1.0);
+                    return Positioned(left: s.x * 340, top: s.y * 118,
                         child: Opacity(opacity: op * s.opacity,
-                            child: Icon(Icons.star_rounded, color: kPrimaryLight, size: s.size)),
-                      );
-                    }),
-                    Positioned(left: 18, top: 14 + _floatCtrl.value * 7,
-                        child: Icon(Icons.favorite_rounded,
-                            color: kPrimaryLight.withOpacity(0.20), size: 17)),
-                    Positioned(right: 26, top: 26 - _floatCtrl.value * 5,
-                        child: Icon(Icons.favorite_rounded,
-                            color: kPrimaryLight.withOpacity(0.15), size: 12)),
-                    Center(child: Transform.translate(
-                      offset: Offset(0, -3 + _floatCtrl.value * 7),
-                      child: Container(
-                        width: 66, height: 66,
-                        decoration: BoxDecoration(
-                          color: kPrimaryLight.withOpacity(0.13),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: kPrimaryLight.withOpacity(0.26), width: 2),
-                        ),
-                        child: const Icon(Icons.celebration_rounded, color: Colors.white, size: 30),
-                      ),
-                    )),
-                  ]),
-                ),
+                            child: Icon(Icons.star_rounded, color: kPrimaryLight, size: s.size)));
+                  }),
+                  Center(child: Transform.translate(
+                    offset: Offset(0, -3 + _floatCtrl.value * 7),
+                    child: Container(width: 66, height: 66,
+                        decoration: BoxDecoration(color: kPrimaryLight.withOpacity(0.13),
+                            shape: BoxShape.circle, border: Border.all(color: kPrimaryLight.withOpacity(0.26), width: 2)),
+                        child: const Icon(Icons.celebration_rounded, color: Colors.white, size: 30)),
+                  )),
+                ])),
               ),
-
-              // content
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 20, 22, 24),
                 child: Column(children: [
@@ -1070,43 +1256,25 @@ class _WelcomeDialogState extends State<_WelcomeDialog> with TickerProviderState
                       style: const TextStyle(color: kPrimaryDark, fontSize: 19,
                           fontWeight: FontWeight.w900, letterSpacing: -0.4)),
                   const SizedBox(height: 10),
-                  Text(
-                    'Tvoj profil je spreman! 🎉\n\n'
-                        'Istraži događanja u blizini, organiziraj vlastita događanja, '
-                        'pričaj s novim ljudima — '
-                        'tvoj Cutie čeka negdje vani. Sretno!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: kPrimaryDark.withOpacity(0.60),
-                        fontSize: 13.5, height: 1.65),
-                  ),
+                  Text('Tvoj profil je spreman! 🎉\n\nIstraži događanja u blizini i pronađi svog Cutieja. Kreni van — avantura čeka! ✨',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: kPrimaryDark.withOpacity(0.60), fontSize: 13.5, height: 1.65)),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 7, runSpacing: 7,
-                    alignment: WrapAlignment.center,
-                    children: const [
-                      _WChip('Istražuj događanja'),
-                      _WChip('Upoznaj nove ljude'),
-                      _WChip('Zabavi se'),
-                      _WChip('Pronađi ljubav!')
-                    ],
-                  ),
+                  Wrap(spacing: 7, runSpacing: 7, alignment: WrapAlignment.center,
+                      children: const [_WChip('🗺️ Exploriraj'), _WChip('🎉 Events'),
+                        _WChip('☕ Meetupi'), _WChip('💬 Chat')]),
                   const SizedBox(height: 20),
                   GestureDetector(
                     onTap: widget.onClose,
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFFFF6B8A), Color(0xFF700D25)]),
+                        gradient: const LinearGradient(colors: [Color(0xFFFF6B8A), Color(0xFF700D25)]),
                         borderRadius: BorderRadius.circular(25),
-                        boxShadow: [BoxShadow(
-                          color: kPrimaryDark.withOpacity(0.33),
-                          blurRadius: 16, offset: const Offset(0, 6),
-                        )],
+                        boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.33), blurRadius: 16, offset: const Offset(0, 6))],
                       ),
-                      child: const Center(child: Text('Krećemo! ',
-                          style: TextStyle(color: Colors.white, fontSize: 16,
-                              fontWeight: FontWeight.w800))),
+                      child: const Center(child: Text('Krećemo! 🚀',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
                     ),
                   ),
                 ]),
@@ -1125,11 +1293,8 @@ class _WChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: kPrimaryLight, borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: kPrimaryDark.withOpacity(0.10)),
-    ),
-    child: Text(label, style: const TextStyle(
-        color: kPrimaryDark, fontSize: 12, fontWeight: FontWeight.w600)),
+    decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: kPrimaryDark.withOpacity(0.10))),
+    child: Text(label, style: const TextStyle(color: kPrimaryDark, fontSize: 12, fontWeight: FontWeight.w600)),
   );
 }
