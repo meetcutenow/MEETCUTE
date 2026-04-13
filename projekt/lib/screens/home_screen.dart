@@ -256,10 +256,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   decoration: BoxDecoration(color: kGoldLock.withOpacity(0.13), shape: BoxShape.circle),
                   child: const Icon(Icons.star_rounded, color: kGoldLock, size: 32)),
               const SizedBox(height: 16),
-              const Text('Premium 🔒',
+              const Text('Premium',
                   style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 20)),
               const SizedBox(height: 10),
-              Text('Ova funkcija je dostupna samo Premium korisnicima. Otključaj sve i pronađi svog Cutieja! 💘',
+              Text('Ova funkcija je dostupna samo Premium korisnicima. Otključaj sve i pronađi svog Cutieja!',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 13.5, height: 1.5)),
               const SizedBox(height: 24),
@@ -383,6 +383,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMapCard(MediaQueryData mq, double mapH) {
+    final isDark = ThemeState.instance.isDark;
+    // ── TAMNA MAPA u dark modu ─────────────────────────────────────────────
+    final tileUrl = isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
@@ -433,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, kSurface.withOpacity(0.7)],
+                    colors: [Colors.transparent, (isDark ? kDarkBg : kSurface).withOpacity(0.7)],
                   ),
                 ),
               ),
@@ -450,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                urlTemplate: tileUrl, // ← TAMNA MAPA u dark modu
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.meetcute.app',
                 maxZoom: 20, retinaMode: true,
@@ -614,12 +620,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onTap: () => _navigateTo(const EventsNearbyScreen()),
           showDivider: true,
         ),
-        // ── ORGANIZIRAJ SUSRET — PRO LOCKED ─────────────────────────────────
         _buildMenuItem(
           index: 1,
           icon: Icons.coffee_rounded,
           label: 'Organiziraj susret',
-          subtitle: 'Stvori vlastiti događaj ☕',
+          subtitle: 'Stvori vlastiti događaj',
           isLocked: true,
           onTap: _showPremiumDialog,
           showDivider: true,

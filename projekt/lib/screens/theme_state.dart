@@ -29,7 +29,7 @@ const Color kDarkCard     = Color(0xFF393737);
 const Color kDarkCardEl   = Color(0xFF5A5A61);
 const Color kDarkPrimary  = Color(0xFFBF8997);
 const Color kDarkAccent   = Color(0xFFF2A8B8);
-const Color kDarkText     = Color(0xFF785661);
+const Color kDarkText     = Color(0xFFB58E97);
 const Color kDarkTextSub  = Color(0xFF8E8E93);
 
 // ─── Getteri ────────────────────────────────────────────────────────
