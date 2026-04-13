@@ -219,21 +219,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
           const SizedBox(height: 10),
-          Text('izaci i istrazivati',
+          Text('izaći i istraživati',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.70),
                 fontSize: 15,
                 height: 1.55,
               )),
-          Text('otkriti dogadanja u blizini',
+          Text('otkriti događanja u blizini',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.70),
                 fontSize: 15,
                 height: 1.55,
               )),
-          Text('organizirati vlastita dogadanja',
+          Text('organizirati vlastita događanja',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.70),
@@ -471,7 +471,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       setState(() => _error = 'Ime mora imati najmanje 2 znaka.'); return;
     }
     if (_usernameCtrl.text.trim().length < 3) {
-      setState(() => _error = 'Korisnicko ime mora imati najmanje 3 znaka.'); return;
+      setState(() => _error = 'Korisničko ime mora imati najmanje 3 znaka.'); return;
     }
     if (!_hasMin8 || !_hasUpper || !_hasNum) {
       setState(() => _error = 'Lozinka ne zadovoljava uvjete.'); return;
@@ -571,17 +571,17 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                               const SizedBox(height: 6),
                               _stagger(0, _Field(
                                 ctrl: _nameCtrl, focus: _nameFocus,
-                                next: _userFocus, hint: 'Ana, Luka...',
+                                next: _userFocus, hint: 'npr. Noa',
                                 icon: Icons.person_outline_rounded,
                               )),
                               const SizedBox(height: 14),
 
                               // Username
-                              _stagger(1, _Lbl('Korisnicko ime')),
+                              _stagger(1, _Lbl('Korisničko ime')),
                               const SizedBox(height: 6),
                               _stagger(1, _Field(
                                 ctrl: _usernameCtrl, focus: _userFocus,
-                                next: _passFocus, hint: 'korisnickoime',
+                                next: _passFocus, hint: 'npr. noa123',
                                 icon: Icons.alternate_email_rounded,
                               )),
                               const SizedBox(height: 14),
@@ -921,8 +921,8 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
       NotificationState.instance.push(AppNotification(
         id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
         type: NotifType.general,
-        title: 'Dobrodosao/la na MeetCute, $name!',
-        body: 'Tvoj profil je spreman. Istrazuj i upoznaj ljude.',
+        title: 'Dobrodošao/la na MeetCute, $name!',
+        body: 'Tvoj profil je spreman. Istražuj i upoznaj ljude.',
         accentColor: _bordo,
         timestamp: DateTime.now(),
         isRead: false,
@@ -950,7 +950,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
     if (_step == 0) {
       if (_data.photoPaths.length < 2) return 'Potrebne su najmanje 2 fotografije.';
       if (_data.birthDay == null || _data.birthMonth == null ||
-          _data.birthYear == null) return 'Datum rodenja je obavezan.';
+          _data.birthYear == null) return 'Datum rođenja je obavezan.';
       final y = _data.birthYear!;
       if (y < 1900 || y > DateTime.now().year - 16) return 'Mora imati 16+ godina.';
       if (_data.birthMonth! < 1 || _data.birthMonth! > 12)
@@ -959,7 +959,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
         return 'Neispravan dan (1-31).';
       if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
       final h = int.tryParse(_data.height ?? '');
-      if (h == null || h < 100 || h > 250) return 'Visina: 100-250 cm.';
+      if (h == null || h < 50 || h > 250) return 'Visina: 50-250 cm.';
       if (_data.gender == null) return 'Spol je obavezan.';
       if (_data.hairColor == null) return 'Boja kose je obavezna.';
       if (_data.eyeColor == null) return 'Boja ociju je obavezna.';
@@ -969,7 +969,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
     if (_step == 1 && _data.interests.isEmpty)
       return 'Odaberi najmanje jedan interes.';
     if (_step == 2 && _data.iceBreaker.trim().isEmpty)
-      return 'Icebreaker recenica je obavezna.';
+      return 'Icebreaker rečenica je obavezna.';
     return null;
   }
 
@@ -1070,7 +1070,7 @@ class _SetupNextBtnState extends State<_SetupNextBtn>
 
   @override
   Widget build(BuildContext context) {
-    final label = widget.step == 2 ? 'Zavrsi' : 'Nastavi';
+    final label = widget.step == 2 ? 'Završi' : 'Nastavi';
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 10, 24, widget.mq.padding.bottom + 14),
       child: GestureDetector(
@@ -1195,7 +1195,7 @@ class _WelcomeDialog extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Dobrodosao/la,',
+                Text('Dobrodošao/la,',
                     style: TextStyle(color: _bordo.withOpacity(0.40),
                         fontSize: 12, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
@@ -1205,13 +1205,13 @@ class _WelcomeDialog extends StatelessWidget {
                 const SizedBox(height: 11),
                 Container(height: 1, color: _bordo.withOpacity(0.08)),
                 const SizedBox(height: 11),
-                Text('Tvoj profil je spreman. Istrazuj dogadanja '
+                Text('Tvoj profil je spreman. Istražuj događanja '
                     'i upoznaj ljude koji dijele tvoje interese.',
                     style: TextStyle(color: _bordo.withOpacity(0.52),
                         fontSize: 13.5, height: 1.55)),
                 const SizedBox(height: 18),
                 Wrap(spacing: 7, runSpacing: 7, children: const [
-                  _WChip('Dogadanja'), _WChip('Susreti'),
+                  _WChip('Događanja'), _WChip('Susreti'),
                   _WChip('Chat'), _WChip('Profil'),
                 ]),
                 const SizedBox(height: 20),
