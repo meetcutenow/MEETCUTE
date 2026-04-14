@@ -21,5 +21,3 @@ public class NotificationResponse {
 }
 
 // ── SECRET QUESTIONS ──────────────────────────────────────────
-
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

@@ -45,8 +45,3 @@ public class MatchSecretQuestion {
 
 // ── Conversation ────────────────────────────────────────────────
 
-@Entity
-@Table(name = "conversations")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
-@Builder

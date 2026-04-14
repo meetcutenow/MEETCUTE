@@ -20,4 +20,3 @@ public class ConversationResponse {
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

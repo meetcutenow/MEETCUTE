@@ -25,4 +25,3 @@ public interface UserPhotoRepository extends JpaRepository<UserPhoto, Long> {
     void resetPrimaryPhoto(@Param("userId") String userId);
 }
 
-@Repository

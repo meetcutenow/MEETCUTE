@@ -1,17 +1,15 @@
 package com.meetcute.backend.controller;
 
 import com.meetcute.backend.dto.*;
-import com.meetcute.backend.service.*;
+import com.meetcute.backend.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
@@ -19,22 +17,19 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest req) {
-        AuthResponse response = authService.register(req);
-        return ResponseEntity.ok(ApiResponse.ok("Registracija uspješna!", response));
+        return ResponseEntity.ok(ApiResponse.ok("Registracija uspješna!", authService.register(req)));
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest req) {
-        AuthResponse response = authService.login(req);
-        return ResponseEntity.ok(ApiResponse.ok("Prijava uspješna!", response));
+        return ResponseEntity.ok(ApiResponse.ok("Prijava uspješna!", authService.login(req)));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
             @Valid @RequestBody RefreshRequest req) {
-        AuthResponse response = authService.refresh(req.getRefreshToken());
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(authService.refresh(req.getRefreshToken())));
     }
 
     @PostMapping("/logout")
@@ -44,7 +39,3 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Odjava uspješna!", null));
     }
 }
-
-
-// ── USER CONTROLLER ───────────────────────────────────────────
-
