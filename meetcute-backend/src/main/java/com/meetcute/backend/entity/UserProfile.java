@@ -5,10 +5,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/UserProfile.java
-// ============================================================
-
 @Entity
 @Table(name = "user_profiles")
 @Getter @Setter
@@ -25,7 +21,6 @@ public class UserProfile {
     @JoinColumn(name = "user_id")
     private User user;
 
-    // ProfileStep1 — osobni podaci
     @Column(name = "birth_day")
     private Integer birthDay;
 
@@ -39,15 +34,15 @@ public class UserProfile {
     private Integer heightCm;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "gender", columnDefinition = "ENUM('žensko','muško','ostalo')")
+    @Column(name = "gender", columnDefinition = "ENUM('zensko','musko','ostalo')")
     private Gender gender;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "hair_color", columnDefinition = "ENUM('plava','smeđa','crna','crvena','sijeda','ostalo')")
+    @Column(name = "hair_color", columnDefinition = "ENUM('plava','smeda','crna','crvena','sijeda','ostalo')")
     private HairColor hairColor;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "eye_color", columnDefinition = "ENUM('smeđe','zelene','plave','sive')")
+    @Column(name = "eye_color", columnDefinition = "ENUM('smede','zelene','plave','sive')")
     private EyeColor eyeColor;
 
     @Column(name = "has_piercing")
@@ -56,9 +51,8 @@ public class UserProfile {
     @Column(name = "has_tattoo")
     private Boolean hasTattoo;
 
-    // Preferencije
     @Enumerated(EnumType.STRING)
-    @Column(name = "seeking_gender", columnDefinition = "ENUM('žensko','muško','oboje')")
+    @Column(name = "seeking_gender", columnDefinition = "ENUM('zensko','musko','oboje')")
     @Builder.Default
     private SeekingGender seekingGender = SeekingGender.oboje;
 
@@ -66,11 +60,9 @@ public class UserProfile {
     @Builder.Default
     private Integer maxDistancePrefM = 300;
 
-    // ProfileStep3
     @Column(name = "ice_breaker", length = 500)
     private String iceBreaker;
 
-    // Tajno pitanje
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "secret_question_id")
     private SecretQuestion secretQuestion;
@@ -99,9 +91,8 @@ public class UserProfile {
         updatedAt = LocalDateTime.now();
     }
 
-    // Enumi — točno kao u bazi
-    public enum Gender { žensko, muško, ostalo }
-    public enum HairColor { plava, smeđa, crna, crvena, sijeda, ostalo }
-    public enum EyeColor { smeđe, zelene, plave, sive }
-    public enum SeekingGender { žensko, muško, oboje }
+    public enum Gender { zensko, musko, ostalo }
+    public enum HairColor { plava, smeda, crna, crvena, sijeda, ostalo }
+    public enum EyeColor { smede, zelene, plave, sive }
+    public enum SeekingGender { zensko, musko, oboje }
 }

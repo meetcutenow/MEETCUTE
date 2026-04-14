@@ -2,12 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/UserLocation.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "user_locations")
@@ -43,3 +42,6 @@ public class UserLocation {
         updatedAt = LocalDateTime.now();
     }
 }
+
+// ── UserPhoto ────────────────────────────────────────────────────
+

@@ -10,10 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/service/NotificationService.java
-// ============================================================
-
 @Service
 @RequiredArgsConstructor
 public class NotificationService {

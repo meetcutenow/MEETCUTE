@@ -2,12 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/UserPhoto.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "user_photos")
@@ -27,9 +26,6 @@ public class UserPhoto {
     @Column(name = "photo_url", nullable = false, length = 512)
     private String photoUrl;
 
-    @Column(name = "cloudinary_public_id", length = 200)
-    private String cloudinaryPublicId;
-
     @Column(name = "photo_order")
     private Integer photoOrder;
 
@@ -45,3 +41,5 @@ public class UserPhoto {
         uploadedAt = LocalDateTime.now();
     }
 }
+
+// ── Like ─────────────────────────────────────────────────────────

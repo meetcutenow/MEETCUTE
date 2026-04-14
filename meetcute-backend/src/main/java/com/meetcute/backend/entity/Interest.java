@@ -2,10 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/Interest.java
-// ============================================================
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "interests")
@@ -27,3 +28,5 @@ public class Interest {
     @Column(length = 50)
     private String category;
 }
+
+// ── UserInterest ────────────────────────────────────────────────

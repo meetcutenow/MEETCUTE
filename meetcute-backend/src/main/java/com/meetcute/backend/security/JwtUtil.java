@@ -9,10 +9,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/security/JwtUtil.java
-// ============================================================
-
 @Component
 public class JwtUtil {
 
@@ -29,7 +25,6 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Generiraj access token (kratak — 15 min)
     public String generateAccessToken(String userId, String username) {
         return Jwts.builder()
                 .subject(userId)
@@ -41,7 +36,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Generiraj refresh token (dugi — 30 dana)
     public String generateRefreshToken(String userId) {
         return Jwts.builder()
                 .subject(userId)
@@ -52,12 +46,10 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Izvuci user ID iz tokena
     public String extractUserId(String token) {
         return parseClaims(token).getSubject();
     }
 
-    // Provjeri je li token validan
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
@@ -67,7 +59,6 @@ public class JwtUtil {
         }
     }
 
-    // Provjeri je li token istekao
     public boolean isTokenExpired(String token) {
         try {
             return parseClaims(token).getExpiration().before(new Date());

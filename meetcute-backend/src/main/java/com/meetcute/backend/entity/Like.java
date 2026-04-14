@@ -2,12 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/Like.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "likes")
@@ -26,8 +25,7 @@ public class Like {
     @Column(name = "liked_id", nullable = false, length = 36)
     private String likedId;
 
-    @Column(name = "context_type",
-            columnDefinition = "ENUM('proximity','event','map')")
+    @Column(name = "context_type", length = 20)
     @Builder.Default
     private String contextType = "proximity";
 
@@ -42,3 +40,5 @@ public class Like {
         likedAt = LocalDateTime.now();
     }
 }
+
+// ── Match ─────────────────────────────────────────────────────────

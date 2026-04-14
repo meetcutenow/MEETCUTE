@@ -27,12 +27,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/security/SecurityConfig.java
-// ============================================================
-
-// ── JWT FILTER ────────────────────────────────────────────────
-
 @Component
 @RequiredArgsConstructor
 class JwtAuthFilter extends OncePerRequestFilter {
@@ -70,29 +64,6 @@ class JwtAuthFilter extends OncePerRequestFilter {
     }
 }
 
-// ── USER DETAILS SERVICE ──────────────────────────────────────
-
-@Service
-@RequiredArgsConstructor
-class MeetCuteUserDetailsService implements UserDetailsService {
-
-    private final UserRepository userRepository;
-
-    @Override
-    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("Korisnik nije pronađen: " + userId));
-
-        return new org.springframework.security.core.userdetails.User(
-                user.getId(),
-                user.getPasswordHash(),
-                Collections.emptyList()
-        );
-    }
-}
-
-// ── SECURITY CONFIG ───────────────────────────────────────────
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -107,13 +78,11 @@ class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Javni endpointi — bez tokena
                 .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/events/**").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/questions").permitAll()
-                // Sve ostalo treba token
                 .anyRequest().authenticated()
             )
             .userDetailsService(userDetailsService)

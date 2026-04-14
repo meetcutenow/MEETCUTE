@@ -2,12 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/Match.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "matches")
@@ -59,3 +58,5 @@ public class Match {
         matchedAt = LocalDateTime.now();
     }
 }
+
+// ── MatchSecretQuestion ────────────────────────────────────────────

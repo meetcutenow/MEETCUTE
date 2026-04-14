@@ -2,12 +2,11 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/ConversationParticipant.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "conversation_participants")
@@ -48,7 +47,6 @@ public class ConversationParticipant {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     public static class ConversationParticipantId implements java.io.Serializable {
-
         @Column(name = "conversation_id")
         private String conversationId;
 
@@ -56,3 +54,6 @@ public class ConversationParticipant {
         private String userId;
     }
 }
+
+// ── Message ─────────────────────────────────────────────────────
+

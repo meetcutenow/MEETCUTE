@@ -8,10 +8,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/Event.java
-// ============================================================
-
 @Entity
 @Table(name = "events")
 @Getter @Setter
@@ -69,9 +65,6 @@ public class Event {
     @Column(name = "cover_photo_url", length = 512)
     private String coverPhotoUrl;
 
-    @Column(name = "cloudinary_public_id", length = 200)
-    private String cloudinaryPublicId;
-
     @Column(name = "card_color_hex", length = 7)
     @Builder.Default
     private String cardColorHex = "#6DD5E8";
@@ -101,3 +94,6 @@ public class Event {
         updatedAt = LocalDateTime.now();
     }
 }
+
+// ── EventAttendee ───────────────────────────────────────────────
+

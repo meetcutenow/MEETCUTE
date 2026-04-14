@@ -10,15 +10,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/exception/GlobalExceptionHandler.java
-//  Sve greške idu ovdje i vraćaju se kao JSON
-// ============================================================
-
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Validacijske greške (@NotBlank, @Min, itd.)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(
             MethodArgumentNotValidException ex) {
@@ -31,7 +25,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(message));
     }
 
-    // Poslovne greške (korisnik ne postoji, pogrešna lozinka, itd.)
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleRuntime(RuntimeException ex) {
         return ResponseEntity
@@ -39,7 +32,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // Neočekivane greške
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         return ResponseEntity

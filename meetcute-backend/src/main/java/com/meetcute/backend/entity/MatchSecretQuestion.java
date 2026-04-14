@@ -4,11 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/MatchSecretQuestion.java
-// ============================================================
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "match_secret_questions")
@@ -44,3 +42,11 @@ public class MatchSecretQuestion {
         createdAt = LocalDateTime.now();
     }
 }
+
+// ── Conversation ────────────────────────────────────────────────
+
+@Entity
+@Table(name = "conversations")
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder

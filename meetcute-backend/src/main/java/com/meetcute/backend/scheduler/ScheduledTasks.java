@@ -11,11 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/scheduler/ScheduledTasks.java
-//  Automatski taskovi koji se izvršavaju periodično
-// ============================================================
-
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -28,7 +23,6 @@ public class ScheduledTasks {
     private final RefreshTokenRepository refreshTokenRepository;
 
     // Svakih 5 minuta — provjeri matcheve starije od 30 min
-    // i pošalji notifikaciju za otključavanje chata
     @Scheduled(fixedDelay = 300000)
     @Transactional
     public void processMatchUnlocks() {
@@ -44,13 +38,11 @@ public class ScheduledTasks {
                 match.setUnlockNotifSentAt(LocalDateTime.now());
                 matchRepository.save(match);
 
-                // Notifikacija user_a
                 saveNotification(match.getUserA().getId(), "chat_locked",
                         "🔓 Chat se otključava!",
                         "Tvoj match mora odgovoriti na tvoje tajno pitanje.",
                         match.getId(), "#700D25");
 
-                // Notifikacija user_b
                 saveNotification(match.getUserB().getId(), "secret_question",
                         "🔒 Odgovori na tajno pitanje!",
                         "Odgovori točno da otključaš chat.",

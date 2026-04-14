@@ -6,10 +6,6 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/entity/User.java
-// ============================================================
-
 @Entity
 @Table(name = "users")
 @Getter @Setter

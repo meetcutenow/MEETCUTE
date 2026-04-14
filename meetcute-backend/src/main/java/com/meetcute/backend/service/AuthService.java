@@ -10,11 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-
-// ============================================================
-//  Datoteka: src/main/java/com/meetcute/backend/service/AuthService.java
-// ============================================================
 
 @Service
 @RequiredArgsConstructor
@@ -29,30 +24,21 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // ── REGISTRACIJA ──────────────────────────────────────────
-
     @Transactional
     public AuthResponse register(RegisterRequest req) {
 
-        // Provjeri username
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new RuntimeException("Korisničko ime već postoji.");
         }
 
-        // Provjeri dob (min 16 god)
         int age = LocalDateTime.now().getYear() - req.getBirthYear();
         if (age < 16) {
             throw new RuntimeException("Moraš imati najmanje 16 godina.");
         }
 
-        // Provjeri broj fotografija — fotografije se uploadaju zasebno
-        // pa ovdje samo kreiramo korisnika bez slika
-
-        // Pronađi tajno pitanje
         SecretQuestion question = questionRepository.findById(req.getSecretQuestionId())
                 .orElseThrow(() -> new RuntimeException("Tajno pitanje nije pronađeno."));
 
-        // Kreiraj korisnika
         User user = User.builder()
                 .username(req.getUsername().trim().toLowerCase())
                 .displayName(req.getDisplayName().trim())
@@ -61,16 +47,20 @@ public class AuthService {
 
         user = userRepository.save(user);
 
-        // Kreiraj profil
+        // Map gender string to enum safely
+        UserProfile.Gender gender = mapGender(req.getGender());
+        UserProfile.HairColor hairColor = mapHairColor(req.getHairColor());
+        UserProfile.EyeColor eyeColor = mapEyeColor(req.getEyeColor());
+
         UserProfile profile = UserProfile.builder()
                 .user(user)
                 .birthDay(req.getBirthDay())
                 .birthMonth(req.getBirthMonth())
                 .birthYear(req.getBirthYear())
                 .heightCm(req.getHeightCm())
-                .gender(UserProfile.Gender.valueOf(req.getGender()))
-                .hairColor(UserProfile.HairColor.valueOf(req.getHairColor()))
-                .eyeColor(UserProfile.EyeColor.valueOf(req.getEyeColor()))
+                .gender(gender)
+                .hairColor(hairColor)
+                .eyeColor(eyeColor)
                 .hasPiercing(req.getHasPiercing())
                 .hasTattoo(req.getHasTattoo())
                 .iceBreaker(req.getIceBreaker())
@@ -81,7 +71,6 @@ public class AuthService {
 
         profileRepository.save(profile);
 
-        // Spremi interese
         String finalUserId = user.getId();
         req.getInterestIds().forEach(interestId -> {
             interestLookup.findById(interestId).ifPresent(interest -> {
@@ -94,11 +83,8 @@ public class AuthService {
             });
         });
 
-        // Generiraj tokene
         return buildAuthResponse(user);
     }
-
-    // ── LOGIN ─────────────────────────────────────────────────
 
     @Transactional
     public AuthResponse login(LoginRequest req) {
@@ -117,13 +103,10 @@ public class AuthService {
             throw new RuntimeException("Pogrešno korisničko ime ili lozinka.");
         }
 
-        // Ažuriraj last_seen_at
         userRepository.updateLastSeen(user.getId());
 
         return buildAuthResponse(user);
     }
-
-    // ── REFRESH TOKEN ─────────────────────────────────────────
 
     @Transactional
     public AuthResponse refresh(String refreshToken) {
@@ -144,14 +127,11 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Korisnik nije pronađen."));
 
-        // Opozovi stari token
         stored.setIsRevoked(true);
         tokenRepository.save(stored);
 
         return buildAuthResponse(user);
     }
-
-    // ── LOGOUT ───────────────────────────────────────────────
 
     @Transactional
     public void logout(String refreshToken) {
@@ -162,13 +142,10 @@ public class AuthService {
         });
     }
 
-    // ── HELPER ───────────────────────────────────────────────
-
     private AuthResponse buildAuthResponse(User user) {
         String accessToken  = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
-        // Spremi refresh token u bazu
         RefreshToken tokenEntity = RefreshToken.builder()
                 .user(user)
                 .tokenHash(hashToken(refreshToken))
@@ -191,7 +168,39 @@ public class AuthService {
     }
 
     private String hashToken(String token) {
-        // Jednostavan hash za storage (ne bcrypt — preskup za tokene)
         return Integer.toHexString(token.hashCode()) + token.substring(token.length() - 8);
+    }
+
+    // Safe enum mapping methods
+    private UserProfile.Gender mapGender(String value) {
+        if (value == null) return UserProfile.Gender.ostalo;
+        return switch (value.toLowerCase().replace("ž", "z").replace("š", "s").replace("ć", "c").replace("č", "c")) {
+            case "zensko", "žensko", "female" -> UserProfile.Gender.zensko;
+            case "musko", "muško", "male" -> UserProfile.Gender.musko;
+            default -> UserProfile.Gender.ostalo;
+        };
+    }
+
+    private UserProfile.HairColor mapHairColor(String value) {
+        if (value == null) return UserProfile.HairColor.ostalo;
+        return switch (value.toLowerCase()) {
+            case "plava" -> UserProfile.HairColor.plava;
+            case "smeda", "smeđa", "smedja" -> UserProfile.HairColor.smeda;
+            case "crna" -> UserProfile.HairColor.crna;
+            case "crvena" -> UserProfile.HairColor.crvena;
+            case "sijeda" -> UserProfile.HairColor.sijeda;
+            default -> UserProfile.HairColor.ostalo;
+        };
+    }
+
+    private UserProfile.EyeColor mapEyeColor(String value) {
+        if (value == null) return UserProfile.EyeColor.smede;
+        return switch (value.toLowerCase()) {
+            case "smede", "smeđe", "smedje" -> UserProfile.EyeColor.smede;
+            case "zelene" -> UserProfile.EyeColor.zelene;
+            case "plave" -> UserProfile.EyeColor.plave;
+            case "sive" -> UserProfile.EyeColor.sive;
+            default -> UserProfile.EyeColor.smede;
+        };
     }
 }
