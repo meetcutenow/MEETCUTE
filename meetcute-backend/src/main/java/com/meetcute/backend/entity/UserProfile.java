@@ -34,27 +34,27 @@ public class UserProfile {
     private Integer heightCm;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "gender", columnDefinition = "ENUM('zensko','musko','ostalo')")
+    @Column(name = "gender")
     private Gender gender;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "hair_color", columnDefinition = "ENUM('plava','smeda','crna','crvena','sijeda','ostalo')")
+    @Column(name = "hair_color")
     private HairColor hairColor;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "eye_color", columnDefinition = "ENUM('smede','zelene','plave','sive')")
+    @Column(name = "eye_color")
     private EyeColor eyeColor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seeking_gender")
+    @Builder.Default
+    private SeekingGender seekingGender = SeekingGender.oboje;
 
     @Column(name = "has_piercing")
     private Boolean hasPiercing;
 
     @Column(name = "has_tattoo")
     private Boolean hasTattoo;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "seeking_gender", columnDefinition = "ENUM('zensko','musko','oboje')")
-    @Builder.Default
-    private SeekingGender seekingGender = SeekingGender.oboje;
 
     @Column(name = "max_distance_pref_m")
     @Builder.Default
