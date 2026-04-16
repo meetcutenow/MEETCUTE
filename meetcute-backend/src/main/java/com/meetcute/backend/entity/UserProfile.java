@@ -45,10 +45,9 @@ public class UserProfile {
     @Column(name = "eye_color")
     private EyeColor eyeColor;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "seeking_gender")
+    @Column(name = "seeking_gender", length = 20)
     @Builder.Default
-    private SeekingGender seekingGender = SeekingGender.oboje;
+    private String seekingGender = "sve";
 
     @Column(name = "has_piercing")
     private Boolean hasPiercing;
@@ -59,6 +58,12 @@ public class UserProfile {
     @Column(name = "max_distance_pref_m")
     @Builder.Default
     private Integer maxDistancePrefM = 300;
+
+    @Column(name = "pref_age_from")
+    private Integer prefAgeFrom;
+
+    @Column(name = "pref_age_to")
+    private Integer prefAgeTo;
 
     @Column(name = "ice_breaker", length = 500)
     private String iceBreaker;
@@ -94,5 +99,4 @@ public class UserProfile {
     public enum Gender { zensko, musko, ostalo }
     public enum HairColor { plava, smeda, crna, crvena, sijeda, ostalo }
     public enum EyeColor { smede, zelene, plave, sive }
-    public enum SeekingGender { zensko, musko, oboje }
 }

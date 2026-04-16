@@ -36,6 +36,12 @@ public class AuthService {
             throw new RuntimeException("Moraš imati najmanje 16 godina.");
         }
 
+        // Validacija pref age raspona
+        if (req.getPrefAgeFrom() != null && req.getPrefAgeTo() != null
+                && req.getPrefAgeFrom() > req.getPrefAgeTo()) {
+            throw new RuntimeException("Gornja granica dobi mora biti veća od donje.");
+        }
+
         SecretQuestion question = questionRepository.findById(req.getSecretQuestionId())
                 .orElseThrow(() -> new RuntimeException("Tajno pitanje nije pronađeno."));
 
@@ -47,10 +53,14 @@ public class AuthService {
 
         user = userRepository.save(user);
 
-        // Map gender string to enum safely
         UserProfile.Gender gender = mapGender(req.getGender());
         UserProfile.HairColor hairColor = mapHairColor(req.getHairColor());
         UserProfile.EyeColor eyeColor = mapEyeColor(req.getEyeColor());
+
+        // seekingGender — normaliziramo na 'zensko'/'musko'/'sve'
+        String seekingGender = req.getSeekingGender() != null
+                ? req.getSeekingGender().trim().toLowerCase()
+                : "sve";
 
         UserProfile profile = UserProfile.builder()
                 .user(user)
@@ -67,6 +77,9 @@ public class AuthService {
                 .secretQuestion(question)
                 .secretAnswer(passwordEncoder.encode(
                         req.getSecretAnswer().trim().toLowerCase()))
+                .seekingGender(seekingGender)
+                .prefAgeFrom(req.getPrefAgeFrom())
+                .prefAgeTo(req.getPrefAgeTo())
                 .build();
 
         profileRepository.save(profile);
@@ -171,36 +184,35 @@ public class AuthService {
         return Integer.toHexString(token.hashCode()) + token.substring(token.length() - 8);
     }
 
-    // Safe enum mapping methods
     private UserProfile.Gender mapGender(String value) {
         if (value == null) return UserProfile.Gender.ostalo;
         return switch (value.toLowerCase().replace("ž", "z").replace("š", "s").replace("ć", "c").replace("č", "c")) {
             case "zensko", "žensko", "female" -> UserProfile.Gender.zensko;
-            case "musko", "muško", "male" -> UserProfile.Gender.musko;
-            default -> UserProfile.Gender.ostalo;
+            case "musko", "muško", "male"     -> UserProfile.Gender.musko;
+            default                            -> UserProfile.Gender.ostalo;
         };
     }
 
     private UserProfile.HairColor mapHairColor(String value) {
         if (value == null) return UserProfile.HairColor.ostalo;
         return switch (value.toLowerCase()) {
-            case "plava" -> UserProfile.HairColor.plava;
-            case "smeda", "smeđa", "smedja" -> UserProfile.HairColor.smeda;
-            case "crna" -> UserProfile.HairColor.crna;
-            case "crvena" -> UserProfile.HairColor.crvena;
-            case "sijeda" -> UserProfile.HairColor.sijeda;
-            default -> UserProfile.HairColor.ostalo;
+            case "plava"                     -> UserProfile.HairColor.plava;
+            case "smeda", "smeđa", "smedja"  -> UserProfile.HairColor.smeda;
+            case "crna"                      -> UserProfile.HairColor.crna;
+            case "crvena"                    -> UserProfile.HairColor.crvena;
+            case "sijeda"                    -> UserProfile.HairColor.sijeda;
+            default                          -> UserProfile.HairColor.ostalo;
         };
     }
 
     private UserProfile.EyeColor mapEyeColor(String value) {
         if (value == null) return UserProfile.EyeColor.smede;
         return switch (value.toLowerCase()) {
-            case "smede", "smeđe", "smedje" -> UserProfile.EyeColor.smede;
-            case "zelene" -> UserProfile.EyeColor.zelene;
-            case "plave" -> UserProfile.EyeColor.plave;
-            case "sive" -> UserProfile.EyeColor.sive;
-            default -> UserProfile.EyeColor.smede;
+            case "smede", "smeđe", "smedje"  -> UserProfile.EyeColor.smede;
+            case "zelene"                    -> UserProfile.EyeColor.zelene;
+            case "plave"                     -> UserProfile.EyeColor.plave;
+            case "sive"                      -> UserProfile.EyeColor.sive;
+            default                          -> UserProfile.EyeColor.smede;
         };
     }
 }

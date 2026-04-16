@@ -3,7 +3,6 @@ package com.meetcute.backend.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -64,5 +63,16 @@ public class RegisterRequest {
 
     @NotBlank(message = "Odgovor na tajno pitanje je obavezan")
     private String secretAnswer;
-}
 
+    // Preference — obavezno
+    @NotBlank(message = "Tražim spol je obavezan")
+    private String seekingGender;
+
+    @NotNull(message = "Minimalna dob preference je obavezna")
+    @Min(16) @Max(99)
+    private Integer prefAgeFrom;
+
+    @NotNull(message = "Maksimalna dob preference je obavezna")
+    @Min(16) @Max(99)
+    private Integer prefAgeTo;
+}

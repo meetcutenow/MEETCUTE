@@ -7,6 +7,9 @@ import 'home_screen.dart'
 import 'profile_setup_screen.dart';
 import 'onboarding_screen.dart' show globalProfileData, RegistrationState;
 import '../services/profile_storage.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'auth_state.dart';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -128,6 +131,25 @@ class _ProfileScreenState extends State<ProfileScreen>
           _staggerCtrl.forward();
         });
         await ProfileStorage.saveProfile(saved);
+
+        // Sync s backendom
+        if (AuthState.instance.isLoggedIn) {
+          try {
+            await http.put(
+              Uri.parse('http://localhost:8080/api/users/me'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ${AuthState.instance.accessToken}',
+              },
+              body: jsonEncode({
+                if (saved.iceBreaker.isNotEmpty) 'iceBreaker': saved.iceBreaker,
+                if (saved.seekingGender != null) 'seekingGender': saved.seekingGender,
+                if (saved.prefAgeFrom != null)   'prefAgeFrom': saved.prefAgeFrom,
+                if (saved.prefAgeTo != null)     'prefAgeTo': saved.prefAgeTo,
+              }),
+            );
+          } catch (_) {}
+        }
       },
     );
     Navigator.push(context, PageRouteBuilder(

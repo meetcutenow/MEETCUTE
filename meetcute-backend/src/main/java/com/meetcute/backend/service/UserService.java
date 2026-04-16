@@ -4,18 +4,13 @@ import com.meetcute.backend.dto.*;
 import com.meetcute.backend.entity.*;
 import com.meetcute.backend.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.Year;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -47,14 +42,12 @@ public class UserService {
         UserProfile profile = profileRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Profil nije pronađen."));
 
-        if (req.getIceBreaker() != null) profile.setIceBreaker(req.getIceBreaker());
-        if (req.getSeekingGender() != null) {
-            try {
-                profile.setSeekingGender(UserProfile.SeekingGender.valueOf(req.getSeekingGender()));
-            } catch (IllegalArgumentException ignored) { }
-        }
+        if (req.getIceBreaker() != null)       profile.setIceBreaker(req.getIceBreaker());
+        if (req.getSeekingGender() != null)    profile.setSeekingGender(req.getSeekingGender().trim().toLowerCase());
         if (req.getMaxDistancePrefM() != null) profile.setMaxDistancePrefM(req.getMaxDistancePrefM());
-        if (req.getIsVisible() != null) profile.setIsVisible(req.getIsVisible());
+        if (req.getIsVisible() != null)        profile.setIsVisible(req.getIsVisible());
+        if (req.getPrefAgeFrom() != null)      profile.setPrefAgeFrom(req.getPrefAgeFrom());
+        if (req.getPrefAgeTo() != null)        profile.setPrefAgeTo(req.getPrefAgeTo());
 
         profileRepository.save(profile);
         User user = userRepository.findById(userId).orElseThrow();
@@ -66,7 +59,6 @@ public class UserService {
         User user = userRepository.getReferenceById(userId);
         UserLocation location = locationRepository.findById(userId)
                 .orElse(UserLocation.builder().user(user).build());
-
         location.setLatitude(req.getLatitude());
         location.setLongitude(req.getLongitude());
         location.setCity(req.getCity());
@@ -109,13 +101,12 @@ public class UserService {
         ProfileResponse profileResp = null;
         if (user.getProfile() != null) {
             UserProfile p = user.getProfile();
-            int age = p.getBirthYear() != null
-                    ? Year.now().getValue() - p.getBirthYear() : 0;
+            int age = p.getBirthYear() != null ? Year.now().getValue() - p.getBirthYear() : 0;
             profileResp = ProfileResponse.builder()
                     .birthYear(p.getBirthYear())
                     .age(age)
                     .gender(p.getGender() != null ? p.getGender().name() : null)
-                    .seekingGender(p.getSeekingGender() != null ? p.getSeekingGender().name() : null)
+                    .seekingGender(p.getSeekingGender())
                     .heightCm(p.getHeightCm())
                     .hairColor(p.getHairColor() != null ? p.getHairColor().name() : null)
                     .eyeColor(p.getEyeColor() != null ? p.getEyeColor().name() : null)
@@ -125,6 +116,8 @@ public class UserService {
                     .isVisible(p.getIsVisible())
                     .secretQuestion(p.getSecretQuestion() != null
                             ? p.getSecretQuestion().getQuestionText() : null)
+                    .prefAgeFrom(p.getPrefAgeFrom())
+                    .prefAgeTo(p.getPrefAgeTo())
                     .build();
         }
 
@@ -139,7 +132,3 @@ public class UserService {
                 .build();
     }
 }
-
-
-// ── MATCH SERVICE ─────────────────────────────────────────────
-
