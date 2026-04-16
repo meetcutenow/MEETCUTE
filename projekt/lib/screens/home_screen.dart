@@ -12,6 +12,8 @@ import 'organize_meetup.dart' show OrganizeMeetupScreen;
 import 'notifications_screen.dart' show NotificationsScreen, NotificationState, seedStaticNotifications;
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
+import 'onboarding_screen.dart' show globalProfileData;
+import 'dart:io';
 
 
 const Color kPrimaryDark   = Color(0xFF700D25);
@@ -363,12 +365,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Container(width: avatarD + 6, height: avatarD + 6,
                           decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
                       Container(
-                        width: avatarD, height: avatarD,
+                        width: avatarD,
+                        height: avatarD,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle, color: kPrimaryLight,
-                          boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8))],
+                          shape: BoxShape.circle,
+                          color: kPrimaryLight,
+                          border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kPrimaryDark.withOpacity(0.25),
+                              blurRadius: 22,
+                              offset: const Offset(0, 8),
+                            )
+                          ],
                         ),
-                        child: const Icon(Icons.person_rounded, color: kPrimaryDark, size: 42),
+                        child: ClipOval(
+                          child: _buildProfileImage(),
+                        ),
                       ),
                     ]),
                   ),
@@ -514,6 +527,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     ]);
+  }
+
+  Widget _fallbackAvatar() {
+    return Container(
+      color: kPrimaryLight,
+      child: Icon(
+        Icons.person_rounded,
+        color: kPrimaryDark.withOpacity(0.4),
+        size: 42,
+      ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    final photos = globalProfileData.photoPaths;
+
+    if (photos.isNotEmpty) {
+      final path = photos.first;
+
+      if (path.startsWith('assets/')) {
+        return Image.asset(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackAvatar(),
+        );
+      } else {
+        return Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackAvatar(),
+        );
+      }
+    }
+
+    return _fallbackAvatar();
   }
 
   Widget _buildLocationToggle() {
