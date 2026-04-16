@@ -6,6 +6,7 @@ import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
 import 'profile_setup_screen.dart' show ProfileSetupData, ProfileSetupScreen, ProfileStep1, ProfileStep2, ProfileStep3;
 import 'onboarding_screen.dart' show globalProfileData, RegistrationState;
+import '../services/profile_storage.dart';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -117,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, a, __) => ProfileSetupScreen(
         initial: globalProfileData.copy(),
-        onSave: (saved) {
+        onSave: (saved) async {
           setState(() {
             globalProfileData = saved;
             _photoIndex = 0;
@@ -125,6 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             _staggerCtrl.reset();
             _staggerCtrl.forward();
           });
+          await ProfileStorage.saveProfile(saved);
         },
       ),
       transitionsBuilder: (_, a, __, child) => SlideTransition(

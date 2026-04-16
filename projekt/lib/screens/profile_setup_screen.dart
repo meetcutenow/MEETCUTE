@@ -113,7 +113,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   void _goNext() {
-    // ── Validate current step before proceeding ──────────────────────────────
     final err = _validateStep(_step);
     if (err != null) {
       HapticFeedback.mediumImpact();
@@ -343,7 +342,9 @@ class _NextButtonState extends State<_NextButton> with SingleTickerProviderState
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STEP 1 — fotografije i osobne informacije (PUBLIC)
+// STEP 1 — fotografije i osobne informacije
+// KLJUČNO: sve vrijednosti u dropdownima su BEZ dijakritika
+// da se podudaraju s onim što se sprema u ProfileStorage
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep1 extends StatefulWidget {
@@ -361,10 +362,32 @@ class _ProfileStep1State extends State<ProfileStep1> {
   late final TextEditingController _monthCtrl;
   late final TextEditingController _yearCtrl;
 
-  static const _hairOptions  = ['plava', 'smeđa', 'crna', 'crvena', 'sijeda', 'ostalo'];
-  static const _eyeOptions   = ['smeđe', 'zelene', 'plave', 'sive'];
+  // BEZ DIJAKRITIKA — mora se podudarati s ProfileStorage vrednostima
+  static const _hairOptions  = ['plava', 'smeda', 'crna', 'crvena', 'sijeda', 'ostalo'];
+  static const _eyeOptions   = ['smede', 'zelene', 'plave', 'sive'];
   static const _yesNo        = ['da', 'ne'];
-  static const _genderOptions = ['žensko', 'muško', 'ostalo'];
+  static const _genderOptions = ['zensko', 'musko', 'ostalo'];
+
+  // Labele za prikaz (s dijakritima) — mapirane na vrijednosti bez dijakritika
+  static const _hairLabels = {
+    'plava': 'Plava',
+    'smeda': 'Smeđa',
+    'crna': 'Crna',
+    'crvena': 'Crvena',
+    'sijeda': 'Sijeda',
+    'ostalo': 'Ostalo',
+  };
+  static const _eyeLabels = {
+    'smede': 'Smeđe',
+    'zelene': 'Zelene',
+    'plave': 'Plave',
+    'sive': 'Sive',
+  };
+  static const _genderLabels = {
+    'zensko': 'Žensko',
+    'musko': 'Muško',
+    'ostalo': 'Ostalo',
+  };
 
   @override
   void initState() {
@@ -491,8 +514,11 @@ class _ProfileStep1State extends State<ProfileStep1> {
   Widget build(BuildContext context) {
     final d = widget.data;
     final photos = d.photoPaths;
+
+    // Osiguraj da su vrijednosti validne za dropdown
     final hairValue = _hairOptions.contains(d.hairColor) ? d.hairColor : null;
     final eyeValue  = _eyeOptions.contains(d.eyeColor)   ? d.eyeColor  : null;
+    final genderValue = _genderOptions.contains(d.gender) ? d.gender : null;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -543,32 +569,55 @@ class _ProfileStep1State extends State<ProfileStep1> {
         const SizedBox(height: 16),
         _label('Spol:'),
         const SizedBox(height: 8),
-        _dropdown(value: d.gender, hint: 'odaberi', items: _genderOptions,
-            onChanged: (v) => _update((dd) { dd.gender = v; return dd; })),
+        _dropdown(
+          value: genderValue,
+          hint: 'odaberi',
+          items: _genderOptions,
+          labelMap: _genderLabels,
+          onChanged: (v) => _update((dd) { dd.gender = v; return dd; }),
+        ),
 
         const SizedBox(height: 16),
         _label('Boja kose:'),
         const SizedBox(height: 8),
-        _dropdown(value: hairValue, hint: 'odaberi', items: _hairOptions,
-            onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; })),
+        _dropdown(
+          value: hairValue,
+          hint: 'odaberi',
+          items: _hairOptions,
+          labelMap: _hairLabels,
+          onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; }),
+        ),
 
         const SizedBox(height: 16),
         _label('Boja očiju:'),
         const SizedBox(height: 8),
-        _dropdown(value: eyeValue, hint: 'odaberi', items: _eyeOptions,
-            onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; })),
+        _dropdown(
+          value: eyeValue,
+          hint: 'odaberi',
+          items: _eyeOptions,
+          labelMap: _eyeLabels,
+          onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; }),
+        ),
 
         const SizedBox(height: 16),
         _label('Pirsing:'),
         const SizedBox(height: 8),
-        _dropdown(value: d.piercing, hint: 'odaberi', items: _yesNo,
-            onChanged: (v) => _update((dd) { dd.piercing = v; return dd; })),
+        _dropdown(
+          value: d.piercing,
+          hint: 'odaberi',
+          items: _yesNo,
+          onChanged: (v) => _update((dd) { dd.piercing = v; return dd; }),
+        ),
 
         const SizedBox(height: 16),
         _label('Tetovaža:'),
         const SizedBox(height: 8),
-        _dropdown(value: d.tattoo, hint: 'odaberi', items: _yesNo,
-            onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; })),
+        _dropdown(
+          value: d.tattoo,
+          hint: 'odaberi',
+          items: _yesNo,
+          onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; }),
+        ),
       ]),
     );
   }
@@ -601,9 +650,15 @@ class _ProfileStep1State extends State<ProfileStep1> {
   }
 
   Widget _dropdown({
-    required String? value, required String hint,
-    required List<String> items, required void Function(String?) onChanged,
+    required String? value,
+    required String hint,
+    required List<String> items,
+    Map<String, String>? labelMap,
+    required void Function(String?) onChanged,
   }) {
+    // Provjeri da value postoji u items, inače null
+    final safeValue = (value != null && items.contains(value)) ? value : null;
+
     return Container(
       height: 50,
       decoration: BoxDecoration(
@@ -613,14 +668,17 @@ class _ProfileStep1State extends State<ProfileStep1> {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: safeValue,
           hint: Text(hint, style: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 15)),
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: kPrimaryDark.withOpacity(0.45)),
           style: TextStyle(color: kPrimaryDark, fontSize: 15, fontFamily: 'SF Pro Display'),
           dropdownColor: Colors.white, borderRadius: BorderRadius.circular(12),
           onChanged: onChanged,
-          items: items.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+          items: items.map((s) => DropdownMenuItem(
+            value: s,
+            child: Text(labelMap?[s] ?? s),
+          )).toList(),
         ),
       ),
     );
@@ -628,7 +686,7 @@ class _ProfileStep1State extends State<ProfileStep1> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STEP 2 — interesi (PUBLIC)
+// STEP 2 — interesi
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep2 extends StatefulWidget {
@@ -761,7 +819,7 @@ class _InterestCell extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STEP 3 — icebreaker (PUBLIC)
+// STEP 3 — icebreaker
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep3 extends StatefulWidget {
@@ -818,9 +876,7 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
       return GestureDetector(
         onTap: _editing ? _stopEdit : null,
         child: Stack(children: [
-
           Column(children: [
-
             Expanded(
               flex: 5,
               child: Container(
@@ -837,7 +893,6 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
                 ),
               ),
             ),
-
             Expanded(
               flex: 7,
               child: Container(
@@ -878,7 +933,6 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
               ),
             ),
           ]),
-
           Positioned(
             top: fabTop,
             right: 24,
@@ -910,14 +964,11 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
               ),
             ),
           ),
-
         ]),
       );
     });
   }
 }
-
-// ── backward-compat private aliases used by ProfileSetupScreen internally ───
 
 // ignore: unused_element
 typedef _Step1 = ProfileStep1;

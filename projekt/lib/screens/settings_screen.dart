@@ -7,6 +7,9 @@ import 'theme_state.dart';
 import 'notifications_screen.dart' show NotificationState, NotificationsScreen;
 import 'chat_screen.dart' show ChatState, ChatScreen;
 import 'profile_screen.dart';
+import 'auth_state.dart';
+import 'profile_setup_screen.dart' show ProfileSetupData;
+import 'onboarding_screen.dart' show OnboardingScreen, RegistrationState, globalProfileData;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SETTINGS SCREEN
@@ -74,6 +77,112 @@ class _SettingsScreenState extends State<SettingsScreen>
     _aboutCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 440));
 
     _runEntry();
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.85, end: 1.0),
+          duration: const Duration(milliseconds: 340),
+          curve: Curves.easeOutBack,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            padding: const EdgeInsets.all(26),
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [BoxShadow(
+                color: _primary.withOpacity(0.20),
+                blurRadius: 36, offset: const Offset(0, 14),
+              )],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD93025).withOpacity(0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: Color(0xFFD93025), size: 28),
+              ),
+              const SizedBox(height: 14),
+              Text('Odjava',
+                  style: TextStyle(color: _primary,
+                      fontWeight: FontWeight.w800, fontSize: 18)),
+              const SizedBox(height: 8),
+              Text('Sigurno se želiš odjaviti?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: _primary.withOpacity(0.55), fontSize: 13.5)),
+              const SizedBox(height: 22),
+              Row(children: [
+                Expanded(child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: _primary.withOpacity(0.20))),
+                  ),
+                  child: Text('Odustani',
+                      style: TextStyle(
+                          color: _primary.withOpacity(0.65), fontSize: 14)),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD93025),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    elevation: 0,
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(context); // zatvori dialog
+
+                    // Obriši token
+                    await AuthState.instance.clear();
+
+                    // Resetiraj lokalni state
+                    RegistrationState.instance.isRegistered = false;
+                    RegistrationState.instance.username     = '';
+                    RegistrationState.instance.displayName  = '';
+                    globalProfileData = ProfileSetupData(
+                        photoPaths: [], iceBreaker: '');
+
+                    HapticFeedback.mediumImpact();
+
+                    if (!mounted) return;
+                    // Idi na OnboardingScreen, ukloni sve s navigation stacka
+                    Navigator.of(context).pushAndRemoveUntil(
+                      PageRouteBuilder(
+                        pageBuilder: (_, a, __) => const OnboardingScreen(),
+                        transitionsBuilder: (_, a, __, child) =>
+                            FadeTransition(
+                              opacity: CurvedAnimation(
+                                  parent: a, curve: Curves.easeOut),
+                              child: child,
+                            ),
+                        transitionDuration: const Duration(milliseconds: 500),
+                      ),
+                          (route) => false,
+                    );
+                  },
+                  child: const Text('Odjavi se',
+                      style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700)),
+                )),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _runEntry() async {
@@ -232,7 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           label: 'Odjava',
           subtitle: 'Vidimo se uskoro 👋',
           danger: true,
-          onTap: () {}, // no-op for now
+          onTap: _logout,
         ),
         const SizedBox(height: 24),
 

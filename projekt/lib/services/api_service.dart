@@ -16,7 +16,7 @@ class ApiService {
   // Android emulator  → 10.0.2.2
   // iOS simulator     → 127.0.0.1
   // Physical device   → your machine's local IP, e.g. 192.168.1.100
-  static const String _base = 'http://10.0.2.2:8080/api';
+  static const String _base = 'http://localhost:8080/api';
 
   // Singleton
   static final ApiService _instance = ApiService._internal();
