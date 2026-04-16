@@ -873,6 +873,9 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
           : _data.iceBreaker.trim(),
       'secretQuestionId':  _defaultQuestionId,
       'secretAnswer':      _defaultAnswer,
+      'seekingGender': _data.seekingGender ?? 'sve',
+      'prefAgeFrom':   _data.prefAgeFrom ?? 18,
+      'prefAgeTo':     _data.prefAgeTo   ?? 99,
     };
     try {
       final resp = await http.post(

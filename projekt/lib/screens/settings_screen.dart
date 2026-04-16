@@ -206,13 +206,22 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _onNavTap(int index) {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
+
+    if (index == 0) {
+      // Vrati se na Home — reset svih controllera prije popa
+      for (int i = 0; i < _navTapCtrls.length; i++) {
+        _navTapCtrls[i].value = 0.0;
+      }
+      Navigator.pop(context);
+      return;
+    }
+
     _navTapCtrls[_selectedNavIndex].reverse();
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
     Widget? screen;
     switch (index) {
-      case 0: Navigator.pop(context); return;
       case 1: screen = const ChatScreen(); break;
       case 2: screen = const NotificationsScreen(); break;
       case 3: screen = const ProfileScreen(); break;
@@ -229,6 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
       transitionDuration: const Duration(milliseconds: 320),
     )).then((_) {
+      if (!mounted) return;
       _navTapCtrls[index].reverse();
       _navTapCtrls[4].forward(from: 0.0);
       setState(() => _selectedNavIndex = 4);
@@ -317,6 +327,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           subtitle: 'Naša priča ♡',
           onTap: _showAboutDialog,
         ),
+        const SizedBox(height: 10),
+        _buildContactRow(),
         const SizedBox(height: 32),
       ]),
     );
@@ -409,6 +421,44 @@ class _SettingsScreenState extends State<SettingsScreen>
           icon: icon, iconColor: color,
           label: label, subtitle: subtitle, onTap: onTap,
         ),
+      ),
+    );
+  }
+
+  Widget _buildContactRow() {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _rowCtrls[5], curve: Curves.easeOut),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: _card, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _primary.withOpacity(0.08)),
+          boxShadow: [BoxShadow(color: _primary.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4))],
+        ),
+        child: Row(children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 340),
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(13)),
+            child: Icon(Icons.mail_outline_rounded, color: _primary, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: _primary, fontSize: 15.5, fontWeight: FontWeight.w700),
+              child: const Text('Upiti i podrška'),
+            ),
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 12.5),
+              child: const Text('meetcutenow@gmail.com'),
+            ),
+          ])),
+          Icon(Icons.copy_outlined, color: _primary.withOpacity(0.25), size: 18),
+        ]),
       ),
     );
   }
@@ -746,7 +796,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                     duration: const Duration(milliseconds: 300),
                     style: TextStyle(color: widget.primary, fontSize: 20,
                         fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                    child: const Text('O MeetCute', textAlign: TextAlign.center),
+                    child: const Text('O MeetCute ♡', textAlign: TextAlign.center),
                   ),
                   const SizedBox(height: 14),
                   AnimatedDefaultTextStyle(
@@ -755,9 +805,9 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                         fontSize: 14.5, height: 1.65, fontWeight: FontWeight.w400),
                     child: const Text(
                       'MeetCute je nastao kao projekt dviju studentica, Lane i Iris, druge godine računarstva.'
-                    'Ideja se rodila dok su sjedile u svom omiljenom kafiću, pile ledenu kavu i razmišljale o aplikaciji koja bi ljude spajala na malo drugačiji način.\n\n'
-                    'Nisu željele napraviti još jednu swipe-left-swipe-right aplikaciju. Htjele su nešto toplije - mjesto gdje možeš upoznati ljude iz svog grada kroz stvarna događanja i druženja uživo.\n\n'
-                    'Tako je nastao MeetCute - s idejom vraćanja upoznavanja u stvarni svijet. 🍵✨',
+                          'Ideja se rodila dok su sjedile u svom omiljenom kafiću, pile ledenu kavu i razmišljale o aplikaciji koja bi ljude spajala na malo drugačiji način.\n\n'
+                          'Nisu željele napraviti još jednu swipe-left-swipe-right aplikaciju. Htjele su nešto toplije - mjesto gdje možeš upoznati ljude iz svog grada kroz stvarna događanja i druženja uživo.\n\n'
+                          'Tako je nastao MeetCute - s idejom vraćanja upoznavanja u stvarni svijet. 🍵✨',
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -776,7 +826,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(color: widget.primary.withOpacity(0.65),
                             fontSize: 12.5, fontWeight: FontWeight.w600),
-                        child: const Text('Gdje je sve počelo uz kavu i jednu dobru ideju', textAlign: TextAlign.center),
+                        child: const Text('Napravljeno s ljubavlju i ledenom kavom', textAlign: TextAlign.center),
                       )),
                       const SizedBox(width: 6),
                       Icon(Icons.favorite_rounded, color: widget.primary, size: 12),
@@ -796,7 +846,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                       child: Center(child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 300),
                         style: TextStyle(color: widget.accent, fontSize: 15, fontWeight: FontWeight.w800),
-                        child: const Text('Natrag'),
+                        child: const Text('Preslatko! ♡'),
                       )),
                     ),
                   ),

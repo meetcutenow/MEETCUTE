@@ -10,63 +10,49 @@ class ProfileStorage {
   static const _displayNameKey = 'display_name';
   static const _registeredKey = 'is_registered';
 
-  // Kopira sliku iz privremene putanje u trajni direktorij aplikacije
-  // Ako putanja već pokazuje na trajni direktorij ili je asset, vraća je kakva jest
   static Future<String> _persistImage(String path) async {
-    // Asset slike — ne kopiramo
     if (path.startsWith('assets/')) return path;
-
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final photosDir = Directory('${appDir.path}/profile_photos');
-      if (!await photosDir.exists()) {
-        await photosDir.create(recursive: true);
-      }
-
-      // Ako je slika već u trajnom direktoriju, ne treba je kopirati
+      if (!await photosDir.exists()) await photosDir.create(recursive: true);
       if (path.startsWith(photosDir.path)) return path;
-
       final fileName = 'photo_${DateTime.now().millisecondsSinceEpoch}_${path.hashCode.abs()}.jpg';
       final destPath = '${photosDir.path}/$fileName';
-
       final sourceFile = File(path);
       if (!await sourceFile.exists()) return path;
-
       await sourceFile.copy(destPath);
       return destPath;
     } catch (e) {
-      // Ako kopiranje ne uspije, vrati originalnu putanju
       return path;
     }
   }
 
   static Future<void> saveProfile(ProfileSetupData data) async {
-    // Kopiraj sve slike u trajni direktorij PRIJE spremanja putanja
     final persistedPaths = <String>[];
     for (final path in data.photoPaths) {
-      final persisted = await _persistImage(path);
-      persistedPaths.add(persisted);
+      persistedPaths.add(await _persistImage(path));
     }
-
-    // Ažuriraj putanje u data objektu
-    data.photoPaths
-      ..clear()
-      ..addAll(persistedPaths);
+    data.photoPaths..clear()..addAll(persistedPaths);
 
     final prefs = await SharedPreferences.getInstance();
     final map = {
-      'photoPaths': persistedPaths,
-      'birthDay': data.birthDay,
-      'birthMonth': data.birthMonth,
-      'birthYear': data.birthYear,
-      'height': data.height,
-      'hairColor': data.hairColor,
-      'eyeColor': data.eyeColor,
-      'piercing': data.piercing,
-      'tattoo': data.tattoo,
-      'gender': data.gender,
-      'interests': data.interests,
-      'iceBreaker': data.iceBreaker,
+      'photoPaths':    persistedPaths,
+      'birthDay':      data.birthDay,
+      'birthMonth':    data.birthMonth,
+      'birthYear':     data.birthYear,
+      'height':        data.height,
+      'hairColor':     data.hairColor,
+      'eyeColor':      data.eyeColor,
+      'piercing':      data.piercing,
+      'tattoo':        data.tattoo,
+      'gender':        data.gender,
+      'interests':     data.interests,
+      'iceBreaker':    data.iceBreaker,
+      // Preference
+      'seekingGender': data.seekingGender,
+      'prefAgeFrom':   data.prefAgeFrom,
+      'prefAgeTo':     data.prefAgeTo,
     };
     await prefs.setString(_key, jsonEncode(map));
   }
@@ -75,35 +61,31 @@ class ProfileStorage {
     final prefs = await SharedPreferences.getInstance();
     final str = prefs.getString(_key);
     if (str == null) return null;
-
     try {
       final map = jsonDecode(str) as Map<String, dynamic>;
-
-      // Filtriraj slike — zadrži samo one koje postoje ili su asseti
       final rawPaths = List<String>.from(map['photoPaths'] ?? []);
       final validPaths = <String>[];
       for (final path in rawPaths) {
-        if (path.startsWith('assets/')) {
-          validPaths.add(path);
-        } else if (await File(path).exists()) {
+        if (path.startsWith('assets/') || await File(path).exists()) {
           validPaths.add(path);
         }
-        // Ako slika ne postoji, preskočimo je
       }
-
       return ProfileSetupData(
-        photoPaths: validPaths,
-        birthDay: map['birthDay'],
-        birthMonth: map['birthMonth'],
-        birthYear: map['birthYear'],
-        height: map['height'],
-        hairColor: map['hairColor'],
-        eyeColor: map['eyeColor'],
-        piercing: map['piercing'],
-        tattoo: map['tattoo'],
-        gender: map['gender'],
-        interests: List<String>.from(map['interests'] ?? []),
-        iceBreaker: map['iceBreaker'] ?? '',
+        photoPaths:    validPaths,
+        birthDay:      map['birthDay'],
+        birthMonth:    map['birthMonth'],
+        birthYear:     map['birthYear'],
+        height:        map['height'],
+        hairColor:     map['hairColor'],
+        eyeColor:      map['eyeColor'],
+        piercing:      map['piercing'],
+        tattoo:        map['tattoo'],
+        gender:        map['gender'],
+        interests:     List<String>.from(map['interests'] ?? []),
+        iceBreaker:    map['iceBreaker'] ?? '',
+        seekingGender: map['seekingGender'],
+        prefAgeFrom:   map['prefAgeFrom'],
+        prefAgeTo:     map['prefAgeTo'],
       );
     } catch (e) {
       return null;

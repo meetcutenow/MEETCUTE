@@ -872,12 +872,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
                 ]),
               ),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 340),
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(13)),
-              child: Icon(Icons.more_horiz_rounded, color: primary, size: 20),
-            ),
+            // (više gumb uklonjen)
           ]),
         ),
       ),
