@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/auth_state.dart';
+import 'screens/app_read_state.dart';
 import 'services/profile_storage.dart';
 
 void main() async {
@@ -13,20 +15,30 @@ void main() async {
     ),
   );
 
-  final isRegistered = await ProfileStorage.loadRegistration();
-  if (isRegistered) {
+  // 1. Učitaj auth token iz SharedPreferences
+  final isLoggedIn = await AuthState.loadFromStorage();
+
+  if (isLoggedIn) {
     RegistrationState.instance.isRegistered = true;
-    RegistrationState.instance.username = await ProfileStorage.loadUsername();
-    RegistrationState.instance.displayName = await ProfileStorage.loadDisplayName();
-    final profile = await ProfileStorage.loadProfile();
-    if (profile != null) globalProfileData = profile;
+    RegistrationState.instance.username = AuthState.instance.username ?? '';
+    RegistrationState.instance.displayName = AuthState.instance.displayName ?? '';
   }
 
-  runApp(const MeetCuteApp());
+  // 2. Uvijek učitaj profil (postoji i bez logina — lokalni podaci)
+  final profile = await ProfileStorage.loadProfile();
+  if (profile != null) {
+    globalProfileData = profile;
+  }
+
+  // 3. Učitaj read state za notifikacije i chat
+  await AppReadState.loadFromStorage();
+
+  runApp(MeetCuteApp(startLoggedIn: isLoggedIn));
 }
 
 class MeetCuteApp extends StatelessWidget {
-  const MeetCuteApp({super.key});
+  final bool startLoggedIn;
+  const MeetCuteApp({super.key, required this.startLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +52,7 @@ class MeetCuteApp extends StatelessWidget {
           seedColor: const Color(0xFF700D25),
         ),
       ),
-      home: RegistrationState.instance.isRegistered
-          ? const HomeScreen()
-          : const OnboardingScreen(),
+      home: startLoggedIn ? const HomeScreen() : const OnboardingScreen(),
     );
   }
 }

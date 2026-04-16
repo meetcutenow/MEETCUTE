@@ -8,7 +8,18 @@ import 'profile_screen.dart';
 import 'notifications_screen.dart' show NotificationsScreen, NotificationState;
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
+import 'app_read_state.dart';
 
+// ── Top-level helpers (moraju biti ovdje, koriste ih i ChatConversationScreen i _SwipeRevealTimeState) ──
+
+String _fmt(DateTime? dt) {
+  if (dt == null) return '';
+  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+}
+
+double _lerp(double a, double b, double t) => a + (b - a) * t;
+
+// ── DATA MODELS ───────────────────────────────────────────────────────────────
 
 class ChatMessage {
   final String? text;
@@ -46,16 +57,14 @@ class ChatConversation {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  bool get hasUnread => lastMessage != null && !lastMessage!.isMe;
+  /// Nepročitan ako zadnja poruka nije moja I nije trajno pročitana
+  bool get hasUnread =>
+      lastMessage != null &&
+          !lastMessage!.isMe &&
+          !AppReadState.isConvRead(id);
 }
 
-String _fmt(DateTime? dt) {
-  if (dt == null) return '';
-  return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-}
-
-double _lerp(double a, double b, double t) => a + (b - a) * t;
-
+// ── CHAT STATE ────────────────────────────────────────────────────────────────
 
 class ChatState extends ChangeNotifier {
   static final ChatState instance = ChatState._();
@@ -92,15 +101,11 @@ class ChatState extends ChangeNotifier {
     ]),
   ];
 
-  int get totalUnread => conversations
-      .where((c) => c.hasUnread && !_readIds.contains(c.id))
-      .length;
+  /// Ukupno nepročitanih — koristi trajni AppReadState
+  int get totalUnread => conversations.where((c) => c.hasUnread).length;
 
-  final Set<String> _readIds = {};
-
-  void markRead(String conversationId) {
-    if (_readIds.contains(conversationId)) return;
-    _readIds.add(conversationId);
+  Future<void> markRead(String conversationId) async {
+    await AppReadState.markConvRead(conversationId);
     notifyListeners();
   }
 
@@ -120,7 +125,8 @@ class ChatState extends ChangeNotifier {
   }
 }
 
-//lista u chatu
+// ── CHAT SCREEN (lista razgovora) ─────────────────────────────────────────────
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
   @override State<ChatScreen> createState() => _ChatScreenState();
@@ -311,10 +317,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 340),
                           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
                           child: Text('$unread',
                               style: TextStyle(color: isDark ? kDarkBg : Colors.white,
                                   fontSize: 12, fontWeight: FontWeight.w800)),
@@ -329,7 +332,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   ),
                 ]),
               ),
-              // NOTE: header button (edit icon) removed as requested
             ]),
             const SizedBox(height: 16),
             AnimatedContainer(
@@ -421,7 +423,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ── NAV BAR ─────────────────────────────────────────────────────────────────
   Widget _buildNavBar(MediaQueryData mq) {
     final isDark   = ThemeState.instance.isDark;
     final navBg    = isDark ? kDarkCard : Colors.white;
@@ -478,10 +479,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
                       size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4,
-                    child: NavBadge(count: chatUnread)),
-                if (showNotifBadge) Positioned(top: 2, right: 4,
-                    child: NavBadge(count: notifUnread)),
+                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
             AnimatedContainer(
@@ -497,6 +496,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 }
 
+// ── DISMISSIBLE TILE ──────────────────────────────────────────────────────────
 
 class _DismissibleTile extends StatefulWidget {
   final ChatConversation convo;
@@ -617,24 +617,17 @@ class _DismissibleTileState extends State<_DismissibleTile>
                     : tileAccent.withOpacity(isDark ? 0.15 : 0.07),
                 width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.30)
-                      : kPrimaryDark.withOpacity(0.07),
-                  blurRadius: 18,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              boxShadow: [BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.30) : kPrimaryDark.withOpacity(0.07),
+                blurRadius: 18, offset: const Offset(0, 5),
+              )],
             ),
             child: Row(children: [
               Container(width: 52, height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [avatarBg, tileAccent.withOpacity(0.25)],
-                  ),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [avatarBg, tileAccent.withOpacity(0.25)]),
                   border: Border.all(color: tileAccent.withOpacity(0.20), width: 2),
                 ),
                 child: Icon(Icons.person_rounded, color: tileAccent, size: 26),
@@ -684,7 +677,8 @@ class _DismissibleTileState extends State<_DismissibleTile>
   }
 }
 
-//RAZGOVOR
+// ── CHAT CONVERSATION SCREEN ──────────────────────────────────────────────────
+
 class ChatConversationScreen extends StatefulWidget {
   final ChatConversation convo;
   const ChatConversationScreen({super.key, required this.convo});
@@ -719,6 +713,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     _headerCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
+      // Označi razgovor kao pročitan (trajno)
       ChatState.instance.markRead(widget.convo.id);
     });
   }
@@ -907,8 +902,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
             margin: const EdgeInsets.symmetric(horizontal: 12),
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
             decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(12),
+              color: cardBg, borderRadius: BorderRadius.circular(12),
               border: Border.all(color: primary.withOpacity(0.12)),
               boxShadow: [BoxShadow(color: primary.withOpacity(0.06), blurRadius: 6)],
             ),
@@ -1066,8 +1060,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
             duration: const Duration(milliseconds: 340),
             width: 42, height: 42, margin: const EdgeInsets.only(left: 9),
             decoration: BoxDecoration(
-              color: primary,
-              shape: BoxShape.circle,
+              color: primary, shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: primary.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 5))],
             ),
             child: Icon(Icons.send_rounded, color: isDark ? kDarkBg : Colors.white, size: 18),
@@ -1078,7 +1071,8 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
   }
 }
 
-//swipe za vrijeme
+// ── SWIPE REVEAL TIME ─────────────────────────────────────────────────────────
+
 class _SwipeRevealTime extends StatefulWidget {
   final Widget child;
   final bool isMe;

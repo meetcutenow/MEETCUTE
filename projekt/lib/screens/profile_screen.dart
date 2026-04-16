@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'dart:io' as dart_io;
 import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
-import 'profile_setup_screen.dart' show ProfileSetupData, ProfileSetupScreen, ProfileStep1, ProfileStep2, ProfileStep3;
+import 'profile_setup_screen.dart';
 import 'onboarding_screen.dart' show globalProfileData, RegistrationState;
 import '../services/profile_storage.dart';
 
@@ -114,21 +114,24 @@ class _ProfileScreenState extends State<ProfileScreen>
       ..forward();
   }
 
+  // ── ISPRAVKA: ProfileSetupScreen se stvara kao lokalna varijabla ──────────
   void _openSetup() {
+    // ignore: undefined_identifier
+    final screen = ProfileSetupScreen(
+      initial: globalProfileData.copy(),
+      onSave: (saved) async {
+        setState(() {
+          globalProfileData = saved;
+          _photoIndex = 0;
+          _rebuildChipFade();
+          _staggerCtrl.reset();
+          _staggerCtrl.forward();
+        });
+        await ProfileStorage.saveProfile(saved);
+      },
+    );
     Navigator.push(context, PageRouteBuilder(
-      pageBuilder: (_, a, __) => ProfileSetupScreen(
-        initial: globalProfileData.copy(),
-        onSave: (saved) async {
-          setState(() {
-            globalProfileData = saved;
-            _photoIndex = 0;
-            _rebuildChipFade();
-            _staggerCtrl.reset();
-            _staggerCtrl.forward();
-          });
-          await ProfileStorage.saveProfile(saved);
-        },
-      ),
+      pageBuilder: (_, a, __) => screen,
       transitionsBuilder: (_, a, __, child) => SlideTransition(
         position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero)
             .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
@@ -138,7 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     ));
   }
 
-  // Prikaži ime iz RegistrationState, a ne hardkodirano
   String get _displayName {
     final name = RegistrationState.instance.displayName.isNotEmpty
         ? RegistrationState.instance.displayName
@@ -165,7 +167,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Stack(children: [
-          // PHOTOS
           Positioned(
             top: 0, left: 0, right: 0, height: sheetTop + 2,
             child: FadeTransition(
@@ -225,7 +226,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             )),
           ),
-          // CARD
           Positioned(
             top: sheetTop, left: 0, right: 0, bottom: 0,
             child: FadeTransition(
@@ -299,6 +299,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   );
 }
 
+// ── CARD BODY ─────────────────────────────────────────────────────────────────
+
 class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
   final List<String> interests;
@@ -315,9 +317,7 @@ class _CardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prikaži icebreaker samo ako je unesen — bez defaultnog teksta
     final hasIce = data.iceBreaker.trim().isNotEmpty;
-
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Želim da mi priđeš...',
           style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
@@ -366,18 +366,22 @@ class _CardBody extends StatelessWidget {
   }
 }
 
+// ── CHIP ──────────────────────────────────────────────────────────────────────
+
 class _Chip extends StatefulWidget {
   final String label, emoji;
   const _Chip({required this.label, required this.emoji});
   @override State<_Chip> createState() => _ChipState();
 }
+
 class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   late final Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _s = Tween<double>(begin: 1.0, end: 0.93).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.93)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override
@@ -389,8 +393,11 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
       child: ScaleTransition(scale: _s,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFD5C0C4), width: 1.1)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFD5C0C4), width: 1.1),
+          ),
           child: Text('${widget.label} ${widget.emoji}',
               style: const TextStyle(color: Color(0xFF1C1C1E), fontSize: 13, fontWeight: FontWeight.w400)),
         ),
@@ -399,8 +406,11 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
   }
 }
 
+// ── DATA ROW ──────────────────────────────────────────────────────────────────
+
 class _DataRow extends StatelessWidget {
-  final IconData icon; final String label, value;
+  final IconData icon;
+  final String label, value;
   const _DataRow({required this.icon, required this.label, required this.value});
   @override
   Widget build(BuildContext context) {
@@ -409,25 +419,32 @@ class _DataRow extends StatelessWidget {
       child: Row(children: [
         Icon(icon, color: kPrimaryDark, size: 18),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(color: Color(0xFF1C1C1E), fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(label, style: const TextStyle(
+            color: Color(0xFF1C1C1E), fontSize: 14, fontWeight: FontWeight.w700)),
         const Spacer(),
-        Text(value, style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(value, style: TextStyle(
+            color: kPrimaryDark.withOpacity(0.55), fontSize: 14, fontWeight: FontWeight.w500)),
       ]),
     );
   }
 }
+
+// ── BACK BUTTON ───────────────────────────────────────────────────────────────
 
 class _BackBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _BackBtn({required this.onTap});
   @override State<_BackBtn> createState() => _BackBtnState();
 }
+
 class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin {
-  late final AnimationController _c; late final Animation<double> _s;
+  late final AnimationController _c;
+  late final Animation<double> _s;
   @override void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 90));
-    _s = Tween<double>(begin: 1.0, end: 0.86).animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+    _s = Tween<double>(begin: 1.0, end: 0.86)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override
@@ -437,13 +454,17 @@ class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin 
       onTapUp: (_) { _c.reverse(); widget.onTap(); },
       onTapCancel: () => _c.reverse(),
       child: ScaleTransition(scale: _s,
-        child: ClipRRect(borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               width: 38, height: 38,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.38), width: 1)),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.38), width: 1),
+              ),
               child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 15),
             ),
           ),
@@ -453,17 +474,21 @@ class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin 
   }
 }
 
+// ── EDIT BUTTON ───────────────────────────────────────────────────────────────
+
 class _EditBtn extends StatefulWidget {
   final VoidCallback onTap;
   const _EditBtn({required this.onTap});
   @override State<_EditBtn> createState() => _EditBtnState();
 }
+
 class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin {
   late final AnimationController _shim;
   bool _pressed = false;
   @override void initState() {
     super.initState();
-    _shim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+    _shim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
+      ..repeat();
   }
   @override void dispose() { _shim.dispose(); super.dispose(); }
   @override
@@ -476,24 +501,44 @@ class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin 
         scale: _pressed ? 0.94 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: Container(
-          height: 44, padding: const EdgeInsets.symmetric(horizontal: 26),
-          decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(22),
-              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))]),
-          child: ClipRRect(borderRadius: BorderRadius.circular(22),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 26),
+          decoration: BoxDecoration(
+            color: kPrimaryDark,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [BoxShadow(
+                color: kPrimaryDark.withOpacity(0.30),
+                blurRadius: 14,
+                offset: const Offset(0, 5))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
             child: Stack(alignment: Alignment.center, children: [
               AnimatedBuilder(
                 animation: _shim,
                 builder: (_, __) => Transform.translate(
                   offset: Offset((_shim.value * 2 - 0.5) * 140, 0),
-                  child: Container(width: 40, decoration: BoxDecoration(gradient: LinearGradient(colors: [
-                    Colors.white.withOpacity(0.0), Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.0)]))),
+                  child: Container(
+                    width: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        Colors.white.withOpacity(0.0),
+                        Colors.white.withOpacity(0.12),
+                        Colors.white.withOpacity(0.0),
+                      ]),
+                    ),
+                  ),
                 ),
               ),
               const Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.edit_rounded, color: Colors.white, size: 14),
                 SizedBox(width: 6),
-                Text('Uredi profil', style: TextStyle(color: Colors.white, fontSize: 13.5,
-                    fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+                Text('Uredi profil',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2)),
               ]),
             ]),
           ),

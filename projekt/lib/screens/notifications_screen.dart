@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems, kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
 import 'chat_screen.dart' show ChatState, ChatScreen;
-import 'events_nearby.dart' show _attendanceState, _eventsByCity;
 import 'profile_screen.dart';
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
-
-
+import 'app_read_state.dart';
 
 enum NotifType { joined, cancelled, reminder, newEvent, general }
 
@@ -35,9 +33,7 @@ class AppNotification {
   });
 }
 
-
-// notification state
-
+// ── NOTIFICATION STATE ────────────────────────────────────────────────────────
 
 class NotificationState {
   static final NotificationState instance = NotificationState._();
@@ -47,25 +43,33 @@ class NotificationState {
   final List<VoidCallback> _listeners = [];
 
   List<AppNotification> get all => List.unmodifiable(_notifications);
-  int get unreadCount => _notifications.where((n) => !n.isRead).length;
+
+  int get unreadCount => _notifications
+      .where((n) => !n.isRead && !AppReadState.isNotifRead(n.id))
+      .length;
 
   void addListener(VoidCallback cb) => _listeners.add(cb);
   void removeListener(VoidCallback cb) => _listeners.remove(cb);
   void _notify() { for (final cb in _listeners) cb(); }
 
   void push(AppNotification n) {
+    if (AppReadState.isNotifRead(n.id)) n.isRead = true;
     _notifications.insert(0, n);
     _notify();
   }
 
-  void markAllRead() {
+  Future<void> markAllRead() async {
+    final ids = _notifications.map((n) => n.id).toList();
     for (final n in _notifications) n.isRead = true;
+    await AppReadState.markAllNotifsRead(ids);
     _notify();
   }
 
-  void markRead(String id) {
-    final n = _notifications.firstWhere((n) => n.id == id, orElse: () => _notifications.first);
-    n.isRead = true;
+  Future<void> markRead(String id) async {
+    for (final n in _notifications) {
+      if (n.id == id) n.isRead = true;
+    }
+    await AppReadState.markNotifRead(id);
     _notify();
   }
 
@@ -79,7 +83,6 @@ class NotificationState {
     _notify();
   }
 
-  // povezano s eventovima
   void onAttendanceChanged(String eventName, String location, Color cardColor, bool joined) {
     if (joined) {
       push(AppNotification(
@@ -107,15 +110,13 @@ class NotificationState {
   }
 }
 
-
-// SEED STATIC NOTIFICATIONS
-
+// ── SEED STATIC NOTIFICATIONS ─────────────────────────────────────────────────
 
 void seedStaticNotifications() {
   if (NotificationState.instance.all.isNotEmpty) return;
 
   final now = DateTime.now();
-  NotificationState.instance._notifications.addAll([
+  final staticNotifs = [
     AppNotification(
       id: 'remind_1',
       type: NotifType.reminder,
@@ -147,18 +148,18 @@ void seedStaticNotifications() {
       eventLocation: 'HNK Zagreb',
       accentColor: const Color(0xFFFFB3C6),
       timestamp: now.subtract(const Duration(hours: 3)),
-      isRead: true,
+      isRead: false,
     ),
     AppNotification(
       id: 'new_2',
       type: NotifType.newEvent,
       title: 'Novi event! ✨',
-      body: '"Street food festival" na Trgu bana Jelačića — ulaz slobodan, grickalice zagarantirane.',
+      body: '"Street food festival" na Trgu bana Jelačića — ulaz slobodan.',
       eventName: 'Street food festival',
       eventLocation: 'Trg bana Jelačića',
       accentColor: const Color(0xFFFFD166),
       timestamp: now.subtract(const Duration(hours: 6)),
-      isRead: true,
+      isRead: false,
     ),
     AppNotification(
       id: 'general_1',
@@ -167,11 +168,17 @@ void seedStaticNotifications() {
       body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude. Tvoja nova avantura počinje ovdje!',
       accentColor: const Color(0xFF700D25),
       timestamp: now.subtract(const Duration(days: 1)),
-      isRead: true,
+      isRead: false,
     ),
-  ]);
+  ];
+
+  for (final n in staticNotifs) {
+    if (AppReadState.isNotifRead(n.id)) n.isRead = true;
+    NotificationState.instance._notifications.add(n);
+  }
 }
 
+// ── NOTIFICATIONS SCREEN ──────────────────────────────────────────────────────
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -236,9 +243,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _listCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 100));
     _navBarCtrl.forward();
-    // mark all as read after a short delay
     await Future.delayed(const Duration(milliseconds: 1800));
-    if (mounted) NotificationState.instance.markAllRead();
+    if (mounted) await NotificationState.instance.markAllRead();
   }
 
   void _rebuild() { if (mounted) setState(() {}); }
@@ -287,7 +293,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     });
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -309,9 +314,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 opacity: _listFade,
                 child: SlideTransition(
                   position: _listSlide,
-                  child: notifs.isEmpty
-                      ? _buildEmpty()
-                      : _buildList(notifs),
+                  child: notifs.isEmpty ? _buildEmpty() : _buildList(notifs),
                 ),
               ),
             ),
@@ -322,7 +325,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
   Widget _buildHeader(MediaQueryData mq) {
     final unread  = NotificationState.instance.unreadCount;
     final isDark  = ThemeState.instance.isDark;
@@ -360,8 +362,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 340),
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                        decoration: BoxDecoration(
-                            color: primary, borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
                         child: Text('$unread',
                             style: TextStyle(color: isDark ? kDarkBg : Colors.white,
                                 fontSize: 12, fontWeight: FontWeight.w800)),
@@ -379,10 +380,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             ),
             if (NotificationState.instance.all.isNotEmpty)
               GestureDetector(
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  _showClearConfirm();
-                },
+                onTap: () { HapticFeedback.mediumImpact(); _showClearConfirm(); },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 340),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -393,8 +391,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   ),
                   child: AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.70),
-                        fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: primary.withOpacity(0.70), fontSize: 13, fontWeight: FontWeight.w600),
                     child: const Text('Obriši sve'),
                   ),
                 ),
@@ -469,7 +466,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  // IZGLED KAD NEMA OBAVIJESTI
   Widget _buildEmpty() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
@@ -486,10 +482,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               duration: const Duration(milliseconds: 380),
               width: 100, height: 100,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [accent, primary.withOpacity(0.20)],
-                ),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [accent, primary.withOpacity(0.20)]),
                 shape: BoxShape.circle,
                 boxShadow: [BoxShadow(color: primary.withOpacity(0.18), blurRadius: 28, offset: const Offset(0, 10))],
               ),
@@ -514,20 +508,14 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  // LISTA NOTIF
   Widget _buildList(List<AppNotification> notifs) {
     final today = <AppNotification>[];
     final earlier = <AppNotification>[];
     final now = DateTime.now();
     for (final n in notifs) {
-      final diff = now.difference(n.timestamp);
-      if (diff.inHours < 24) {
-        today.add(n);
-      } else {
-        earlier.add(n);
-      }
+      if (now.difference(n.timestamp).inHours < 24) today.add(n);
+      else earlier.add(n);
     }
-
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
@@ -564,12 +552,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       Container(width: 4, height: 14,
           decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2))),
       const SizedBox(width: 8),
-      Text(text, style: TextStyle(color: primary, fontSize: 12,
-          fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+      Text(text, style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
     ]);
   }
 
-  // NAVIGACIJA
   Widget _buildNavBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final navBg   = isDark ? kDarkCard : Colors.white;
@@ -620,13 +606,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isSelected ? item.selected : item.unselected,
-                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
-                      size: kNavIconSize),
+                      color: isSelected ? navPrimary : navPrimary.withOpacity(0.25), size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4,
-                    child: NavBadge(count: chatUnread)),
-                if (showNotifBadge) Positioned(top: 2, right: 4,
-                    child: NavBadge(count: notifUnread)),
+                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
             AnimatedContainer(
@@ -642,9 +625,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 }
 
-
-// NOTIFICATION TILE
-
+// ── NOTIFICATION TILE ─────────────────────────────────────────────────────────
 
 class _NotifTile extends StatefulWidget {
   final AppNotification notif;
@@ -667,23 +648,19 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-
-    Future.delayed(widget.animDelay, () {
-      if (mounted) _entryCtrl.forward();
-    });
+    Future.delayed(widget.animDelay, () { if (mounted) _entryCtrl.forward(); });
   }
 
-  @override
-  void dispose() { _entryCtrl.dispose(); super.dispose(); }
+  @override void dispose() { _entryCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     final n = widget.notif;
     final accent = n.accentColor ?? kPrimaryDark;
-    final isUnread = !n.isRead;
+    final isUnread = !n.isRead && !AppReadState.isNotifRead(n.id);
     final isDark  = ThemeState.instance.isDark;
 
-    final cardBg  = isDark ? const Color(0xFF4A3A42) : Colors.white;
+    final cardBg     = isDark ? const Color(0xFF4A3A42) : Colors.white;
     final titleColor = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
     final bodyColor  = isDark
         ? const Color(0xFFEEE0E5).withOpacity(isUnread ? 0.80 : 0.60)
@@ -701,10 +678,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
           child: Dismissible(
             key: Key(n.id),
             direction: DismissDirection.endToStart,
-            onDismissed: (_) {
-              HapticFeedback.mediumImpact();
-              widget.onDismiss();
-            },
+            onDismissed: (_) { HapticFeedback.mediumImpact(); widget.onDismiss(); },
             background: Container(
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 22),
@@ -736,91 +710,56 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                           : (isDark ? const Color(0xFFEEE0E5).withOpacity(0.12) : kPrimaryDark.withOpacity(0.06)),
                       width: isUnread ? 1.5 : 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isUnread
-                            ? accent.withOpacity(isDark ? 0.18 : 0.10)
-                            : (isDark ? Colors.black.withOpacity(0.25) : kPrimaryDark.withOpacity(0.05)),
-                        blurRadius: isUnread ? 18 : 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(
+                      color: isUnread
+                          ? accent.withOpacity(isDark ? 0.18 : 0.10)
+                          : (isDark ? Colors.black.withOpacity(0.25) : kPrimaryDark.withOpacity(0.05)),
+                      blurRadius: isUnread ? 18 : 12, offset: const Offset(0, 4),
+                    )],
                   ),
                   child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Accent side bar
-                        Container(
-                          width: 4,
-                          decoration: BoxDecoration(
-                            color: isUnread ? accent : Colors.transparent,
-                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-                          ),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Container(
+                        width: 4,
+                        decoration: BoxDecoration(
+                          color: isUnread ? accent : Colors.transparent,
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
                         ),
-                        const SizedBox(width: 14),
-
-                        // Icon
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: _NotifIcon(type: n.type, accent: accent, isDark: isDark),
+                      ),
+                      const SizedBox(width: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: _NotifIcon(type: n.type, accent: accent, isDark: isDark),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Expanded(child: Text(n.title,
+                                  style: TextStyle(color: titleColor, fontSize: 14.5,
+                                      fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
+                                      letterSpacing: -0.2))),
+                              const SizedBox(width: 8),
+                              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                if (isUnread) Container(width: 8, height: 8,
+                                    decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                                const SizedBox(height: 3),
+                                Text(_formatTime(n.timestamp),
+                                    style: TextStyle(color: timeColor, fontSize: 11.5, fontWeight: FontWeight.w500)),
+                              ]),
+                            ]),
+                            const SizedBox(height: 4),
+                            Text(n.body, style: TextStyle(color: bodyColor, fontSize: 13, height: 1.45)),
+                            if (n.eventName != null) ...[
+                              const SizedBox(height: 8),
+                              _EventChip(name: n.eventName!, location: n.eventLocation, color: accent, isDark: isDark),
+                            ],
+                          ]),
                         ),
-                        const SizedBox(width: 12),
-
-                        // Content
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(n.title,
-                                          style: TextStyle(
-                                            color: titleColor,
-                                            fontSize: 14.5,
-                                            fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
-                                            letterSpacing: -0.2,
-                                          )),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        if (isUnread)
-                                          Container(
-                                            width: 8, height: 8,
-                                            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-                                          ),
-                                        const SizedBox(height: 3),
-                                        Text(_formatTime(n.timestamp),
-                                            style: TextStyle(
-                                              color: timeColor,
-                                              fontSize: 11.5, fontWeight: FontWeight.w500,
-                                            )),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(n.body,
-                                    style: TextStyle(
-                                      color: bodyColor,
-                                      fontSize: 13, height: 1.45,
-                                    )),
-                                if (n.eventName != null) ...[
-                                  const SizedBox(height: 8),
-                                  _EventChip(name: n.eventName!, location: n.eventLocation, color: accent, isDark: isDark),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ),
                 ),
               ),
@@ -840,25 +779,19 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
   }
 }
 
-// Notification ikona
-
 class _NotifIcon extends StatelessWidget {
-  final NotifType type;
-  final Color accent;
-  final bool isDark;
+  final NotifType type; final Color accent; final bool isDark;
   const _NotifIcon({required this.type, required this.accent, required this.isDark});
-
   @override
   Widget build(BuildContext context) {
     final IconData icon;
     switch (type) {
-      case NotifType.joined:   icon = Icons.check_circle_rounded; break;
+      case NotifType.joined:    icon = Icons.check_circle_rounded; break;
       case NotifType.cancelled: icon = Icons.cancel_rounded; break;
-      case NotifType.reminder: icon = Icons.access_time_rounded; break;
-      case NotifType.newEvent: icon = Icons.celebration_rounded; break;
-      case NotifType.general:  icon = Icons.favorite_rounded; break;
+      case NotifType.reminder:  icon = Icons.access_time_rounded; break;
+      case NotifType.newEvent:  icon = Icons.celebration_rounded; break;
+      case NotifType.general:   icon = Icons.favorite_rounded; break;
     }
-
     return Container(
       width: 44, height: 44,
       decoration: BoxDecoration(
@@ -871,15 +804,9 @@ class _NotifIcon extends StatelessWidget {
   }
 }
 
-// Event chip
-
 class _EventChip extends StatelessWidget {
-  final String name;
-  final String? location;
-  final Color color;
-  final bool isDark;
+  final String name; final String? location; final Color color; final bool isDark;
   const _EventChip({required this.name, required this.location, required this.color, required this.isDark});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -892,13 +819,11 @@ class _EventChip extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.event_rounded, color: color, size: 13),
         const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            location != null ? '$name · $location' : name,
-            style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w700),
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        Flexible(child: Text(
+          location != null ? '$name · $location' : name,
+          style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w700),
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+        )),
       ]),
     );
   }

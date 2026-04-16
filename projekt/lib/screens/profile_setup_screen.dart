@@ -6,7 +6,7 @@ import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE DATA MODEL
+// PROFILE DATA MODEL  (nepromijenjen)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupData {
@@ -56,295 +56,8 @@ class ProfileSetupData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE SETUP SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class ProfileSetupScreen extends StatefulWidget {
-  final ProfileSetupData? initial;
-  final void Function(ProfileSetupData) onSave;
-
-  const ProfileSetupScreen({
-    super.key,
-    this.initial,
-    required this.onSave,
-  });
-
-  @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
-}
-
-class _ProfileSetupScreenState extends State<ProfileSetupScreen>
-    with TickerProviderStateMixin {
-
-  int _step = 0;
-  late ProfileSetupData _data;
-
-  late AnimationController _progressCtrl;
-  late AnimationController _pageCtrl;
-  late Animation<Offset> _pageSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _data = widget.initial?.copy() ?? ProfileSetupData(
-      photoPaths: ['assets/images/profile_1.png', 'assets/images/profile_2.png'],
-    );
-    _progressCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-      value: 0.0,
-    );
-    _pageCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-    _pageSlide = Tween<Offset>(
-      begin: const Offset(1.0, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOutCubic));
-    _pageCtrl.value = 1.0;
-  }
-
-  @override
-  void dispose() {
-    _progressCtrl.dispose();
-    _pageCtrl.dispose();
-    super.dispose();
-  }
-
-  void _goNext() {
-    final err = _validateStep(_step);
-    if (err != null) {
-      HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: kPrimaryDark,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ));
-      return;
-    }
-
-    if (_step == 2) {
-      widget.onSave(_data);
-      Navigator.pop(context);
-      return;
-    }
-    HapticFeedback.lightImpact();
-    _pageCtrl.reset();
-    _pageCtrl.forward();
-    setState(() => _step++);
-    _progressCtrl.animateTo(
-      (_step + 1) / 3,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  String? _validateStep(int step) {
-    switch (step) {
-      case 0:
-        if (_data.photoPaths.length < 2) return 'Dodaj najmanje 2 fotografije.';
-        if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null)
-          return 'Datum rođenja je obavezan.';
-        final year = _data.birthYear!;
-        final now  = DateTime.now().year;
-        if (year < 1900 || year > now - 16) return 'Unesi ispravnu godinu rođenja.';
-        final month = _data.birthMonth!;
-        if (month < 1 || month > 12) return 'Unesi ispravan mjesec (1–12).';
-        final day = _data.birthDay!;
-        if (day < 1 || day > 31) return 'Unesi ispravan dan (1–31).';
-        if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
-        final h = int.tryParse(_data.height!);
-        if (h == null || h < 100 || h > 250) return 'Visina mora biti između 100 i 250 cm.';
-        if (_data.gender == null) return 'Spol je obavezan.';
-        if (_data.hairColor == null) return 'Boja kose je obavezna.';
-        if (_data.eyeColor == null) return 'Boja očiju je obavezna.';
-        if (_data.piercing == null) return 'Odaberi pirsing (da/ne).';
-        if (_data.tattoo == null) return 'Odaberi tetovažu (da/ne).';
-        return null;
-      case 1:
-        if (_data.interests.isEmpty) return 'Odaberi najmanje 1 interes.';
-        return null;
-      case 2:
-        if (_data.iceBreaker.trim().isEmpty) return 'Unesite icebreaker — kratki opis kako ti priđi.';
-        return null;
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(children: [
-        _Header(step: _step, progressCtrl: _progressCtrl, mq: mq),
-        Expanded(
-          child: SlideTransition(
-            position: _pageSlide,
-            child: _buildStepContent(mq),
-          ),
-        ),
-        _NextButton(step: _step, onTap: _goNext, mq: mq),
-      ]),
-    );
-  }
-
-  Widget _buildStepContent(MediaQueryData mq) {
-    switch (_step) {
-      case 0: return ProfileStep1(
-        data: _data,
-        onChange: (d) => setState(() => _data = d),
-        mq: mq,
-      );
-      case 1: return ProfileStep2(
-        data: _data,
-        onChange: (d) => setState(() => _data = d),
-      );
-      default: return ProfileStep3(
-        data: _data,
-        onChange: (d) => setState(() => _data = d),
-      );
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HEADER
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _Header extends StatelessWidget {
-  final int step;
-  final AnimationController progressCtrl;
-  final MediaQueryData mq;
-  const _Header({required this.step, required this.progressCtrl, required this.mq});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(
-        top: mq.padding.top + 16,
-        left: 22, right: 22, bottom: 16,
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(
-          'Izrada profila',
-          style: TextStyle(
-            color: kPrimaryDark,
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 14),
-        AnimatedBuilder(
-          animation: progressCtrl,
-          builder: (_, __) {
-            return LayoutBuilder(builder: (_, box) {
-              final filled = box.maxWidth * progressCtrl.value;
-              return Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: kPrimaryLight,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
-                    width: filled.clamp(0.0, box.maxWidth),
-                    decoration: BoxDecoration(
-                      color: kPrimaryDark,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ]),
-              );
-            });
-          },
-        ),
-      ]),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NEXT BUTTON
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _NextButton extends StatefulWidget {
-  final int step;
-  final VoidCallback onTap;
-  final MediaQueryData mq;
-  const _NextButton({required this.step, required this.onTap, required this.mq});
-  @override State<_NextButton> createState() => _NextButtonState();
-}
-
-class _NextButtonState extends State<_NextButton> with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _s;
-  @override void initState() {
-    super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _s = Tween<double>(begin: 1.0, end: 0.94)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
-  }
-  @override void dispose() { _c.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    final label = widget.step == 2 ? 'Završetak' : 'Iduće';
-    return Padding(
-      padding: EdgeInsets.only(bottom: widget.mq.padding.bottom + 16, top: 10),
-      child: Center(
-        child: GestureDetector(
-          onTapDown: (_) => _c.forward(),
-          onTapUp: (_) { _c.reverse(); widget.onTap(); },
-          onTapCancel: () => _c.reverse(),
-          child: ScaleTransition(
-            scale: _s,
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              decoration: BoxDecoration(
-                color: kPrimaryDark,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: kPrimaryDark.withOpacity(0.30),
-                    blurRadius: 16, offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-                const SizedBox(width: 10),
-                Container(
-                  width: 28, height: 28,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.20),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
-                ),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 1 — fotografije i osobne informacije
-// KLJUČNO: sve vrijednosti u dropdownima su BEZ dijakritika
-// da se podudaraju s onim što se sprema u ProfileStorage
+// STEP 1 — fotografije i osobni podaci
+// ISPRAVKA: vrijednosti u dropdownima su identične onima koji se spremaju
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep1 extends StatefulWidget {
@@ -362,40 +75,45 @@ class _ProfileStep1State extends State<ProfileStep1> {
   late final TextEditingController _monthCtrl;
   late final TextEditingController _yearCtrl;
 
-  // BEZ DIJAKRITIKA — mora se podudarati s ProfileStorage vrednostima
-  static const _hairOptions  = ['plava', 'smeda', 'crna', 'crvena', 'sijeda', 'ostalo'];
-  static const _eyeOptions   = ['smede', 'zelene', 'plave', 'sive'];
-  static const _yesNo        = ['da', 'ne'];
+  // ── Vrijednosti (BEZ dijakritika) — točno ono što se sprema u ProfileStorage ──
+  static const _hairOptions   = ['plava', 'smeda', 'crna', 'crvena', 'sijeda', 'ostalo'];
+  static const _eyeOptions    = ['smede', 'zelene', 'plave', 'sive'];
+  static const _yesNo         = ['da', 'ne'];
   static const _genderOptions = ['zensko', 'musko', 'ostalo'];
 
-  // Labele za prikaz (s dijakritima) — mapirane na vrijednosti bez dijakritika
+  // ── Labele za prikaz korisniku (s dijakritima) ──────────────────────────────
   static const _hairLabels = {
-    'plava': 'Plava',
-    'smeda': 'Smeđa',
-    'crna': 'Crna',
-    'crvena': 'Crvena',
-    'sijeda': 'Sijeda',
-    'ostalo': 'Ostalo',
+    'plava':   'Plava',
+    'smeda':   'Smeđa',
+    'crna':    'Crna',
+    'crvena':  'Crvena',
+    'sijeda':  'Sijeda',
+    'ostalo':  'Ostalo',
   };
   static const _eyeLabels = {
-    'smede': 'Smeđe',
-    'zelene': 'Zelene',
-    'plave': 'Plave',
-    'sive': 'Sive',
+    'smede':   'Smeđe',
+    'zelene':  'Zelene',
+    'plave':   'Plave',
+    'sive':    'Sive',
   };
   static const _genderLabels = {
-    'zensko': 'Žensko',
-    'musko': 'Muško',
-    'ostalo': 'Ostalo',
+    'zensko':  'Žensko',
+    'musko':   'Muško',
+    'ostalo':  'Ostalo',
+  };
+  static const _yesNoLabels = {
+    'da': 'Da',
+    'ne': 'Ne',
   };
 
   @override
   void initState() {
     super.initState();
+    // ── ISPRAVKA: inicijalizacija s existing podacima ─────────────────────────
     _heightCtrl = TextEditingController(text: widget.data.height ?? '');
-    _dayCtrl    = TextEditingController(text: widget.data.birthDay?.toString() ?? '');
+    _dayCtrl    = TextEditingController(text: widget.data.birthDay?.toString()   ?? '');
     _monthCtrl  = TextEditingController(text: widget.data.birthMonth?.toString() ?? '');
-    _yearCtrl   = TextEditingController(text: widget.data.birthYear?.toString() ?? '');
+    _yearCtrl   = TextEditingController(text: widget.data.birthYear?.toString()  ?? '');
   }
 
   @override
@@ -462,14 +180,10 @@ class _ProfileStep1State extends State<ProfileStep1> {
                     errorBuilder: (_, __, ___) => _emptyPhotoContent())
                     : Image.file(File(photos[idx]), fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _emptyPhotoContent()),
-                Positioned(
-                  bottom: 4, right: 4,
-                  child: Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)],
-                    ),
+                Positioned(bottom: 4, right: 4,
+                  child: Container(width: 24, height: 24,
+                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)]),
                     child: Icon(Icons.edit_rounded, color: kPrimaryDark, size: 13),
                   ),
                 ),
@@ -479,17 +193,13 @@ class _ProfileStep1State extends State<ProfileStep1> {
           ),
         ),
         if (hasPhoto && photos.length > 1)
-          Positioned(
-            top: -8, right: -8,
+          Positioned(top: -8, right: -8,
             child: GestureDetector(
               onTap: () => _removePhoto(idx),
-              child: Container(
-                width: 22, height: 22,
-                decoration: BoxDecoration(
-                  color: Colors.redAccent, shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)],
-                ),
+              child: Container(width: 22, height: 22,
+                decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)]),
                 child: const Icon(Icons.close_rounded, color: Colors.white, size: 13),
               ),
             ),
@@ -502,8 +212,7 @@ class _ProfileStep1State extends State<ProfileStep1> {
     onTap: _addPhoto,
     child: Container(
       decoration: BoxDecoration(
-        color: kPrimaryLight,
-        borderRadius: BorderRadius.circular(14),
+        color: kPrimaryLight, borderRadius: BorderRadius.circular(14),
         border: Border.all(color: kPrimaryDark.withOpacity(0.18), width: 1.5),
       ),
       child: Center(child: Icon(Icons.add_rounded, color: kPrimaryDark, size: 36)),
@@ -515,29 +224,28 @@ class _ProfileStep1State extends State<ProfileStep1> {
     final d = widget.data;
     final photos = d.photoPaths;
 
-    // Osiguraj da su vrijednosti validne za dropdown
-    final hairValue = _hairOptions.contains(d.hairColor) ? d.hairColor : null;
-    final eyeValue  = _eyeOptions.contains(d.eyeColor)   ? d.eyeColor  : null;
-    final genderValue = _genderOptions.contains(d.gender) ? d.gender : null;
+    // ── ISPRAVKA: safe vrijednosti za dropdown — null ako nije u listi ─────────
+    final hairValue   = _hairOptions.contains(d.hairColor)   ? d.hairColor   : null;
+    final eyeValue    = _eyeOptions.contains(d.eyeColor)     ? d.eyeColor    : null;
+    final genderValue = _genderOptions.contains(d.gender)    ? d.gender      : null;
+    final piercingVal = _yesNo.contains(d.piercing)          ? d.piercing    : null;
+    final tattooVal   = _yesNo.contains(d.tattoo)            ? d.tattoo      : null;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
+        // ── Slike ──────────────────────────────────────────────────────────────
         SizedBox(
           height: 156,
           child: Row(children: [
             Expanded(child: _photoSlot(0)),
             const SizedBox(width: 10),
-            Expanded(
-              child: photos.length >= 2 ? _photoSlot(1) : _addSlot(),
-            ),
+            Expanded(child: photos.length >= 2 ? _photoSlot(1) : _addSlot()),
             if (photos.length >= 2) ...[
               const SizedBox(width: 10),
-              Expanded(
-                child: photos.length >= 3 ? _photoSlot(2) : _addSlot(),
-              ),
+              Expanded(child: photos.length >= 3 ? _photoSlot(2) : _addSlot()),
             ],
             if (photos.length >= 3 && photos.length < 6) ...[
               const SizedBox(width: 10),
@@ -546,78 +254,97 @@ class _ProfileStep1State extends State<ProfileStep1> {
           ]),
         ),
 
+        // ── Datum rođenja ──────────────────────────────────────────────────────
         const SizedBox(height: 22),
         _label('Datum rođenja:'),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: _textField(ctrl: _dayCtrl, hint: 'DD', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthDay = int.tryParse(v); return d; }))),
+          Expanded(child: _textField(
+            ctrl: _dayCtrl, hint: 'DD', keyboardType: TextInputType.number,
+            onChanged: (v) => _update((d) { d.birthDay = int.tryParse(v); return d; }),
+          )),
           const SizedBox(width: 8),
-          Expanded(child: _textField(ctrl: _monthCtrl, hint: 'MM', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthMonth = int.tryParse(v); return d; }))),
+          Expanded(child: _textField(
+            ctrl: _monthCtrl, hint: 'MM', keyboardType: TextInputType.number,
+            onChanged: (v) => _update((d) { d.birthMonth = int.tryParse(v); return d; }),
+          )),
           const SizedBox(width: 8),
-          Expanded(flex: 2, child: _textField(ctrl: _yearCtrl, hint: 'GGGG', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthYear = int.tryParse(v); return d; }))),
+          Expanded(flex: 2, child: _textField(
+            ctrl: _yearCtrl, hint: 'GGGG', keyboardType: TextInputType.number,
+            onChanged: (v) => _update((d) { d.birthYear = int.tryParse(v); return d; }),
+          )),
         ]),
 
+        // ── Visina ─────────────────────────────────────────────────────────────
         const SizedBox(height: 16),
-        _label('Visina:'),
+        _label('Visina (cm):'),
         const SizedBox(height: 8),
-        _textField(ctrl: _heightCtrl, hint: '168', keyboardType: TextInputType.number,
-            onChanged: (v) => _update((d) { d.height = v; return d; })),
+        _textField(
+          ctrl: _heightCtrl, hint: '168', keyboardType: TextInputType.number,
+          onChanged: (v) => _update((d) { d.height = v; return d; }),
+        ),
 
+        // ── Spol ───────────────────────────────────────────────────────────────
         const SizedBox(height: 16),
         _label('Spol:'),
         const SizedBox(height: 8),
         _dropdown(
           value: genderValue,
-          hint: 'odaberi',
+          hint: 'Odaberi spol',
           items: _genderOptions,
           labelMap: _genderLabels,
           onChanged: (v) => _update((dd) { dd.gender = v; return dd; }),
         ),
 
+        // ── Boja kose ─────────────────────────────────────────────────────────
         const SizedBox(height: 16),
         _label('Boja kose:'),
         const SizedBox(height: 8),
         _dropdown(
           value: hairValue,
-          hint: 'odaberi',
+          hint: 'Odaberi boju kose',
           items: _hairOptions,
           labelMap: _hairLabels,
           onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; }),
         ),
 
+        // ── Boja očiju ────────────────────────────────────────────────────────
         const SizedBox(height: 16),
         _label('Boja očiju:'),
         const SizedBox(height: 8),
         _dropdown(
           value: eyeValue,
-          hint: 'odaberi',
+          hint: 'Odaberi boju očiju',
           items: _eyeOptions,
           labelMap: _eyeLabels,
           onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; }),
         ),
 
+        // ── Pirsing ───────────────────────────────────────────────────────────
         const SizedBox(height: 16),
         _label('Pirsing:'),
         const SizedBox(height: 8),
         _dropdown(
-          value: d.piercing,
-          hint: 'odaberi',
+          value: piercingVal,
+          hint: 'Imaš li pirsing?',
           items: _yesNo,
+          labelMap: _yesNoLabels,
           onChanged: (v) => _update((dd) { dd.piercing = v; return dd; }),
         ),
 
+        // ── Tetovaža ──────────────────────────────────────────────────────────
         const SizedBox(height: 16),
         _label('Tetovaža:'),
         const SizedBox(height: 8),
         _dropdown(
-          value: d.tattoo,
-          hint: 'odaberi',
+          value: tattooVal,
+          hint: 'Imaš li tetovažu?',
           items: _yesNo,
+          labelMap: _yesNoLabels,
           onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; }),
         ),
+
+        const SizedBox(height: 8),
       ]),
     );
   }
@@ -626,8 +353,10 @@ class _ProfileStep1State extends State<ProfileStep1> {
       style: TextStyle(color: kPrimaryDark, fontSize: 14.5, fontWeight: FontWeight.w600));
 
   Widget _textField({
-    required TextEditingController ctrl, required String hint,
-    TextInputType? keyboardType, required void Function(String) onChanged,
+    required TextEditingController ctrl,
+    required String hint,
+    TextInputType? keyboardType,
+    required void Function(String) onChanged,
   }) {
     return Container(
       height: 50,
@@ -656,14 +385,20 @@ class _ProfileStep1State extends State<ProfileStep1> {
     Map<String, String>? labelMap,
     required void Function(String?) onChanged,
   }) {
-    // Provjeri da value postoji u items, inače null
+    // Osiguraj da value postoji u listi — ako ne, prikaži hint
     final safeValue = (value != null && items.contains(value)) ? value : null;
 
     return Container(
       height: 50,
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2),
+        border: Border.all(
+          // Vizualno naglasi kad ima odabranu vrijednost
+          color: safeValue != null
+              ? kPrimaryDark.withOpacity(0.35)
+              : kPrimaryDark.withOpacity(0.15),
+          width: 1.2,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: DropdownButtonHideUnderline(
@@ -976,3 +711,110 @@ typedef _Step1 = ProfileStep1;
 typedef _Step2 = ProfileStep2;
 // ignore: unused_element
 typedef _Step3 = ProfileStep3;
+
+class ProfileSetupScreen extends StatefulWidget {
+  final ProfileSetupData initial;
+  final Function(ProfileSetupData) onSave;
+
+  const ProfileSetupScreen({
+    super.key,
+    required this.initial,
+    required this.onSave,
+  });
+
+  @override
+  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  late ProfileSetupData data;
+  int step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    data = widget.initial;
+  }
+
+  void _update(ProfileSetupData newData) {
+    setState(() => data = newData);
+  }
+
+  void _next() {
+    if (step < 2) {
+      setState(() => step++);
+    } else {
+      widget.onSave(data);
+      Navigator.pop(context);
+    }
+  }
+
+  void _back() {
+    if (step > 0) {
+      setState(() => step--);
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget currentStep;
+
+    if (step == 0) {
+      currentStep = ProfileStep1(
+        data: data,
+        onChange: _update,
+        mq: MediaQuery.of(context),
+      );
+    } else if (step == 1) {
+      currentStep = ProfileStep2(
+        data: data,
+        onChange: _update,
+      );
+    } else {
+      currentStep = ProfileStep3(
+        data: data,
+        onChange: _update,
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // TOP BAR
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _back,
+                ),
+                const Spacer(),
+                Text('Korak ${step + 1}/3'),
+                const Spacer(),
+                const SizedBox(width: 48),
+              ],
+            ),
+
+            Expanded(child: currentStep),
+
+            // NEXT BUTTON
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _next,
+                  child: Text(step == 2 ? 'Spremi' : 'Dalje'),
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
