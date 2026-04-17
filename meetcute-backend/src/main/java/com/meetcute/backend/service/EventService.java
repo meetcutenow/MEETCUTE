@@ -4,18 +4,16 @@ import com.meetcute.backend.dto.*;
 import com.meetcute.backend.entity.*;
 import com.meetcute.backend.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.Year;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class EventService {
@@ -77,6 +75,50 @@ public class EventService {
     }
 
     @Transactional
+    public EventResponse updateEvent(String eventId, String userId, UpdateEventRequest req) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
+
+        // Samo creator može uređivati
+        if (event.getCreator() == null || !event.getCreator().getId().equals(userId)) {
+            throw new RuntimeException("Nemaš pravo uređivati ovaj event.");
+        }
+
+        if (req.getTitle() != null)           event.setTitle(req.getTitle());
+        if (req.getDescription() != null)     event.setDescription(req.getDescription());
+        if (req.getCity() != null)            event.setCity(req.getCity());
+        if (req.getSpecificLocation() != null) event.setSpecificLocation(req.getSpecificLocation());
+        if (req.getEventDate() != null)       event.setEventDate(LocalDate.parse(req.getEventDate()));
+        if (req.getTimeStart() != null)       event.setTimeStart(LocalTime.parse(req.getTimeStart()));
+        if (req.getTimeEnd() != null)         event.setTimeEnd(LocalTime.parse(req.getTimeEnd()));
+        if (req.getCategory() != null)        event.setCategory(req.getCategory());
+        if (req.getAgeGroup() != null)        event.setAgeGroup(req.getAgeGroup());
+        if (req.getGenderGroup() != null)     event.setGenderGroup(req.getGenderGroup());
+        if (req.getMaxAttendees() != null)    event.setMaxAttendees(req.getMaxAttendees());
+        if (req.getCardColorHex() != null)    event.setCardColorHex(req.getCardColorHex());
+        if (req.getLatitude() != null)        event.setLatitude(req.getLatitude());
+        if (req.getLongitude() != null)       event.setLongitude(req.getLongitude());
+
+        eventRepository.save(event);
+        return toResponse(event, userId);
+    }
+
+    @Transactional
+    public void deleteEvent(String eventId, String userId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
+
+        // Samo creator može brisati
+        if (event.getCreator() == null || !event.getCreator().getId().equals(userId)) {
+            throw new RuntimeException("Nemaš pravo brisati ovaj event.");
+        }
+
+        // Soft delete — samo označi kao neaktivan
+        event.setIsActive(false);
+        eventRepository.save(event);
+    }
+
+    @Transactional
     public EventResponse toggleAttendance(String eventId, String userId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
@@ -123,6 +165,7 @@ public class EventService {
 
         return EventResponse.builder()
                 .id(e.getId())
+                .creatorId(e.getCreator() != null ? e.getCreator().getId() : null)
                 .title(e.getTitle())
                 .city(e.getCity())
                 .specificLocation(e.getSpecificLocation())
@@ -145,7 +188,3 @@ public class EventService {
                 .build();
     }
 }
-
-
-// ── USER SERVICE ──────────────────────────────────────────────
-

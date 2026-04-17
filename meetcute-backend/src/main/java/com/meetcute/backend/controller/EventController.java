@@ -46,6 +46,23 @@ public class EventController {
         return ResponseEntity.ok(ApiResponse.ok("Event kreiran!", event));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<EventResponse>> updateEvent(
+            @PathVariable String id,
+            @RequestBody UpdateEventRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        EventResponse event = eventService.updateEvent(id, userDetails.getUsername(), req);
+        return ResponseEntity.ok(ApiResponse.ok("Event ažuriran!", event));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteEvent(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        eventService.deleteEvent(id, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.ok("Event obrisan.", null));
+    }
+
     @PostMapping("/{id}/attend")
     public ResponseEntity<ApiResponse<EventResponse>> toggleAttendance(
             @PathVariable String id,

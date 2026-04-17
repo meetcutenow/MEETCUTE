@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
 import 'theme_state.dart';
+import 'auth_state.dart';
+import 'organize_meetup.dart' show OrganizeMeetupScreen, BackendEventEdit;
 
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
@@ -52,6 +56,8 @@ extension GenderGroupLabel on GenderGroup {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class EventData {
+  final String id;           // backend UUID, '' za lokalne statičke evente
+  final String? creatorId;   // backend user ID kreatora
   final String title;
   final String location;
   final String specificLocation;
@@ -71,6 +77,8 @@ class EventData {
   final GenderGroup genderGroup;
 
   const EventData({
+    this.id = '',
+    this.creatorId,
     required this.title,
     required this.location,
     this.specificLocation = '',
@@ -132,7 +140,7 @@ const _categories = [
 final _eventsByCity = <int, List<EventData>>{
   0: [
     const EventData(
-      title: 'Running dating', location: 'Jezero Jarun',
+      id: '', title: 'Running dating', location: 'Jezero Jarun',
       specificLocation: 'Jarun, Aleja Matije Ljubeka, Zagreb',
       dateDay: '14.', dateMonth: '04.', time: '10:00 – 12:00', attendees: 20,
       coordinates: LatLng(45.7785, 15.9148),
@@ -142,7 +150,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Jutarnja kava', location: 'Stari Grad, Zagreb',
+      id: '', title: 'Jutarnja kava', location: 'Stari Grad, Zagreb',
       specificLocation: 'Caffe Bar Booksa, Martićeva 14d, Zagreb',
       dateDay: '15.', dateMonth: '04.', time: '08:30 – 10:00', attendees: 14,
       coordinates: LatLng(45.8131, 15.9741),
@@ -151,7 +159,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.g26_35, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Piknik u parku', location: 'Park Maksimir',
+      id: '', title: 'Piknik u parku', location: 'Park Maksimir',
       specificLocation: 'Ulaz 1, Maksimirski perivoj, Zagreb',
       dateDay: '16.', dateMonth: '04.', time: '12:00 – 15:00', attendees: 35,
       coordinates: LatLng(45.8237, 16.0189),
@@ -160,7 +168,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.all, genderGroup: GenderGroup.female,
     ),
     const EventData(
-      title: 'Večer komedije', location: 'HNK Zagreb',
+      id: '', title: 'Večer komedije', location: 'HNK Zagreb',
       specificLocation: 'HNK Zagreb, Trg Republike Hrvatske 15',
       dateDay: '17.', dateMonth: '04.', time: '20:00 – 22:30', attendees: 48,
       coordinates: LatLng(45.8089, 15.9702),
@@ -169,7 +177,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.g36_45, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Street food festival', location: 'Trg bana Jelačića',
+      id: '', title: 'Street food festival', location: 'Trg bana Jelačića',
       specificLocation: 'Trg bana Josipa Jelačića 1, Zagreb',
       dateDay: '18.', dateMonth: '04.', time: '11:00 – 20:00', attendees: 120,
       coordinates: LatLng(45.8132, 15.9773),
@@ -180,7 +188,7 @@ final _eventsByCity = <int, List<EventData>>{
   ],
   1: [
     const EventData(
-      title: 'Plaža & kava', location: 'Bačvice, Split',
+      id: '', title: 'Plaža & kava', location: 'Bačvice, Split',
       specificLocation: 'Plaža Bačvice, Put Firula, Split',
       dateDay: '14.', dateMonth: '04.', time: '09:00 – 11:00', attendees: 18,
       coordinates: LatLng(43.5016, 16.4413),
@@ -189,7 +197,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.all,
     ),
     const EventData(
-      title: 'Dioklecijanova noć', location: 'Dioklecijanova palača',
+      id: '', title: 'Dioklecijanova noć', location: 'Dioklecijanova palača',
       specificLocation: 'Peristil, Dioklecijanova palača, Split',
       dateDay: '20.', dateMonth: '04.', time: '21:00 – 23:30', attendees: 62,
       coordinates: LatLng(43.5081, 16.4402),
@@ -201,7 +209,7 @@ final _eventsByCity = <int, List<EventData>>{
   2: [],
   3: [
     const EventData(
-      title: 'Tvrđa fest', location: 'Tvrđa, Osijek',
+      id: '', title: 'Tvrđa fest', location: 'Tvrđa, Osijek',
       specificLocation: 'Trg Svetog Trojstva 6, Tvrđa, Osijek',
       dateDay: '22.', dateMonth: '04.', time: '17:00 – 22:00', attendees: 75,
       coordinates: LatLng(45.5606, 18.6956),
@@ -212,7 +220,7 @@ final _eventsByCity = <int, List<EventData>>{
   ],
   4: [
     const EventData(
-      title: 'Sunčani sat', location: 'Morske orgulje, Zadar',
+      id: '', title: 'Sunčani sat', location: 'Morske orgulje, Zadar',
       specificLocation: 'Morske orgulje, Obala kralja Petra Krešimira IV, Zadar',
       dateDay: '15.', dateMonth: '04.', time: '18:30 – 20:00', attendees: 30,
       coordinates: LatLng(44.1152, 15.2214),
@@ -221,7 +229,7 @@ final _eventsByCity = <int, List<EventData>>{
       ageGroup: AgeGroup.g18_25, genderGroup: GenderGroup.female,
     ),
     const EventData(
-      title: 'Vinska večer', location: 'Stari grad, Zadar',
+      id: '', title: 'Vinska večer', location: 'Stari grad, Zadar',
       specificLocation: 'Konoba Stomorica, Stomorica 12, Zadar',
       dateDay: '19.', dateMonth: '04.', time: '19:00 – 22:00', attendees: 25,
       coordinates: LatLng(44.1164, 15.2272),
@@ -262,6 +270,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
   int _page           = 0;
   bool _showCity      = false;
   bool _showFilters   = false;
+  bool _backendLoading = false;
 
   final _searchCtrl = TextEditingController();
 
@@ -302,6 +311,92 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
     _entryCtrl.forward();
     ThemeState.instance.addListener(_onTheme);
+
+    _loadFromBackend();
+  }
+
+  Future<void> _loadFromBackend() async {
+    setState(() => _backendLoading = true);
+    try {
+      final headers = <String, String>{};
+      if (AuthState.instance.isLoggedIn) {
+        headers['Authorization'] = 'Bearer ${AuthState.instance.accessToken}';
+      }
+      final resp = await http.get(
+        Uri.parse('http://localhost:8080/api/events'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List;
+
+        // Briši stare backend evente (zadržavamo samo lokalne statičke)
+        for (final c in _cities) {
+          _userEventsByCity[c.name]?.removeWhere((e) => e.id.isNotEmpty);
+        }
+
+        for (final e in list) {
+          if (e['isUserEvent'] != true) continue;
+          final city = e['city'] as String? ?? '';
+          if (!_cities.any((c) => c.name == city)) continue;
+
+          final cardHex = (e['cardColorHex'] as String? ?? '#6DD5E8').replaceAll('#', '');
+          final cardColor = Color(int.parse('0xFF$cardHex'));
+
+          final dateStr = e['eventDate'] as String? ?? '';
+          String dateDay = '', dateMonth = '';
+          if (dateStr.length == 10) {
+            dateDay   = '${dateStr.substring(8, 10)}.';
+            dateMonth = '${dateStr.substring(5, 7)}.';
+          }
+
+          final timeStart = e['timeStart'] as String? ?? '';
+          final timeEnd   = e['timeEnd']   as String? ?? '';
+          final timeStr   = timeStart.isNotEmpty && timeEnd.isNotEmpty
+              ? '${timeStart.substring(0, 5)} – ${timeEnd.substring(0, 5)}'
+              : timeStart.isNotEmpty ? timeStart.substring(0, 5) : '00:00';
+
+          // Dob i spol s backenda
+          AgeGroup ageGroup = AgeGroup.all;
+          final ag = e['ageGroup'] as String? ?? 'all';
+          for (final v in AgeGroup.values) {
+            if (v.name == ag) { ageGroup = v; break; }
+          }
+          GenderGroup genderGroup = GenderGroup.all;
+          final gg = e['genderGroup'] as String? ?? 'all';
+          for (final v in GenderGroup.values) {
+            if (v.name == gg) { genderGroup = v; break; }
+          }
+
+          final event = EventData(
+            id:              e['id'] as String? ?? '',
+            creatorId:       e['creatorId'] as String?,
+            title:           e['title'] as String? ?? '',
+            location:        city,
+            specificLocation: e['specificLocation'] as String? ?? '',
+            dateDay:          dateDay,
+            dateMonth:        dateMonth,
+            time:             timeStr,
+            description:      e['description'] as String? ?? '',
+            attendees:        (e['attendeeCount'] as int?) ?? 0,
+            coordinates:      LatLng(
+              (e['latitude']  as num?)?.toDouble() ?? 45.8150,
+              (e['longitude'] as num?)?.toDouble() ?? 15.9819,
+            ),
+            categories:      [e['category'] as String? ?? ''],
+            cardColor:        cardColor,
+            isUserEvent:      true,
+            maxAttendees:     (e['maxAttendees'] as int?) ?? 0,
+          );
+
+          _userEventsByCity.putIfAbsent(city, () => []);
+          _userEventsByCity[city]!.add(event);
+        }
+
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _backendLoading = false);
   }
 
   void _onTheme() { if (mounted) setState(() {}); }
@@ -396,7 +491,14 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
         ),
       ),
       transitionDuration: const Duration(milliseconds: 380),
-    )).then((_) => setState(() {}));
+    )).then((result) {
+      // Ako je event obrisan ili ažuriran, refreshaj s backenda
+      if (result == 'deleted' || result == 'updated') {
+        _loadFromBackend();
+      } else {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -423,7 +525,9 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
                     _catChips(),
                     const SizedBox(height: 6),
                     _filterPanel(),
-                    Expanded(child: _cardArea()),
+                    Expanded(child: _backendLoading
+                        ? Center(child: CircularProgressIndicator(color: _bordo.withOpacity(0.5), strokeWidth: 2))
+                        : _cardArea()),
                     _searchBar(mq),
                   ]),
                   if (_showCity) _cityOverlay(),
@@ -456,7 +560,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
           style: TextStyle(color: primary, fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.5),
           child: const Text('Pronađi događanja'),
         )),
-        // ── Filter gumb ────────────────────────────────────────────────────
         GestureDetector(
           onTap: _toggleFilters,
           child: AnimatedContainer(
@@ -615,48 +718,10 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── FILTER ROW ───────────────────────────────────────────────────────────────
-  Widget _filterRow() {
+  // ── FILTER PANEL ─────────────────────────────────────────────────────────────
+  Widget _filterPanel() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
-    final bg      = isDark ? kDarkCard : Colors.white;
-    final border  = isDark ? kDarkCardEl : const Color(0xFFDDC8CB);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: GestureDetector(
-        onTap: _toggleFilters,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: _hasFilters ? primary : bg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _hasFilters ? primary : border, width: 1.2),
-          ),
-          child: Row(children: [
-            Icon(Icons.tune_rounded, color: _hasFilters ? Colors.white : primary, size: 16),
-            const SizedBox(width: 8),
-            Text('Filtri', style: TextStyle(color: _hasFilters ? Colors.white : primary, fontSize: 13, fontWeight: FontWeight.w600)),
-            if (_hasFilters) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(8)),
-                child: const Text('aktivni', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-              ),
-            ],
-            const Spacer(),
-            AnimatedRotation(
-                turns: _showFilters ? 0.5 : 0, duration: const Duration(milliseconds: 240),
-                child: Icon(Icons.keyboard_arrow_down_rounded,
-                    color: _hasFilters ? Colors.white : primary.withOpacity(0.55), size: 20)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _filterPanel() {
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
@@ -839,7 +904,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: Stack(children: [
-        // Cijela slika/boja — puna visina kartice
         Positioned.fill(
           child: hasImg
               ? Image.file(File(e.userImagePath!), fit: BoxFit.cover,
@@ -849,19 +913,13 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
               errorBuilder: (_, __, ___) => Container(color: c))
               : Container(color: c),
         ),
-
-        // Shimmer
         Positioned.fill(child: AnimatedBuilder(animation: _shim, builder: (_, __) => Positioned(
             left: -80 + _shim.value * (MediaQuery.of(context).size.width + 160), top: 0, bottom: 0,
             child: Container(width: 80, decoration: BoxDecoration(gradient: LinearGradient(colors: [
               Colors.white.withOpacity(0), Colors.white.withOpacity(0.09), Colors.white.withOpacity(0)])))))),
-
-        // Clouds
         _cloud(top: 18, left: 14, w: 52, h: 24),
         _cloud(top: 8, right: 46, w: 38, h: 18),
         _cloud(top: 44, right: 10, w: 28, h: 14),
-
-        // Max people top-right
         if (isUser && e.maxAttendees > 0)
           Positioned(top: 12, right: 12,
               child: Container(
@@ -871,8 +929,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                     const Icon(Icons.people_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
                     Text('max ${e.maxAttendees}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                   ]))),
-
-        // "Moj event" badge top-left
         if (isUser)
           Positioned(top: 12, left: 12,
               child: Container(
@@ -882,8 +938,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                     Icon(Icons.star_rounded, color: Colors.white, size: 12), SizedBox(width: 4),
                     Text('Moj event', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                   ]))),
-
-        // Detalji hint — iznad bordo bara (bar je ~70px + 8px margin od dna)
         Positioned(bottom: 90, right: 12,
             child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -892,8 +946,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                   Icon(Icons.touch_app_rounded, color: Colors.white, size: 13), SizedBox(width: 4),
                   Text('detalji', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                 ]))),
-
-        // Bordo pravokutnik — direktno na slici, s malom sjenom iznad
         Positioned(
           bottom: 0, left: 0, right: 0,
           child: Container(
@@ -902,9 +954,7 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
             decoration: BoxDecoration(
               color: _bordo,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, -2)),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, -2))],
             ),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -929,11 +979,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
       ]),
     );
   }
-
-  Widget _badge(String t) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(14)),
-      child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600)));
 
   Widget _cloud({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
       Positioned(top: top, bottom: bottom, left: left, right: right,
@@ -1006,6 +1051,13 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
   late final Animation<Offset> _contentSlide;
   bool _mapExpanded = false;
   late final MapController _mapController;
+
+  // Je li ovo moj vlastiti event (kreator)
+  bool get _isMyEvent =>
+      widget.event.isUserEvent &&
+          AuthState.instance.isLoggedIn &&
+          widget.event.creatorId != null &&
+          widget.event.creatorId == AuthState.instance.userId;
 
   @override
   void initState() {
@@ -1084,6 +1136,174 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     _mapExpanded ? _mapCtrl.forward() : _mapCtrl.reverse();
   }
 
+  // ── Brisanje eventa ────────────────────────────────────────────────────────
+  Future<void> _deleteEvent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.85, end: 1.0),
+          duration: const Duration(milliseconds: 340),
+          curve: Curves.easeOutBack,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            padding: const EdgeInsets.all(26),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 36, offset: const Offset(0, 14))],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 28)),
+              const SizedBox(height: 14),
+              const Text('Obriši događaj?',
+                  style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 17)),
+              const SizedBox(height: 8),
+              Text('Ova radnja se ne može poništiti.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 13.5)),
+              const SizedBox(height: 22),
+              Row(children: [
+                Expanded(child: TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: kPrimaryDark.withOpacity(0.20))),
+                  ),
+                  child: Text('Odustani', style: TextStyle(color: kPrimaryDark.withOpacity(0.65), fontSize: 14)),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0x570A1DFF), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Obriši', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                )),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    HapticFeedback.mediumImpact();
+
+    try {
+      final resp = await http.delete(
+        Uri.parse('http://localhost:8080/api/events/${widget.event.id}'),
+        headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      if (resp.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Događaj obrisan.', style: TextStyle(color: Colors.white)),
+          backgroundColor: kPrimaryDark,
+          behavior: SnackBarBehavior.floating,
+        ));
+        Navigator.pop(context, 'deleted');
+      } else {
+        final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(decoded['message'] ?? 'Greška pri brisanju.'),
+          backgroundColor: Color(0x570A1DFF),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Ne mogu se spojiti na server.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  // ── Uređivanje eventa ──────────────────────────────────────────────────────
+  Future<void> _editEvent() async {
+    final e = widget.event;
+
+    // Dohvati pravi datum s backenda
+    String eventDate = '';
+    if (e.id.isNotEmpty) {
+      try {
+        final headers = <String, String>{};
+        if (AuthState.instance.isLoggedIn) {
+          headers['Authorization'] = 'Bearer ${AuthState.instance.accessToken}';
+        }
+        final resp = await http.get(
+          Uri.parse('http://localhost:8080/api/events/${e.id}'),
+          headers: headers,
+        ).timeout(const Duration(seconds: 8));
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as Map<String, dynamic>;
+          eventDate = data['eventDate'] as String? ?? '';
+        }
+      } catch (_) {}
+    }
+
+    if (eventDate.isEmpty) {
+      // Fallback iz lokalnih podataka
+      final day   = e.dateDay.replaceAll('.', '').padLeft(2, '0');
+      final month = e.dateMonth.replaceAll('.', '').padLeft(2, '0');
+      final year  = DateTime.now().year.toString();
+      eventDate = '$year-$month-$day';
+    }
+
+    String? timeStart, timeEnd;
+    if (e.time.contains('–')) {
+      final parts = e.time.split('–');
+      timeStart = parts[0].trim();
+      timeEnd   = parts[1].trim();
+    } else {
+      timeStart = e.time.trim();
+    }
+
+    final editData = BackendEventEdit(
+      id:               e.id,
+      title:            e.title,
+      description:      e.description.isNotEmpty ? e.description : null,
+      city:             e.location,
+      specificLocation: e.specificLocation.isNotEmpty ? e.specificLocation : null,
+      eventDate:        eventDate,
+      timeStart:        timeStart,
+      timeEnd:          timeEnd,
+      category:         e.categories.isNotEmpty ? e.categories.first : '',
+      ageGroup:         e.ageGroup.name,
+      genderGroup:      e.genderGroup.name,
+      maxAttendees:     e.maxAttendees > 0 ? e.maxAttendees : null,
+      cardColorHex:     '#${e.cardColor.value.toRadixString(16).substring(2).toUpperCase()}',
+      latitude:         e.coordinates.latitude,
+      longitude:        e.coordinates.longitude,
+    );
+
+    if (!mounted) return;
+    final result = await Navigator.push<bool>(context, PageRouteBuilder(
+      pageBuilder: (_, a, __) => OrganizeMeetupScreen(editEvent: editData),
+      transitionsBuilder: (_, a, __, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero)
+            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+      transitionDuration: const Duration(milliseconds: 400),
+    ));
+
+    if (result == true && mounted) {
+      Navigator.pop(context, 'updated');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq     = MediaQuery.of(context);
@@ -1104,7 +1324,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // HERO
               SliverToBoxAdapter(child: ScaleTransition(scale: _heroScale,
                   child: Container(height: mq.size.height * 0.42, color: c,
                       child: Stack(fit: StackFit.expand, children: [
@@ -1115,7 +1334,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                             child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                 colors: [Colors.transparent, Colors.black.withOpacity(0.18)])))),
-                        // "Moj event" badge at bottom
                         if (e.isUserEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1130,7 +1348,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                         _cw(top: 60, right: 16, w: 36, h: 18),
                       ])))),
 
-              // CONTENT
               SliverToBoxAdapter(child: FadeTransition(opacity: _entryFade,
                   child: SlideTransition(position: _contentSlide,
                       child: Padding(
@@ -1162,7 +1379,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
 
                           const SizedBox(height: 20),
 
-                          // MAP CARD
                           GestureDetector(onTap: _toggleMap,
                               child: AnimatedContainer(duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic,
                                 decoration: BoxDecoration(
@@ -1242,7 +1458,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                               textAlign: TextAlign.justify,
                               style: TextStyle(color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.65), fontSize: 15, height: 1.65)),
 
-                          // ── Dobna skupina & spol ──────────────────────────────
                           if (e.ageGroup != AgeGroup.all || e.genderGroup != GenderGroup.all) ...[
                             const SizedBox(height: 24),
                             Text('Detalji eventi', style: TextStyle(color: isDark ? kDarkText : Colors.black87,
@@ -1270,11 +1485,9 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
             ],
           ),
 
-          // BACK BUTTON
           Positioned(top: mq.padding.top + 14, left: 14,
               child: FadeTransition(opacity: _entryFade, child: _BackBtn(onTap: () => Navigator.pop(context)))),
 
-          // JOIN BAR
           Positioned(bottom: 0, left: 0, right: 0, child: _joinBar(mq)),
         ]),
       ),
@@ -1303,11 +1516,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     ]);
   }
 
-  Widget _heroBadge(String t) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
-      child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)));
-
   Widget _cw({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
       Positioned(top: top, bottom: bottom, left: left, right: right,
           child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.50), borderRadius: BorderRadius.circular(h/2))));
@@ -1315,13 +1523,57 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
   Widget _joinBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
-    final primary = isDark ? kDarkPrimary : _bordo;
+    final primary = isDark ? kDarkPrimary : _bordoDark;
 
-    // Vlastiti event — nema gumba, samo prazan prostor
+    // Moj vlastiti event — Edit + Delete gumbi
+    if (_isMyEvent) {
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 380),
+        decoration: BoxDecoration(color: cardBg,
+            boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0,-4))]),
+        padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
+        child: Row(children: [
+          Expanded(child: GestureDetector(
+            onTap: _editEvent,
+            child: Container(height: 50,
+              decoration: BoxDecoration(
+                color: isDark ? kDarkCard : _bordoLight,
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: _bordo.withOpacity(0.40), width: 1.5),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.edit_rounded, color: _bordo, size: 18),
+                const SizedBox(width: 8),
+                Text('Uredi', style: TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          )),
+          const SizedBox(width: 12),
+          Expanded(child: GestureDetector(
+            onTap: _deleteEvent,
+            child: Container(height: 50,
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))],
+              ),
+              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.delete_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Obriši', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          )),
+        ]),
+      );
+    }
+
+    // Tuđi user event — bez gumba
     if (widget.event.isUserEvent) {
       return const SizedBox.shrink();
     }
 
+    // Normalni event — Join gumb
     final isFull = widget.event.maxAttendees > 0 &&
         _effectiveAttendees(widget.event) >= widget.event.maxAttendees && !_joined;
 
@@ -1337,10 +1589,10 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
             decoration: BoxDecoration(
                 color: isFull ? Colors.grey.withOpacity(0.35)
                     : _joined ? (isDark ? const Color(0xFF3A3A42) : const Color(0xFF2C2C2C))
-                    : primary,
+                    : _bordo,
                 borderRadius: BorderRadius.circular(27),
                 boxShadow: [BoxShadow(
-                    color: (isFull ? Colors.grey : _joined ? Colors.black : primary).withOpacity(0.28),
+                    color: (isFull ? Colors.grey : _joined ? Colors.black : _bordo).withOpacity(0.28),
                     blurRadius: 16, offset: const Offset(0,6))]),
             child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
               AnimatedSwitcher(duration: const Duration(milliseconds: 250),

@@ -5,12 +5,55 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
-import 'events_nearby.dart' show EventData, addUserEvent, AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
+import 'events_nearby.dart' show EventData, AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
 import 'theme_state.dart';
+import 'auth_state.dart';
 import 'package:latlong2/latlong.dart';
 
+const String _base = 'http://localhost:8080/api';
+
+// ── Model za backend event koji se uređuje ───────────────────────────────────
+class BackendEventEdit {
+  final String id;
+  final String title;
+  final String? description;
+  final String city;
+  final String? specificLocation;
+  final String eventDate;  // 'YYYY-MM-DD'
+  final String? timeStart;
+  final String? timeEnd;
+  final String category;
+  final String? ageGroup;
+  final String? genderGroup;
+  final int? maxAttendees;
+  final String? cardColorHex;
+  final double? latitude;
+  final double? longitude;
+
+  const BackendEventEdit({
+    required this.id,
+    required this.title,
+    this.description,
+    required this.city,
+    this.specificLocation,
+    required this.eventDate,
+    this.timeStart,
+    this.timeEnd,
+    required this.category,
+    this.ageGroup,
+    this.genderGroup,
+    this.maxAttendees,
+    this.cardColorHex,
+    this.latitude,
+    this.longitude,
+  });
+}
+
 class OrganizeMeetupScreen extends StatefulWidget {
-  const OrganizeMeetupScreen({super.key});
+  /// Ako je editEvent != null, ekran je u modu uređivanja
+  final BackendEventEdit? editEvent;
+
+  const OrganizeMeetupScreen({super.key, this.editEvent});
   @override
   State<OrganizeMeetupScreen> createState() => _OrganizeMeetupScreenState();
 }
@@ -32,14 +75,9 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
   AgeGroup _selectedAge       = AgeGroup.all;
   GenderGroup _selectedGender = GenderGroup.all;
 
-  // Validacija adrese
-  bool _addrChecking  = false;  // debounce u toku
-  bool? _addrValid;             // null=nije provjereno, true=ok, false=nije nađeno
+  bool _addrChecking  = false;
+  bool? _addrValid;
   String? _addrError;
-  // ignore: cancel_subscriptions
-  Future<void>? _addrDebounce;
-
-  // Validacija vremena
   String? _timeError;
 
   late final AnimationController _entryCtrl;
@@ -50,6 +88,8 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
   late final Animation<double>   _btnScale;
 
   final _picker = ImagePicker();
+
+  bool get _isEditMode => widget.editEvent != null;
 
   static const _cities = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar'];
   static const _categories = [
@@ -83,10 +123,49 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
     _entryCtrl.forward();
 
-    // Debounce validacija adrese
     _specificLocCtrl.addListener(_onAddrChanged);
-    // Validacija vremena
     _timeCtrl.addListener(_onTimeChanged);
+
+    // Popuni polja ako smo u edit modu
+    if (_isEditMode) {
+      final e = widget.editEvent!;
+      _titleCtrl.text       = e.title;
+      _descCtrl.text        = e.description ?? '';
+      _maxPeopleCtrl.text   = e.maxAttendees?.toString() ?? '';
+      _specificLocCtrl.text = e.specificLocation ?? '';
+      _selectedCity         = _cities.contains(e.city) ? e.city : null;
+      _selectedCategory     = _categories.any((c) => c.$1 == e.category) ? e.category : null;
+
+      // Vrijeme
+      if (e.timeStart != null) {
+        final ts = e.timeStart!.substring(0, 5); // HH:mm
+        final te = e.timeEnd != null ? e.timeEnd!.substring(0, 5) : null;
+        _timeCtrl.text = te != null ? '$ts – $te' : ts;
+      }
+
+      // Datum
+      try {
+        final parts = e.eventDate.split('-');
+        if (parts.length == 3) {
+          _pickedDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          _selectedDate = '${parts[2]}.${parts[1]}.${parts[0]}.';
+        }
+      } catch (_) {}
+
+      // Dob i spol
+      if (e.ageGroup != null) {
+        _selectedAge = AgeGroup.values.firstWhere(
+              (g) => g.name == e.ageGroup || g.label == e.ageGroup,
+          orElse: () => AgeGroup.all,
+        );
+      }
+      if (e.genderGroup != null) {
+        _selectedGender = GenderGroup.values.firstWhere(
+              (g) => g.name == e.genderGroup || g.label == e.genderGroup,
+          orElse: () => GenderGroup.all,
+        );
+      }
+    }
   }
 
   void _onAddrChanged() {
@@ -97,10 +176,9 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
     }
     setState(() { _addrChecking = true; _addrValid = null; _addrError = null; });
 
-    // Debounce 800ms
     Future.delayed(const Duration(milliseconds: 800), () async {
       if (!mounted) return;
-      if (_specificLocCtrl.text.trim() != text) return; // već promijenjen
+      if (_specificLocCtrl.text.trim() != text) return;
       final city = _selectedCity ?? '';
       final geocoded = await _geocode('$text${city.isNotEmpty ? ', $city' : ''}, Croatia');
       if (!mounted) return;
@@ -116,7 +194,6 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
   void _onTimeChanged() {
     final text = _timeCtrl.text.trim();
     if (text.isEmpty) { setState(() => _timeError = null); return; }
-    // Prihvaćeni formati: "10:00 – 12:00" ili "10:00 - 12:00" ili "10:00"
     final single = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$');
     final range  = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)\s*[–\-]\s*([01]?\d|2[0-3]):([0-5]\d)$');
     final valid  = single.hasMatch(text) || range.hasMatch(text);
@@ -152,7 +229,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now.add(const Duration(days: 1)),
+      initialDate: _pickedDate ?? now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
@@ -182,11 +259,10 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
           _timeCtrl.text.trim().isNotEmpty &&
           _timeError == null &&
           !_addrChecking &&
-          (_specificLocCtrl.text.trim().isEmpty || _addrValid == true);
+          (_specificLocCtrl.text.trim().isEmpty || _addrValid == true || _isEditMode);
 
   bool _isGeocoding = false;
 
-  // Geocode adresu putem Nominatim
   Future<LatLng?> _geocode(String address) async {
     try {
       final query = Uri.encodeComponent(address);
@@ -207,61 +283,147 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
     return null;
   }
 
+  /// Parsira "HH:mm" ili "HH:mm – HH:mm" → (timeStart, timeEnd)
+  (String?, String?) _parseTime(String text) {
+    final t = text.trim();
+    final range = RegExp(r'^(\d{2}:\d{2})\s*[–\-]\s*(\d{2}:\d{2})$');
+    final m = range.firstMatch(t);
+    if (m != null) return (m.group(1), m.group(2));
+    if (t.length == 5) return (t, null);
+    return (null, null);
+  }
+
   void _submit() async {
     if (!_isValid) { _showValidationSnack(); return; }
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward();
     await _btnCtrl.reverse();
 
-    final colorIndex = _categories.indexWhere((c) => c.$1 == _selectedCategory);
-    final cardColor  = _autoColors[colorIndex.clamp(0, _autoColors.length - 1)];
-    final day   = _pickedDate!.day.toString().padLeft(2, '0');
-    final month = _pickedDate!.month.toString().padLeft(2, '0');
-
-    final cityCoords = {
-      'Zagreb': const LatLng(45.8150, 15.9819),
-      'Split':  const LatLng(43.5081, 16.4402),
-      'Rijeka': const LatLng(45.3271, 14.4422),
-      'Osijek': const LatLng(45.5550, 18.6955),
-      'Zadar':  const LatLng(44.1194, 15.2314),
-    };
-
-    final maxP = int.tryParse(_maxPeopleCtrl.text.trim()) ?? 20;
-    final specificLoc = _specificLocCtrl.text.trim();
-
-    // Dohvati koordinate za specifičnu lokaciju (geocoding)
-    LatLng coords = cityCoords[_selectedCity] ?? const LatLng(45.8150, 15.9819);
-    if (specificLoc.isNotEmpty) {
-      setState(() => _isGeocoding = true);
-      final geocoded = await _geocode('$specificLoc, $_selectedCity, Croatia');
-      if (mounted) setState(() => _isGeocoding = false);
-      if (geocoded != null) coords = geocoded;
+    final token = AuthState.instance.accessToken;
+    if (token == null) {
+      _showSnack('Nisi prijavljen/a.');
+      return;
     }
 
-    final event = EventData(
-      title: _titleCtrl.text.trim(),
-      location: _selectedCity!,
-      specificLocation: specificLoc,
-      dateDay: '$day.',
-      dateMonth: '$month.',
-      time: _timeCtrl.text.trim(),
-      description: _descCtrl.text.trim().isNotEmpty
-          ? _descCtrl.text.trim()
-          : 'Osobni događaj organiziran putem MeetCute aplikacije.',
-      attendees: 0,
-      coordinates: coords,
-      imagePath: '',
-      categories: [_selectedCategory!],
-      cardColor: cardColor,
-      isUserEvent: true,
-      maxAttendees: maxP,
-      userImagePath: _imagePath,
-      ageGroup: _selectedAge,
-      genderGroup: _selectedGender,
-    );
+    final specificLoc = _specificLocCtrl.text.trim();
+    final (timeStart, timeEnd) = _parseTime(_timeCtrl.text);
+    final eventDateStr = '${_pickedDate!.year}-${_pickedDate!.month.toString().padLeft(2, '0')}-${_pickedDate!.day.toString().padLeft(2, '0')}';
 
-    addUserEvent(_selectedCity!, event);
-    if (mounted) _showSuccessDialog();
+    if (_isEditMode) {
+      await _updateEvent(token, eventDateStr, specificLoc, timeStart, timeEnd);
+    } else {
+      await _createEvent(token, eventDateStr, specificLoc, timeStart, timeEnd);
+    }
+  }
+
+  Future<void> _createEvent(String token, String eventDateStr, String specificLoc,
+      String? timeStart, String? timeEnd) async {
+
+    setState(() => _isGeocoding = true);
+
+    LatLng? coords;
+    if (specificLoc.isNotEmpty) {
+      coords = await _geocode('$specificLoc, $_selectedCity, Croatia');
+    }
+    if (!mounted) return;
+    setState(() => _isGeocoding = false);
+
+    final colorIndex = _categories.indexWhere((c) => c.$1 == _selectedCategory);
+    final cardColor  = _autoColors[colorIndex.clamp(0, _autoColors.length - 1)];
+
+    final body = {
+      'title':           _titleCtrl.text.trim(),
+      'description':     _descCtrl.text.trim().isEmpty
+          ? 'Osobni događaj organiziran putem MeetCute aplikacije.'
+          : _descCtrl.text.trim(),
+      'city':            _selectedCity!,
+      'specificLocation': specificLoc.isEmpty ? null : specificLoc,
+      'eventDate':       eventDateStr,
+      'timeStart':       timeStart,
+      'timeEnd':         timeEnd,
+      'category':        _selectedCategory!,
+      'ageGroup':        _selectedAge.name,
+      'genderGroup':     _selectedGender.name,
+      'maxAttendees':    int.tryParse(_maxPeopleCtrl.text.trim()) ?? 20,
+      'cardColorHex':    '#${cardColor.value.toRadixString(16).substring(2).toUpperCase()}',
+      'latitude':        coords?.latitude,
+      'longitude':       coords?.longitude,
+    };
+
+    try {
+      final resp = await http.post(
+        Uri.parse('$_base/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      if (!mounted) return;
+
+      if (resp.statusCode == 200 && decoded['success'] == true) {
+        _showSuccessDialog(isEdit: false);
+      } else {
+        _showSnack(decoded['message'] ?? 'Greška pri kreiranju eventa.');
+      }
+    } catch (e) {
+      if (mounted) _showSnack('Greška: $e');
+    }
+  }
+
+  Future<void> _updateEvent(String token, String eventDateStr, String specificLoc,
+      String? timeStart, String? timeEnd) async {
+
+    final body = <String, dynamic>{
+      'title':           _titleCtrl.text.trim(),
+      'description':     _descCtrl.text.trim(),
+      'city':            _selectedCity!,
+      'specificLocation': specificLoc.isEmpty ? null : specificLoc,
+      'eventDate':       eventDateStr,
+      'timeStart':       timeStart,
+      'timeEnd':         timeEnd,
+      'category':        _selectedCategory!,
+      'ageGroup':        _selectedAge.name,
+      'genderGroup':     _selectedGender.name,
+      'maxAttendees':    int.tryParse(_maxPeopleCtrl.text.trim()),
+    };
+
+    try {
+      final resp = await http.put(
+        Uri.parse('$_base/events/${widget.editEvent!.id}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      print('STATUS: ${resp.statusCode}');
+      print('BODY: ${resp.body}');
+      if (!mounted) return;
+
+      if (resp.statusCode == 200 && decoded['success'] == true) {
+        _showSuccessDialog(isEdit: true);
+      } else {
+        _showSnack(decoded['message'] ?? 'Greška pri ažuriranju eventa.');
+      }
+    } catch (e) {
+      if (mounted) _showSnack('Ne mogu se spojiti na server.');
+    }
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+      backgroundColor: Colors.redAccent,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 3),
+    ));
   }
 
   void _showValidationSnack() {
@@ -277,7 +439,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
     ));
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog({required bool isEdit}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -303,23 +465,28 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                   ),
                   child: const Icon(Icons.check_rounded, color: kPrimaryDark, size: 34)),
               const SizedBox(height: 18),
-              const Text('Događaj kreiran! 🎉',
-                  style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4)),
+              Text(isEdit ? 'Event ažuriran! ✨' : 'Događaj kreiran! 🎉',
+                  style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4)),
               const SizedBox(height: 10),
-              Text('Tvoj događaj je dodan u Događanja u blizini. Sretno! ✨',
+              Text(isEdit
+                  ? 'Promjene su uspješno spremljene.'
+                  : 'Tvoj događaj je dodan. Sretno! ✨',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, height: 1.55)),
               const SizedBox(height: 24),
               GestureDetector(
-                onTap: () { Navigator.of(context).pop(); Navigator.of(context).pop(); },
+                onTap: () {
+                  Navigator.of(context).pop(); // zatvori dialog
+                  Navigator.of(context).pop(true); // vrati se s rezultatom true
+                },
                 child: Container(
                   height: 50,
                   decoration: BoxDecoration(
                     color: kPrimaryDark, borderRadius: BorderRadius.circular(25),
                     boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.30), blurRadius: 16, offset: const Offset(0, 6))],
                   ),
-                  child: const Center(child: Text('Odlično!',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
+                  child: Center(child: Text(isEdit ? 'Super!' : 'Odlično!',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
                 ),
               ),
             ]),
@@ -352,9 +519,11 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                   padding: EdgeInsets.fromLTRB(20, 10, 20, mq.padding.bottom + 24),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-                    // PHOTO SECTION — centered
-                    Center(child: _buildPhotoSection()),
-                    const SizedBox(height: 24),
+                    // PHOTO SECTION — samo pri kreiranju
+                    if (!_isEditMode) ...[
+                      Center(child: _buildPhotoSection()),
+                      const SizedBox(height: 24),
+                    ],
 
                     _sectionLabel('Naziv događaja *'),
                     const SizedBox(height: 8),
@@ -369,8 +538,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                     _sectionLabel('Specifična lokacija sastanka'),
                     const SizedBox(height: 8),
                     _fieldAnim(2, _buildTextField(ctrl: _specificLocCtrl, hint: 'Npr. Caffe Bar Booksa, Martićeva 14d', icon: Icons.place_rounded)),
-                    // Status adrese
-                    if (_specificLocCtrl.text.trim().isNotEmpty) ...[
+                    if (_specificLocCtrl.text.trim().isNotEmpty && !_isEditMode) ...[
                       const SizedBox(height: 6),
                       _addrStatusRow(),
                     ],
@@ -402,7 +570,6 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                         _sectionLabel('Vrijeme *'),
                         const SizedBox(height: 8),
                         _fieldAnim(4, _buildTextField(ctrl: _timeCtrl, hint: '10:00 – 12:00', icon: Icons.access_time_rounded, keyboardType: TextInputType.text)),
-                        // Time error
                         if (_timeError != null) ...[
                           const SizedBox(height: 5),
                           Row(children: [
@@ -455,12 +622,12 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),
             style: TextStyle(color: primary, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-            child: const Text('Organiziraj događaj'),
+            child: Text(_isEditMode ? 'Uredi događaj' : 'Organiziraj događaj'),
           ),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),
             style: TextStyle(color: primary.withOpacity(0.40), fontSize: 13, fontWeight: FontWeight.w500),
-            child: const Text('Stvori vlastiti događaj'),
+            child: Text(_isEditMode ? 'Ažuriraj detalje' : 'Stvori vlastiti događaj'),
           ),
         ])),
       ]),
@@ -502,11 +669,6 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
             const SizedBox(width: 8),
             _photoBtn(icon: Icons.delete_rounded, onTap: _removeImage, red: true),
           ])),
-          Positioned(top: 12, left: 14, child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.40), borderRadius: BorderRadius.circular(20)),
-            child: const Text('Naslovna slika', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-          )),
         ])
             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(width: 56, height: 56,
@@ -779,12 +941,14 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
               ? const SizedBox(width: 22, height: 22,
               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
               : Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.celebration_rounded, color: ready ? Colors.white : Colors.white.withOpacity(0.45), size: 20),
+            Icon(_isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
+                color: ready ? Colors.white : Colors.white.withOpacity(0.45), size: 20),
             const SizedBox(width: 10),
-            Text('Objavi događaj', style: TextStyle(
-              color: ready ? Colors.white : Colors.white.withOpacity(0.45),
-              fontSize: 16, fontWeight: FontWeight.w800,
-            )),
+            Text(_isEditMode ? 'Spremi promjene' : 'Objavi događaj',
+                style: TextStyle(
+                  color: ready ? Colors.white : Colors.white.withOpacity(0.45),
+                  fontSize: 16, fontWeight: FontWeight.w800,
+                )),
           ])),
         ),
       ),
