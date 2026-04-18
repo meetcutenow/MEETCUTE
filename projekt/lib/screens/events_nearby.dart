@@ -15,10 +15,6 @@ const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const Color _bordoDark  = Color(0xFF4A0818);
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// AGE GROUP & GENDER
-// ═══════════════════════════════════════════════════════════════════════════════
-
 enum AgeGroup { all, g18_25, g26_35, g36_45, g45plus }
 enum GenderGroup { all, female, male }
 
@@ -51,13 +47,9 @@ extension GenderGroupLabel on GenderGroup {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENT DATA MODEL
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class EventData {
-  final String id;           // backend UUID, '' za lokalne statičke evente
-  final String? creatorId;   // backend user ID kreatora
+  final String id;
+  final String? creatorId;
   final String title;
   final String location;
   final String specificLocation;
@@ -99,10 +91,6 @@ class EventData {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// GLOBALS
-// ═══════════════════════════════════════════════════════════════════════════════
-
 final Map<String, List<EventData>> _userEventsByCity = {};
 
 void addUserEvent(String cityName, EventData event) {
@@ -117,10 +105,6 @@ int _effectiveAttendees(EventData e) {
   if (joined == null) return e.attendees;
   return joined ? e.attendees + 1 : e.attendees;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATIC DATA
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class _City  { final String name; const _City(this.name); }
 class _Cat   { final String label; final IconData? icon; final String? emoji;
@@ -240,20 +224,12 @@ final _eventsByCity = <int, List<EventData>>{
   ],
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// FILTER CHIP DATA
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class _FChip {
   final String label;
   final bool selected;
   final VoidCallback onTap;
   const _FChip(this.label, this.selected, this.onTap);
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENTS NEARBY SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class EventsNearbyScreen extends StatefulWidget {
   const EventsNearbyScreen({super.key});
@@ -330,7 +306,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
       if (resp.statusCode == 200) {
         final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List;
 
-        // Briši stare backend evente (zadržavamo samo lokalne statičke)
         for (final c in _cities) {
           _userEventsByCity[c.name]?.removeWhere((e) => e.id.isNotEmpty);
         }
@@ -356,7 +331,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
               ? '${timeStart.substring(0, 5)} – ${timeEnd.substring(0, 5)}'
               : timeStart.isNotEmpty ? timeStart.substring(0, 5) : '00:00';
 
-          // Dob i spol s backenda
           AgeGroup ageGroup = AgeGroup.all;
           final ag = e['ageGroup'] as String? ?? 'all';
           for (final v in AgeGroup.values) {
@@ -492,7 +466,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
       ),
       transitionDuration: const Duration(milliseconds: 380),
     )).then((result) {
-      // Ako je event obrisan ili ažuriran, refreshaj s backenda
       if (result == 'deleted' || result == 'updated') {
         _loadFromBackend();
       } else {
@@ -540,7 +513,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
   Widget _header(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -587,7 +559,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── LOCATION BAR ────────────────────────────────────────────────────────────
   Widget _locationBar() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -630,7 +601,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── CITY OVERLAY ────────────────────────────────────────────────────────────
   Widget _cityOverlay() {
     final isDark  = ThemeState.instance.isDark;
     final cardBg  = isDark ? kDarkCard : Colors.white;
@@ -665,7 +635,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── CATEGORY CHIPS ───────────────────────────────────────────────────────────
   Widget _catChips() {
     return SizedBox(
       height: 36,
@@ -718,7 +687,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 
-  // ── FILTER PANEL ─────────────────────────────────────────────────────────────
   Widget _filterPanel() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -771,7 +739,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     ]);
   }
 
-  // ── CARD AREA ────────────────────────────────────────────────────────────────
   Widget _cardArea() {
     final ev     = _filtered;
     final isDark = ThemeState.instance.isDark;
@@ -851,7 +818,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     });
   }
 
-  // ── SEARCH BAR ───────────────────────────────────────────────────────────────
   Widget _searchBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
@@ -878,10 +844,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENT CARD
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class _EventCard extends StatefulWidget {
   final EventData event;
@@ -920,7 +882,7 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
         _cloud(top: 18, left: 14, w: 52, h: 24),
         _cloud(top: 8, right: 46, w: 38, h: 18),
         _cloud(top: 44, right: 10, w: 28, h: 14),
-        if (isUser && e.maxAttendees > 0)
+        if (e.maxAttendees > 0)
           Positioned(top: 12, right: 12,
               child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -929,14 +891,15 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                     const Icon(Icons.people_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
                     Text('max ${e.maxAttendees}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                   ]))),
+        // CHANGED: "Event korisnika" badge for ALL user events (not just creator)
         if (isUser)
           Positioned(top: 12, left: 12,
               child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: _bordo.withOpacity(0.85), borderRadius: BorderRadius.circular(20)),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.star_rounded, color: Colors.white, size: 12), SizedBox(width: 4),
-                    Text('Moj event', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                    Icon(Icons.people_rounded, color: Colors.white, size: 12), SizedBox(width: 4),
+                    Text('Event korisnika', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                   ]))),
         Positioned(bottom: 90, right: 12,
             child: Container(
@@ -985,10 +948,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
           child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.52), borderRadius: BorderRadius.circular(h/2))));
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CITY TILE
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class _CityTile extends StatefulWidget {
   final String name; final bool isSelected; final VoidCallback onTap; final bool showDivider;
   const _CityTile({required this.name, required this.isSelected, required this.onTap, required this.showDivider});
@@ -1033,10 +992,6 @@ class _CityTileState extends State<_CityTile> with SingleTickerProviderStateMixi
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EVENT DETAIL SCREEN
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class EventDetailScreen extends StatefulWidget {
   final EventData event;
   const EventDetailScreen({super.key, required this.event});
@@ -1052,7 +1007,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
   bool _mapExpanded = false;
   late final MapController _mapController;
 
-  // Je li ovo moj vlastiti event (kreator)
   bool get _isMyEvent =>
       widget.event.isUserEvent &&
           AuthState.instance.isLoggedIn &&
@@ -1136,7 +1090,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     _mapExpanded ? _mapCtrl.forward() : _mapCtrl.reverse();
   }
 
-  // ── Brisanje eventa ────────────────────────────────────────────────────────
   Future<void> _deleteEvent() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1179,7 +1132,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                 const SizedBox(width: 10),
                 Expanded(child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0x570A1DFF), foregroundColor: Colors.white,
+                    backgroundColor: Colors.redAccent, foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
                   ),
@@ -1215,7 +1168,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
         final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(decoded['message'] ?? 'Greška pri brisanju.'),
-          backgroundColor: Color(0x570A1DFF),
+          backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
         ));
       }
@@ -1230,11 +1183,9 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     }
   }
 
-  // ── Uređivanje eventa ──────────────────────────────────────────────────────
   Future<void> _editEvent() async {
     final e = widget.event;
 
-    // Dohvati pravi datum s backenda
     String eventDate = '';
     if (e.id.isNotEmpty) {
       try {
@@ -1254,7 +1205,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     }
 
     if (eventDate.isEmpty) {
-      // Fallback iz lokalnih podataka
       final day   = e.dateDay.replaceAll('.', '').padLeft(2, '0');
       final month = e.dateMonth.replaceAll('.', '').padLeft(2, '0');
       final year  = DateTime.now().year.toString();
@@ -1334,7 +1284,8 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                             child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                 colors: [Colors.transparent, Colors.black.withOpacity(0.18)])))),
-                        if (e.isUserEvent) Positioned(bottom: 16, left: 20,
+                        // CHANGED: different badge for creator vs other user events
+                        if (e.isUserEvent && _isMyEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(20),
@@ -1342,6 +1293,16 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                                   const Icon(Icons.star_rounded, color: Colors.white, size: 14), const SizedBox(width: 5),
                                   Text(e.maxAttendees > 0 ? 'Tvoj event · max ${e.maxAttendees} ljudi' : 'Tvoj osobni event',
+                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                                ]))),
+                        if (e.isUserEvent && !_isMyEvent) Positioned(bottom: 16, left: 20,
+                            child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(color: _bordo.withOpacity(0.85), borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 10)]),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(Icons.people_rounded, color: Colors.white, size: 14), const SizedBox(width: 5),
+                                  Text(e.maxAttendees > 0 ? 'Event korisnika · max ${e.maxAttendees} mjesta' : 'Event korisnika',
                                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                 ]))),
                         _cw(top: 28, left: 18, w: 70, h: 32), _cw(top: 14, right: 60, w: 50, h: 24),
@@ -1568,12 +1529,8 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       );
     }
 
-    // Tuđi user event — bez gumba
-    if (widget.event.isUserEvent) {
-      return const SizedBox.shrink();
-    }
-
-    // Normalni event — Join gumb
+    // CHANGED: tuđi user eventi SADA prikazuju Join gumb (uklonjen SizedBox.shrink() blok)
+    // Normalni event i tuđi user event — Join gumb
     final isFull = widget.event.maxAttendees > 0 &&
         _effectiveAttendees(widget.event) >= widget.event.maxAttendees && !_joined;
 
@@ -1612,8 +1569,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     );
   }
 }
-
-// ── BACK BUTTON ──────────────────────────────────────────────────────────────
 
 class _BackBtn extends StatefulWidget {
   final VoidCallback onTap;

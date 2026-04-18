@@ -22,10 +22,9 @@ class ProfileSetupData {
   String? gender;
   List<String> interests;
   String iceBreaker;
-  // ── Preference (Korak 4) ───────────────────────────────────────────────────
-  String? seekingGender;   // 'zensko' | 'musko' | 'sve'
-  int?    prefAgeFrom;     // npr. 22
-  int?    prefAgeTo;       // npr. 30
+  String? seekingGender;
+  int?    prefAgeFrom;
+  int?    prefAgeTo;
 
   ProfileSetupData({
     List<String>? photoPaths,
@@ -618,7 +617,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Opis ───────────────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -638,7 +636,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
 
         const SizedBox(height: 28),
 
-        // ── Tražim spol ────────────────────────────────────────────────────────
         _sectionTitle('Tražim:'),
         const SizedBox(height: 12),
         Row(children: List.generate(_seekingOptions.length, (i) {
@@ -684,7 +681,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
 
         const SizedBox(height: 30),
 
-        // ── Dobna skupina ──────────────────────────────────────────────────────
         _sectionTitle('Dobna skupina koja mi odgovara:'),
         const SizedBox(height: 8),
         Text('Upiši raspon godina koji ti odgovara.',
@@ -692,7 +688,7 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
         const SizedBox(height: 14),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(child: _ageField(
-            ctrl: _ageFromCtrl, hint: 'Od (npr. 22)',
+            ctrl: _ageFromCtrl, hint: 'Od (npr. 18)',
             onChanged: (v) => _update((d) { d.prefAgeFrom = int.tryParse(v); return d; }),
           )),
           Padding(
@@ -743,7 +739,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
     final from = d.prefAgeFrom;
     final to   = d.prefAgeTo;
 
-    // Oba polja prazna
     if (from == null && to == null) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -765,8 +760,9 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
     String msg = '';
     if (from == null) { ok = false; msg = 'Upiši donju granicu dobi.'; }
     else if (to == null) { ok = false; msg = 'Upiši gornju granicu dobi.'; }
-    else if (from < 16 || from > 99) { ok = false; msg = 'Minimalna dob je 16 godina.'; }
-    else if (to < 16 || to > 99) { ok = false; msg = 'Maksimalna dob je 99 godina.'; }
+    // CHANGED: min age 16 → 18
+    else if (from < 18 || from > 99) { ok = false; msg = 'Minimalna dob je 18 godina.'; }
+    else if (to < 18 || to > 99) { ok = false; msg = 'Maksimalna dob je 99 godina.'; }
     else if (from > to) { ok = false; msg = 'Gornja granica mora biti veća od donje.'; }
     else { msg = 'Tražiš osobe od $from do $to godina. ✓'; }
 
@@ -791,7 +787,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PROFILE SETUP SCREEN — za UREDI PROFIL (iz profile_screen)
-// Ima progress bar na vrhu, 4 koraka
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -818,13 +813,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   late AnimationController _pageCtrl;
   late Animation<Offset> _pageSlide;
 
-  static const _stepLabels = [
-    'Fotografije i podaci',
-    'Tvoji interesi',
-    'Tvoj icebreaker',
-    'Preference',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -843,7 +831,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   void _update(ProfileSetupData newData) => setState(() => _data = newData);
 
   void _next() {
-    // Validacija koraka 4 — preference su obavezne
     if (_step == 3) {
       final err = _validateStep4();
       if (err != null) {
@@ -878,8 +865,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     if (_data.prefAgeTo == null) return 'Upiši gornju granicu dobi.';
     final from = _data.prefAgeFrom!;
     final to   = _data.prefAgeTo!;
-    if (from < 16 || from > 99) return 'Minimalna dob je 16 godina.';
-    if (to < 16 || to > 99) return 'Maksimalna dob je 99 godina.';
+    // CHANGED: min age 16 → 18
+    if (from < 18 || from > 99) return 'Minimalna dob je 18 godina.';
+    if (to < 18 || to > 99) return 'Maksimalna dob je 99 godina.';
     if (from > to) return 'Gornja granica mora biti veća od donje.';
     return null;
   }
@@ -917,53 +905,42 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
+  // CHANGED: removed step label text, bigger progress bar (10px height)
   Widget _buildHeader(MediaQueryData mq) {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.only(top: mq.padding.top + 10, left: 8, right: 20, bottom: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          // Back button
           GestureDetector(
             onTap: _back,
             child: Container(width: 40, height: 40,
                 decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(13)),
                 child: Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 16)),
           ),
-          const SizedBox(width: 8),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('KORAK ${_step + 1} OD $_totalSteps',
-                  style: TextStyle(color: kPrimaryDark.withOpacity(0.35),
-                      fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.3)),
-              const Spacer(),
-              Text(_stepLabels[_step],
-                  style: TextStyle(color: kPrimaryDark.withOpacity(0.42),
-                      fontSize: 11, fontWeight: FontWeight.w500)),
-            ]),
-            const SizedBox(height: 9),
-            // Progress bar
-            AnimatedBuilder(
-              animation: _progressCtrl,
-              builder: (_, __) => LayoutBuilder(builder: (_, box) {
-                final w = box.maxWidth * _progressCtrl.value;
-                return Container(
-                  height: 3,
-                  decoration: BoxDecoration(color: kPrimaryDark.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(2)),
-                  child: Align(alignment: Alignment.centerLeft,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
-                        width: w.clamp(0.0, box.maxWidth),
-                        decoration: BoxDecoration(color: kPrimaryDark,
-                            borderRadius: BorderRadius.circular(2)),
-                      )),
-                );
-              }),
-            ),
-          ])),
+          const SizedBox(width: 12),
+          Expanded(child: AnimatedBuilder(
+            animation: _progressCtrl,
+            builder: (_, __) => LayoutBuilder(builder: (_, box) {
+              final w = box.maxWidth * _progressCtrl.value;
+              return Container(
+                height: 10,
+                decoration: BoxDecoration(
+                    color: kPrimaryDark.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Align(alignment: Alignment.centerLeft,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 100),
+                      width: w.clamp(0.0, box.maxWidth),
+                      decoration: BoxDecoration(
+                          color: kPrimaryDark,
+                          borderRadius: BorderRadius.circular(8)),
+                    )),
+              );
+            }),
+          )),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.only(left: 4),
           child: Text('Uredi profil',

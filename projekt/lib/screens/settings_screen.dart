@@ -324,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ctrl: _rowCtrls[5],
           icon: Icons.favorite_rounded,
           label: 'O MeetCute',
-          subtitle: 'Naša priča ♡',
+          subtitle: 'Naša priča',
           onTap: _showAboutDialog,
         ),
         const SizedBox(height: 10),

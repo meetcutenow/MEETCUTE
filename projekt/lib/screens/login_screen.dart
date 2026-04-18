@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
                           // Naslov
-                          Text('Dobrodošao/la nazad! 💘',
+                          Text('Dobrodošao/la nazad!',
                               style: TextStyle(color: _bordo, fontSize: 22,
                                   fontWeight: FontWeight.w900, letterSpacing: -0.4)),
                           const SizedBox(height: 5),

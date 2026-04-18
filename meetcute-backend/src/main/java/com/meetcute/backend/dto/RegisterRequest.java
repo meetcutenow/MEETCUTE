@@ -69,10 +69,10 @@ public class RegisterRequest {
     private String seekingGender;
 
     @NotNull(message = "Minimalna dob preference je obavezna")
-    @Min(16) @Max(99)
+    @Min(18) @Max(99)
     private Integer prefAgeFrom;
 
     @NotNull(message = "Maksimalna dob preference je obavezna")
-    @Min(16) @Max(99)
+    @Min(18) @Max(99)
     private Integer prefAgeTo;
 }

@@ -1071,13 +1071,12 @@ class _PasswordHolder {
   String password = '';
 }
 
+
 class _SetupHeader extends StatelessWidget {
   final int step;
   final AnimationController progressCtrl;
   final MediaQueryData mq;
   const _SetupHeader({required this.step, required this.progressCtrl, required this.mq});
-
-  static const _labels = ['Fotografije i podaci', 'Tvoji interesi', 'Tvoj icebreaker'];
 
   @override
   Widget build(BuildContext context) {
@@ -1085,30 +1084,23 @@ class _SetupHeader extends StatelessWidget {
       color: Colors.white,
       padding: EdgeInsets.only(top: mq.padding.top + 16, left: 24, right: 24, bottom: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text('KORAK ${step + 1} OD 3',
-              style: TextStyle(color: _bordo.withOpacity(0.35),
-                  fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.3)),
-          const Spacer(),
-          Text(_labels[step],
-              style: TextStyle(color: _bordo.withOpacity(0.42),
-                  fontSize: 11, fontWeight: FontWeight.w500)),
-        ]),
-        const SizedBox(height: 9),
         AnimatedBuilder(
           animation: progressCtrl,
           builder: (_, __) => LayoutBuilder(builder: (_, box) {
             final w = box.maxWidth * progressCtrl.value;
             return Container(
-              height: 3,
-              decoration: BoxDecoration(color: _bordo.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(2)),
-              child: Align(alignment: Alignment.centerLeft,
+              height: 10,
+              decoration: BoxDecoration(
+                  color: _bordo.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Align(
+                  alignment: Alignment.centerLeft,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 100),
                     width: w.clamp(0.0, box.maxWidth),
-                    decoration: BoxDecoration(color: _bordo,
-                        borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                        color: _bordo,
+                        borderRadius: BorderRadius.circular(8)),
                   )),
             );
           }),

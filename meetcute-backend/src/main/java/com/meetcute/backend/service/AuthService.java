@@ -32,8 +32,8 @@ public class AuthService {
         }
 
         int age = LocalDateTime.now().getYear() - req.getBirthYear();
-        if (age < 16) {
-            throw new RuntimeException("Moraš imati najmanje 16 godina.");
+        if (age < 18) {
+            throw new RuntimeException("Moraš imati najmanje 18 godina.");
         }
 
         // Validacija pref age raspona

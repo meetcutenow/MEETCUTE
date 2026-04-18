@@ -10,16 +10,12 @@ import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 import 'app_read_state.dart';
 
-// ── Top-level helpers (moraju biti ovdje, koriste ih i ChatConversationScreen i _SwipeRevealTimeState) ──
-
 String _fmt(DateTime? dt) {
   if (dt == null) return '';
   return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
-
-// ── DATA MODELS ───────────────────────────────────────────────────────────────
 
 class ChatMessage {
   final String? text;
@@ -57,14 +53,11 @@ class ChatConversation {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Nepročitan ako zadnja poruka nije moja I nije trajno pročitana
   bool get hasUnread =>
       lastMessage != null &&
           !lastMessage!.isMe &&
           !AppReadState.isConvRead(id);
 }
-
-// ── CHAT STATE ────────────────────────────────────────────────────────────────
 
 class ChatState extends ChangeNotifier {
   static final ChatState instance = ChatState._();
@@ -101,7 +94,6 @@ class ChatState extends ChangeNotifier {
     ]),
   ];
 
-  /// Ukupno nepročitanih — koristi trajni AppReadState
   int get totalUnread => conversations.where((c) => c.hasUnread).length;
 
   Future<void> markRead(String conversationId) async {
@@ -124,8 +116,6 @@ class ChatState extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-// ── CHAT SCREEN (lista razgovora) ─────────────────────────────────────────────
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -496,8 +486,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 }
 
-// ── DISMISSIBLE TILE ──────────────────────────────────────────────────────────
-
 class _DismissibleTile extends StatefulWidget {
   final ChatConversation convo;
   final VoidCallback onTap;
@@ -677,8 +665,6 @@ class _DismissibleTileState extends State<_DismissibleTile>
   }
 }
 
-// ── CHAT CONVERSATION SCREEN ──────────────────────────────────────────────────
-
 class ChatConversationScreen extends StatefulWidget {
   final ChatConversation convo;
   const ChatConversationScreen({super.key, required this.convo});
@@ -713,7 +699,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     _headerCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
-      // Označi razgovor kao pročitan (trajno)
       ChatState.instance.markRead(widget.convo.id);
     });
   }
@@ -768,19 +753,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     Future.delayed(const Duration(milliseconds: 60), _scrollToBottom);
   }
 
-  void _onAvatarTap() => Navigator.push(context, PageRouteBuilder(
-    pageBuilder: (_, a, __) => const ProfileScreen(),
-    transitionsBuilder: (_, a, __, child) => FadeTransition(
-      opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.94, end: 1.0)
-            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-        child: child,
-      ),
-    ),
-    transitionDuration: const Duration(milliseconds: 320),
-  ));
-
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -811,6 +783,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     );
   }
 
+  // CHANGED: removed avatar tap → profile navigation, removed subtitle "Klikni za profil"
   Widget _buildHeader(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
@@ -839,40 +812,27 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
               ),
             ),
             const SizedBox(width: 11),
-            GestureDetector(
-              onTap: _onAvatarTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 380),
-                width: 46, height: 46,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      colors: [accent, primary.withOpacity(0.20)]),
-                  border: Border.all(color: primary.withOpacity(0.18), width: 2),
-                  boxShadow: [BoxShadow(color: primary.withOpacity(0.14), blurRadius: 10, offset: const Offset(0, 4))],
-                ),
-                child: Icon(Icons.person_rounded, color: primary, size: 23),
+            // Avatar - no tap handler
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 380),
+              width: 46, height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [accent, primary.withOpacity(0.20)]),
+                border: Border.all(color: primary.withOpacity(0.18), width: 2),
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.14), blurRadius: 10, offset: const Offset(0, 4))],
               ),
+              child: Icon(Icons.person_rounded, color: primary, size: 23),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: GestureDetector(
-                onTap: _onAvatarTap,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                    child: Text(widget.convo.name),
-                  ),
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.42), fontSize: 12, fontWeight: FontWeight.w400),
-                    child: const Text('Klikni za profil'),
-                  ),
-                ]),
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(color: primary, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                child: Text(widget.convo.name),
               ),
             ),
-            // (više gumb uklonjen)
           ]),
         ),
       ),
@@ -979,24 +939,22 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     return _SwipeRevealTime(isMe: isMe, timeStr: timeStr, child: bubble);
   }
 
+  // CHANGED: removed GestureDetector with _onAvatarTap
   Widget _avatar() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
     final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
-    return GestureDetector(
-      onTap: _onAvatarTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 340),
-        width: 30, height: 30,
-        margin: const EdgeInsets.only(right: 7, bottom: 2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [accent, primary.withOpacity(0.30)]),
-          border: Border.all(color: primary.withOpacity(0.25), width: 1.5),
-        ),
-        child: Icon(Icons.person_rounded, color: primary, size: 16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 340),
+      width: 30, height: 30,
+      margin: const EdgeInsets.only(right: 7, bottom: 2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [accent, primary.withOpacity(0.30)]),
+        border: Border.all(color: primary.withOpacity(0.25), width: 1.5),
       ),
+      child: Icon(Icons.person_rounded, color: primary, size: 16),
     );
   }
 
@@ -1065,8 +1023,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     );
   }
 }
-
-// ── SWIPE REVEAL TIME ─────────────────────────────────────────────────────────
 
 class _SwipeRevealTime extends StatefulWidget {
   final Widget child;
