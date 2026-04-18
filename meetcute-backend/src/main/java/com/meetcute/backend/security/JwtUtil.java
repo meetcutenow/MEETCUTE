@@ -30,6 +30,19 @@ public class JwtUtil {
                 .subject(userId)
                 .claim("username", username)
                 .claim("type", "access")
+                .claim("role", "user")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .signWith(getKey())
+                .compact();
+    }
+
+    public String generateAccessTokenWithRole(String subjectId, String username, String role) {
+        return Jwts.builder()
+                .subject(subjectId)
+                .claim("username", username)
+                .claim("type", "access")
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(getKey())
@@ -48,6 +61,15 @@ public class JwtUtil {
 
     public String extractUserId(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public String extractRole(String token) {
+        try {
+            Object role = parseClaims(token).get("role");
+            return role != null ? role.toString() : "user";
+        } catch (Exception e) {
+            return "user";
+        }
     }
 
     public boolean isTokenValid(String token) {

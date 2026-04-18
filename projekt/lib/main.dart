@@ -1,9 +1,15 @@
+// ============================================================
+// ZAMJENI main.dart s ovom verzijom
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/auth_state.dart';
 import 'screens/app_read_state.dart';
+import 'screens/company_auth_state.dart';
+import 'screens/company_home_screen.dart';
 import 'services/profile_storage.dart';
 
 void main() async {
@@ -15,7 +21,14 @@ void main() async {
     ),
   );
 
-  // 1. Učitaj auth token iz SharedPreferences
+  // 1. Provjeri company login
+  final isCompanyLoggedIn = await CompanyAuthState.loadFromStorage();
+  if (isCompanyLoggedIn) {
+    runApp(MeetCuteApp(startLoggedIn: false, startAsCompany: true));
+    return;
+  }
+
+  // 2. Provjeri user login
   final isLoggedIn = await AuthState.loadFromStorage();
 
   if (isLoggedIn) {
@@ -24,24 +37,32 @@ void main() async {
     RegistrationState.instance.displayName = AuthState.instance.displayName ?? '';
   }
 
-  // 2. Uvijek učitaj profil (postoji i bez logina — lokalni podaci)
   final profile = await ProfileStorage.loadProfile();
   if (profile != null) {
     globalProfileData = profile;
   }
 
-  // 3. Učitaj read state za notifikacije i chat
   await AppReadState.loadFromStorage();
 
-  runApp(MeetCuteApp(startLoggedIn: isLoggedIn));
+  runApp(MeetCuteApp(startLoggedIn: isLoggedIn, startAsCompany: false));
 }
 
 class MeetCuteApp extends StatelessWidget {
   final bool startLoggedIn;
-  const MeetCuteApp({super.key, required this.startLoggedIn});
+  final bool startAsCompany;
+  const MeetCuteApp({super.key, required this.startLoggedIn, required this.startAsCompany});
 
   @override
   Widget build(BuildContext context) {
+    Widget home;
+    if (startAsCompany) {
+      home = const CompanyHomeScreen();
+    } else if (startLoggedIn) {
+      home = const HomeScreen();
+    } else {
+      home = const OnboardingScreen();
+    }
+
     return MaterialApp(
       title: 'MeetCute',
       debugShowCheckedModeBanner: false,
@@ -52,7 +73,7 @@ class MeetCuteApp extends StatelessWidget {
           seedColor: const Color(0xFF700D25),
         ),
       ),
-      home: startLoggedIn ? const HomeScreen() : const OnboardingScreen(),
+      home: home,
     );
   }
 }

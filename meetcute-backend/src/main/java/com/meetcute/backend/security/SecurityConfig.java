@@ -21,7 +21,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -51,7 +50,16 @@ class JwtAuthFilter extends OncePerRequestFilter {
 
         if (jwtUtil.isTokenValid(token) && !jwtUtil.isTokenExpired(token)) {
             String userId = jwtUtil.extractUserId(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+
+            // Pokušaj učitati korisnika ili tvrtku
+            UserDetails userDetails = null;
+            try {
+                userDetails = userDetailsService.loadUserByUsername(userId);
+            } catch (UsernameNotFoundException e) {
+                // Nije korisnik — možda je tvrtka, svejedno nastavi s userId kao principal
+                userDetails = new org.springframework.security.core.userdetails.User(
+                        userId, "", Collections.emptyList());
+            }
 
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(
@@ -75,18 +83,24 @@ class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/api/events/**").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/api/questions").permitAll()
-                .anyRequest().authenticated()
-            )
-            .userDetailsService(userDetailsService)
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // User auth
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        // Company auth
+                        .requestMatchers(HttpMethod.POST, "/api/company/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/company/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/company/auth/refresh").permitAll()
+                        // Public read
+                        .requestMatchers(HttpMethod.GET,  "/api/events/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/questions").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .userDetailsService(userDetailsService)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

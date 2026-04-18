@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, HomeScreen;
 import 'login_screen.dart' show LoginScreen;
 import 'auth_state.dart';
+import 'company_auth_state.dart';
+import 'company_register_screen.dart';
 import 'profile_setup_screen.dart'
     show ProfileSetupData, ProfileStep1, ProfileStep2, ProfileStep3;
 import 'notifications_screen.dart'
@@ -30,11 +32,8 @@ ProfileSetupData globalProfileData = ProfileSetupData(
   iceBreaker: '',
 );
 
-// ─── Boje ─────────────────────────────────────────────────────────────────────
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
-
-// ─── Backend URL ──────────────────────────────────────────────────────────────
 const String _base = 'http://localhost:8080/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -121,6 +120,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     ));
   }
 
+  void _goToCompanyRegister() {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (_, a, __) => const CompanyRegisterScreen(),
+      transitionsBuilder: (_, a, __, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
+        child: child,
+      ),
+      transitionDuration: const Duration(milliseconds: 450),
+    ));
+  }
+
   void _goToLogin() {
     HapticFeedback.selectionClick();
     Navigator.of(context).push(PageRouteBuilder(
@@ -160,7 +171,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             return Stack(children: [
               Positioned.fill(child: CustomPaint(painter: _GradBgPainter(_bgAnim.value))),
 
-              // Logo
               Positioned(top: logoY, left: 0, right: 0,
                 child: Opacity(
                   opacity: fadeIn.clamp(0.0, 1.0),
@@ -176,7 +186,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ),
 
-              // Sadržaj
               Positioned(
                 top: logoTopY + logoSize * 0.82 + 28,
                 left: 0, right: 0,
@@ -225,33 +234,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   fontSize: 17, fontWeight: FontWeight.w800, height: 1.4)),
           const SizedBox(height: 36),
 
-          // ── Gumb za registraciju ──────────────────────────────────
-          ScaleTransition(
-            scale: _btnScale,
-            child: GestureDetector(
-              onTapDown: (_) => _btnCtrl.forward(),
-              onTapUp: (_) { _btnCtrl.reverse(); _onStart(); },
-              onTapCancel: () => _btnCtrl.reverse(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 15),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.88),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [BoxShadow(
-                    color: Colors.black.withOpacity(0.20),
-                    blurRadius: 16, offset: const Offset(0, 6),
-                  )],
-                ),
-                child: Text('Napravi moj profil!',
-                    style: TextStyle(color: _bordo, fontSize: 15,
-                        fontWeight: FontWeight.w700, letterSpacing: 0.1)),
-              ),
-            ),
+          // ── Odabir tipa računa ─────────────────────────────────
+          _AccountTypePicker(
+            btnCtrl: _btnCtrl,
+            onPersonTap: _onStart,
+            onCompanyTap: _goToCompanyRegister,
           ),
 
           const SizedBox(height: 16),
 
-          // ── Gumb za login ─────────────────────────────────────────
+          // ── Gumb za login ──────────────────────────────────────
           GestureDetector(
             onTap: _goToLogin,
             child: Container(
@@ -312,6 +304,153 @@ class _GradBgPainter extends CustomPainter {
     ), glow);
   }
   @override bool shouldRepaint(_GradBgPainter o) => o.t != t;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCOUNT TYPE PICKER — Osoba / Tvrtka
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _AccountTypePicker extends StatelessWidget {
+  final AnimationController btnCtrl;
+  final VoidCallback onPersonTap;
+  final VoidCallback onCompanyTap;
+
+  const _AccountTypePicker({
+    required this.btnCtrl,
+    required this.onPersonTap,
+    required this.onCompanyTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Text('Odaberi vrstu računa:',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white.withOpacity(0.75),
+              fontSize: 13, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 14),
+      Row(children: [
+        Expanded(child: _TypeBtn(
+          icon: Icons.person_rounded,
+          label: 'Osoba',
+          subtitle: 'Upoznaj ljude',
+          onTap: onPersonTap,
+          accent: false,
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: _TypeBtn(
+          icon: Icons.business_rounded,
+          label: 'Tvrtka',
+          subtitle: 'Organiziraj evente',
+          onTap: onCompanyTap,
+          accent: true,
+        )),
+      ]),
+    ]);
+  }
+}
+
+class _TypeBtn extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool accent;
+
+  const _TypeBtn({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+    required this.accent,
+  });
+
+  @override
+  State<_TypeBtn> createState() => _TypeBtnState();
+}
+
+class _TypeBtnState extends State<_TypeBtn> with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _s;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _s = Tween<double>(begin: 1.0, end: 0.94)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
+  }
+
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _c.forward(),
+      onTapUp: (_) { _c.reverse(); widget.onTap(); },
+      onTapCancel: () => _c.reverse(),
+      child: ScaleTransition(
+        scale: _s,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: widget.accent
+                ? Colors.white.withOpacity(0.92)
+                : Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withOpacity(widget.accent ? 0.0 : 0.30),
+              width: 1.2,
+            ),
+            boxShadow: widget.accent
+                ? [BoxShadow(
+                color: Colors.black.withOpacity(0.22),
+                blurRadius: 18,
+                offset: const Offset(0, 6))]
+                : [],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(
+                color: widget.accent
+                    ? _bordo
+                    : Colors.white.withOpacity(0.22),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                widget.icon,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.label,
+              style: TextStyle(
+                color: widget.accent ? _bordo : Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              widget.subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: widget.accent
+                    ? _bordo.withOpacity(0.55)
+                    : Colors.white.withOpacity(0.65),
+                fontSize: 12,
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -420,7 +559,6 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     await _btnCtrl.forward(); await _btnCtrl.reverse();
     RegistrationState.instance.username    = _usernameCtrl.text.trim();
     RegistrationState.instance.displayName = _nameCtrl.text.trim();
-    // Spremi lozinku da je ProfileSetup može koristiti
     _PasswordHolder.instance.password = _passwordCtrl.text;
     if (!mounted) return;
     Navigator.of(context).push(PageRouteBuilder(
@@ -739,7 +877,6 @@ class _ErrBox extends StatelessWidget {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REGISTRATION PROFILE SETUP
-// Šalje podatke na backend pri završetku
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class RegistrationProfileSetupScreen extends StatefulWidget {
@@ -758,8 +895,6 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
   late AnimationController _pageCtrl;
   late Animation<Offset> _pageSlide;
 
-  // Tajno pitanje — defaultno 1, korisnik ne bira u ovom flowu
-  // (lista pitanja se može proširiti u budućnosti)
   static const int _defaultQuestionId = 1;
   static const String _defaultAnswer  = 'moja tajna';
 
@@ -801,7 +936,6 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
           ? RegistrationState.instance.displayName
           : RegistrationState.instance.username;
 
-      // await — čekaj da se spremi PRIJE navigacije
       await ProfileStorage.saveProfile(_data);
       await ProfileStorage.saveRegistration(
         RegistrationState.instance.username,
@@ -841,17 +975,12 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
     setState(() => _sending = true);
 
     final regState = RegistrationState.instance;
-
-    // Mapiraj podatke na backend format
     final gender    = _mapGender(_data.gender);
     final hairColor = _mapHair(_data.hairColor);
     final eyeColor  = _mapEye(_data.eyeColor);
     final piercing  = _data.piercing == 'da';
     final tattoo    = _data.tattoo == 'da';
     final height    = int.tryParse(_data.height ?? '170') ?? 170;
-
-    // Interesi — u ovom flowu korisnik bira nazive, backend treba ID-jeve
-    // Mapiraj na ID-jeve (prema schema.sql seed data)
     final interestIds = _mapInterestIds(_data.interests);
 
     final body = {
@@ -887,7 +1016,6 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
       final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
 
       if (resp.statusCode == 200 && decoded['success'] == true) {
-        // Spremi token
         await AuthState.instance.saveFromResponse(decoded['data']);
 
         globalProfileData = _data;
@@ -949,7 +1077,6 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
     }
   }
 
-  // Backend treba lozinku — sprema je u StateHolder privremeno između ekrana
   String _getStoredPassword() => _PasswordHolder.instance.password;
 
   String _normalize(String s) {
@@ -996,7 +1123,6 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
   }
 
   List<int> _mapInterestIds(List<String> names) {
-    // Seed data iz schema.sql — ID-jevi po redu
     const map = {
       'Crtanje': 1, 'Fotografija': 2, 'Pisanje': 3, 'Film': 4,
       'Trčanje': 5, 'Biciklizam': 6, 'Planinarenje': 7, 'Teretana': 8,
@@ -1012,7 +1138,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
       if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null)
         return 'Datum rođenja je obavezan.';
       final y = _data.birthYear!;
-      if (y < 1900 || y > DateTime.now().year - 16) return 'Mora imati 16+ godina.';
+      if (y < 1900 || y > DateTime.now().year - 18) return 'Mora imati 18+ godina.';
       if (_data.birthMonth! < 1 || _data.birthMonth! > 12) return 'Neispravan mjesec (1-12).';
       if (_data.birthDay! < 1 || _data.birthDay! > 31) return 'Neispravan dan (1-31).';
       if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
@@ -1064,13 +1190,13 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen>
   }
 }
 
-// ── Password holder — prosljeđuje lozinku između RegistrationScreen i Setup ──
 class _PasswordHolder {
   static final _PasswordHolder instance = _PasswordHolder._();
   _PasswordHolder._();
   String password = '';
 }
 
+// ── Progress header (bez step labela, debeli progress bar) ──────────────────
 
 class _SetupHeader extends StatelessWidget {
   final int step;
@@ -1168,7 +1294,7 @@ class _SetupNextBtnState extends State<_SetupNextBtn>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// WELCOME WRAPPER + DIALOG (nepromijenjeni)
+// WELCOME WRAPPER + DIALOG
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _WelcomeWrapper extends StatefulWidget {
