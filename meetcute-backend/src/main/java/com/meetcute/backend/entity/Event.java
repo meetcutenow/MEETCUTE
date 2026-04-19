@@ -24,6 +24,9 @@ public class Event {
     @JoinColumn(name = "creator_id")
     private User creator;
 
+    @Column(name = "company_id", length = 36)
+    private String companyId;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -62,6 +65,13 @@ public class Event {
     @Column(name = "max_attendees")
     private Integer maxAttendees;
 
+    @Column(name = "ticket_price")
+    private Double ticketPrice;
+
+    @Column(name = "ticket_currency", length = 5)
+    @Builder.Default
+    private String ticketCurrency = "EUR";
+
     @Column(name = "cover_photo_url", length = 512)
     private String coverPhotoUrl;
 
@@ -72,6 +82,10 @@ public class Event {
     @Column(name = "is_user_event")
     @Builder.Default
     private Boolean isUserEvent = false;
+
+    @Column(name = "is_company_event")
+    @Builder.Default
+    private Boolean isCompanyEvent = false;
 
     @Column(name = "is_active")
     @Builder.Default
@@ -94,6 +108,3 @@ public class Event {
         updatedAt = LocalDateTime.now();
     }
 }
-
-// ── EventAttendee ───────────────────────────────────────────────
-

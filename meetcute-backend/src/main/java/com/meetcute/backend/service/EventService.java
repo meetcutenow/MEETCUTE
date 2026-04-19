@@ -4,11 +4,11 @@ import com.meetcute.backend.dto.*;
 import com.meetcute.backend.entity.*;
 import com.meetcute.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +21,9 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventAttendeeRepository attendeeRepository;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
+    // Svi aktivni eventi — uključuje i company evente koji imaju is_company_event=1
     public List<EventResponse> getAllEvents(String userId) {
         return eventRepository.findByIsActiveTrueOrderByEventDateAsc()
                 .stream()
@@ -68,6 +70,7 @@ public class EventService {
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
                 .isUserEvent(true)
+                .isCompanyEvent(false)
                 .build();
 
         event = eventRepository.save(event);
@@ -79,25 +82,24 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
 
-        // Samo creator može uređivati
         if (event.getCreator() == null || !event.getCreator().getId().equals(userId)) {
             throw new RuntimeException("Nemaš pravo uređivati ovaj event.");
         }
 
-        if (req.getTitle() != null)           event.setTitle(req.getTitle());
-        if (req.getDescription() != null)     event.setDescription(req.getDescription());
-        if (req.getCity() != null)            event.setCity(req.getCity());
+        if (req.getTitle() != null)            event.setTitle(req.getTitle());
+        if (req.getDescription() != null)      event.setDescription(req.getDescription());
+        if (req.getCity() != null)             event.setCity(req.getCity());
         if (req.getSpecificLocation() != null) event.setSpecificLocation(req.getSpecificLocation());
-        if (req.getEventDate() != null)       event.setEventDate(LocalDate.parse(req.getEventDate()));
-        if (req.getTimeStart() != null)       event.setTimeStart(LocalTime.parse(req.getTimeStart()));
-        if (req.getTimeEnd() != null)         event.setTimeEnd(LocalTime.parse(req.getTimeEnd()));
-        if (req.getCategory() != null)        event.setCategory(req.getCategory());
-        if (req.getAgeGroup() != null)        event.setAgeGroup(req.getAgeGroup());
-        if (req.getGenderGroup() != null)     event.setGenderGroup(req.getGenderGroup());
-        if (req.getMaxAttendees() != null)    event.setMaxAttendees(req.getMaxAttendees());
-        if (req.getCardColorHex() != null)    event.setCardColorHex(req.getCardColorHex());
-        if (req.getLatitude() != null)        event.setLatitude(req.getLatitude());
-        if (req.getLongitude() != null)       event.setLongitude(req.getLongitude());
+        if (req.getEventDate() != null)        event.setEventDate(LocalDate.parse(req.getEventDate()));
+        if (req.getTimeStart() != null)        event.setTimeStart(LocalTime.parse(req.getTimeStart()));
+        if (req.getTimeEnd() != null)          event.setTimeEnd(LocalTime.parse(req.getTimeEnd()));
+        if (req.getCategory() != null)         event.setCategory(req.getCategory());
+        if (req.getAgeGroup() != null)         event.setAgeGroup(req.getAgeGroup());
+        if (req.getGenderGroup() != null)      event.setGenderGroup(req.getGenderGroup());
+        if (req.getMaxAttendees() != null)     event.setMaxAttendees(req.getMaxAttendees());
+        if (req.getCardColorHex() != null)     event.setCardColorHex(req.getCardColorHex());
+        if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
+        if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
 
         eventRepository.save(event);
         return toResponse(event, userId);
@@ -108,12 +110,10 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
 
-        // Samo creator može brisati
         if (event.getCreator() == null || !event.getCreator().getId().equals(userId)) {
             throw new RuntimeException("Nemaš pravo brisati ovaj event.");
         }
 
-        // Soft delete — samo označi kao neaktivan
         event.setIsActive(false);
         eventRepository.save(event);
     }
@@ -123,7 +123,6 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
 
-        EventAttendee.EventAttendeeId id = new EventAttendee.EventAttendeeId(eventId, userId);
         Optional<EventAttendee> existing = attendeeRepository.findByEventIdAndUserId(eventId, userId);
 
         if (existing.isPresent()) {
@@ -145,7 +144,7 @@ public class EventService {
             }
             User user = userRepository.getReferenceById(userId);
             EventAttendee attendee = EventAttendee.builder()
-                    .id(id)
+                    .id(new EventAttendee.EventAttendeeId(eventId, userId))
                     .event(event)
                     .user(user)
                     .status("joined")
@@ -156,6 +155,17 @@ public class EventService {
         return toResponse(event, userId);
     }
 
+    // Dohvati companyName za company evente
+    private String getCompanyName(String companyId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT org_name FROM companies WHERE id = ?",
+                    String.class, companyId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private EventResponse toResponse(Event e, String userId) {
         int count = attendeeRepository.countByEventIdAndStatus(e.getId(), "joined");
         boolean attending = userId != null &&
@@ -163,9 +173,15 @@ public class EventService {
                         .map(a -> "joined".equals(a.getStatus()))
                         .orElse(false);
 
+        // companyName — dohvati samo za company evente
+        String companyName = null;
+        if (Boolean.TRUE.equals(e.getIsCompanyEvent()) && e.getCompanyId() != null) {
+            companyName = getCompanyName(e.getCompanyId());
+        }
+
         return EventResponse.builder()
                 .id(e.getId())
-                .creatorId(e.getCreator() != null ? e.getCreator().getId() : null)
+                .creatorId(e.getCreator() != null ? e.getCreator().getId() : e.getCompanyId())
                 .title(e.getTitle())
                 .city(e.getCity())
                 .specificLocation(e.getSpecificLocation())
@@ -181,10 +197,14 @@ public class EventService {
                 .isFull(e.getMaxAttendees() != null && count >= e.getMaxAttendees())
                 .coverPhotoUrl(e.getCoverPhotoUrl())
                 .cardColorHex(e.getCardColorHex())
-                .isUserEvent(e.getIsUserEvent())
+                .isUserEvent(Boolean.TRUE.equals(e.getIsUserEvent()))
+                .isCompanyEvent(Boolean.TRUE.equals(e.getIsCompanyEvent()))
                 .latitude(e.getLatitude())
                 .longitude(e.getLongitude())
                 .isAttending(attending)
+                .ticketPrice(e.getTicketPrice())
+                .ticketCurrency(e.getTicketCurrency())
+                .companyName(companyName)
                 .build();
     }
 }

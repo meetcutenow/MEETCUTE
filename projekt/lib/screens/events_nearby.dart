@@ -63,6 +63,8 @@ class EventData {
   final List<String> categories;
   final Color cardColor;
   final bool isUserEvent;
+  final bool isCompanyEvent;
+  final String? companyName;
   final int maxAttendees;
   final String? userImagePath;
   final AgeGroup ageGroup;
@@ -84,6 +86,8 @@ class EventData {
     required this.categories,
     this.cardColor = const Color(0xFF6DD5E8),
     this.isUserEvent = false,
+    this.isCompanyEvent = false,
+    this.companyName,
     this.maxAttendees = 0,
     this.userImagePath,
     this.ageGroup = AgeGroup.all,
@@ -311,11 +315,15 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
         }
 
         for (final e in list) {
-          if (e['isUserEvent'] != true) continue;
+          final isUserEvent    = e['isUserEvent']    == true;
+          final isCompanyEvent = e['isCompanyEvent'] == true;
+          if (!isUserEvent && !isCompanyEvent) continue;
+
           final city = e['city'] as String? ?? '';
           if (!_cities.any((c) => c.name == city)) continue;
 
-          final cardHex = (e['cardColorHex'] as String? ?? '#6DD5E8').replaceAll('#', '');
+          final defaultHex = isCompanyEvent ? '700D25' : '6DD5E8';
+          final cardHex = (e['cardColorHex'] as String? ?? '#$defaultHex').replaceAll('#', '');
           final cardColor = Color(int.parse('0xFF$cardHex'));
 
           final dateStr = e['eventDate'] as String? ?? '';
@@ -343,10 +351,10 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
           }
 
           final event = EventData(
-            id:              e['id'] as String? ?? '',
-            creatorId:       e['creatorId'] as String?,
-            title:           e['title'] as String? ?? '',
-            location:        city,
+            id:               e['id'] as String? ?? '',
+            creatorId:        e['creatorId'] as String?,
+            title:            e['title'] as String? ?? '',
+            location:         city,
             specificLocation: e['specificLocation'] as String? ?? '',
             dateDay:          dateDay,
             dateMonth:        dateMonth,
@@ -357,10 +365,14 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
               (e['latitude']  as num?)?.toDouble() ?? 45.8150,
               (e['longitude'] as num?)?.toDouble() ?? 15.9819,
             ),
-            categories:      [e['category'] as String? ?? ''],
+            categories:       [e['category'] as String? ?? ''],
             cardColor:        cardColor,
-            isUserEvent:      true,
+            isUserEvent:      isUserEvent,
+            isCompanyEvent:   isCompanyEvent,
+            companyName:      e['companyName'] as String?,
             maxAttendees:     (e['maxAttendees'] as int?) ?? 0,
+            ageGroup:         ageGroup,
+            genderGroup:      genderGroup,
           );
 
           _userEventsByCity.putIfAbsent(city, () => []);
@@ -1284,7 +1296,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                             child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                 colors: [Colors.transparent, Colors.black.withOpacity(0.18)])))),
-                        // CHANGED: different badge for creator vs other user events
+                        // Badge za user event - kreator
                         if (e.isUserEvent && _isMyEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1295,6 +1307,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                   Text(e.maxAttendees > 0 ? 'Tvoj event · max ${e.maxAttendees} ljudi' : 'Tvoj osobni event',
                                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                 ]))),
+                        // Badge za user event - tuđi
                         if (e.isUserEvent && !_isMyEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1304,6 +1317,19 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                   const Icon(Icons.people_rounded, color: Colors.white, size: 14), const SizedBox(width: 5),
                                   Text(e.maxAttendees > 0 ? 'Event korisnika · max ${e.maxAttendees} mjesta' : 'Event korisnika',
                                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                                ]))),
+                        // Badge za company event
+                        if (e.isCompanyEvent) Positioned(bottom: 16, left: 20,
+                            child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.92),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 10)]),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(Icons.business_rounded, color: _bordo, size: 14), const SizedBox(width: 5),
+                                  Text(e.companyName != null ? e.companyName! : 'Tvrtka',
+                                      style: const TextStyle(color: _bordo, fontSize: 12, fontWeight: FontWeight.w700)),
                                 ]))),
                         _cw(top: 28, left: 18, w: 70, h: 32), _cw(top: 14, right: 60, w: 50, h: 24),
                         _cw(top: 60, right: 16, w: 36, h: 18),
@@ -1412,6 +1438,32 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                               )),
 
                           const SizedBox(height: 24),
+                          // Company badge u detail screenu
+                          if (e.isCompanyEvent && e.companyName != null) ...[
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _bordoLight,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: _bordo.withOpacity(0.20)),
+                              ),
+                              child: Row(children: [
+                                Container(
+                                  width: 34, height: 34,
+                                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(10)),
+                                  child: const Icon(Icons.business_rounded, color: Colors.white, size: 18),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text('Organizira', style: TextStyle(
+                                      color: _bordo.withOpacity(0.55), fontSize: 11.5, fontWeight: FontWeight.w500)),
+                                  Text(e.companyName!, style: const TextStyle(
+                                      color: _bordo, fontSize: 14.5, fontWeight: FontWeight.w800)),
+                                ]),
+                              ]),
+                            ),
+                          ],
                           Text('Opis', style: TextStyle(color: isDark ? kDarkText : Colors.black87,
                               fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                           const SizedBox(height: 10),
