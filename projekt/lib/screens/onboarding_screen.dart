@@ -101,6 +101,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     });
   }
 
+  Widget _featureRow(IconData icon, String title, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.14), width: 1),
+      ),
+      child: Row(children: [
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(
+                color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: TextStyle(
+                color: Colors.white.withOpacity(0.55), fontSize: 12.5, height: 1.3)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   @override
   void dispose() {
     _phaseCtrl.dispose(); _btnCtrl.dispose(); _bgCtrl.dispose();
@@ -187,13 +218,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
 
               Positioned(
-                top: logoTopY + logoSize * 0.82 + 28,
-                left: 0, right: 0,
+                top: logoTopY + logoSize * 0.82 + 20,
+                left: 0, right: 0, bottom: 0,
                 child: FadeTransition(
                   opacity: _contentFade,
                   child: SlideTransition(
                     position: _contentSlide,
-                    child: _buildContent(mq),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: _buildContent(mq),
+                    ),
                   ),
                 ),
               ),
@@ -206,35 +240,47 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _buildContent(MediaQueryData mq) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
+      padding: EdgeInsets.fromLTRB(28, 0, 28, mq.padding.bottom + 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('Pozdrav! Jesi li spreman/na...',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.88),
-                  fontSize: 17, fontWeight: FontWeight.w700, height: 1.4)),
-          const SizedBox(height: 10),
-          Text('izaći i istraživati',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.70),
-                  fontSize: 15, height: 1.55)),
-          Text('otkriti događanja u blizini',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.70),
-                  fontSize: 15, height: 1.55)),
-          Text('organizirati vlastita događanja',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.70),
-                  fontSize: 15, height: 1.55)),
+          const Text(
+            'Izađi. Upoznaj. Poveži se.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.8,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Otkrij događanja u svom gradu i\nupoznaj ljude koji te stvarno zanimaju.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.60),
+              fontSize: 15.5,
+              height: 1.6,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
           const SizedBox(height: 28),
-          Text('i upoznati svoju osobu?',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.92),
-                  fontSize: 17, fontWeight: FontWeight.w800, height: 1.4)),
-          const SizedBox(height: 36),
 
-          // ── Odabir tipa računa ─────────────────────────────────
+          _featureRow(Icons.location_on_rounded,
+              'Događaji u blizini',
+              'Pronađi što se događa u tvom gradu'),
+          const SizedBox(height: 10),
+          _featureRow(Icons.favorite_rounded,
+              'Matchevi i chat',
+              'Poveži se s ljudima koji dijele tvoje interese'),
+          const SizedBox(height: 10),
+          _featureRow(Icons.calendar_today_rounded,
+              'Organiziraj susrete',
+              'Kreiraj vlastita događanja i pozovi ljude'),
+          const SizedBox(height: 30),
+
           _AccountTypePicker(
             btnCtrl: _btnCtrl,
             onPersonTap: _onStart,
@@ -243,19 +289,24 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
           const SizedBox(height: 16),
 
-          // ── Gumb za login ──────────────────────────────────────
           GestureDetector(
             onTap: _goToLogin,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 13),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white.withOpacity(0.30), width: 1.2),
+                border: Border.all(
+                    color: Colors.white.withOpacity(0.25), width: 1.2),
               ),
-              child: Text('Već imam račun — Prijava',
-                  style: TextStyle(color: Colors.white.withOpacity(0.90),
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Već imam račun — Prijava',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.90),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -340,8 +391,8 @@ class _AccountTypePicker extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(child: _TypeBtn(
           icon: Icons.business_rounded,
-          label: 'Tvrtka',
-          subtitle: 'Organiziraj evente',
+          label: 'Organizacija',
+          subtitle: 'Organiziraj događanja',
           onTap: onCompanyTap,
           accent: true,
         )),
@@ -600,6 +651,22 @@ class _RegistrationScreenState extends State<RegistrationScreen>
             child: AnimatedBuilder(
               animation: _bgAnim,
               builder: (_, __) => CustomPaint(painter: _GradBgPainter(_bgAnim.value)),
+            ),
+          ),
+          Positioned(
+            top: mq.padding.top + 14,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: Colors.white.withOpacity(0.30), width: 1),
+                ),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+              ),
             ),
           ),
           Center(

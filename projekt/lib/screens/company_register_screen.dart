@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'company_auth_state.dart';
 import 'company_home_screen.dart';
 
@@ -29,6 +31,11 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
   bool _loading        = false;
   String? _error;
 
+  // Logo upload
+  String? _logoPath;        // lokalna putanja do slike
+  String? _logoUrl;         // URL ako se pusti na CDN ili base64 za demo
+  final ImagePicker _picker = ImagePicker();
+
   late final AnimationController _bgCtrl;
   late final AnimationController _cardCtrl;
   late final AnimationController _btnCtrl;
@@ -50,8 +57,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
   @override
   void initState() {
     super.initState();
-    _bgCtrl   = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
-    _bgAnim   = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
+    _bgCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+    _bgAnim = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
     _cardCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
     _cardFade  = CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut);
     _cardSlide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
@@ -73,11 +80,34 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
     super.dispose();
   }
 
+  Future<void> _pickLogo() async {
+    HapticFeedback.lightImpact();
+    final xFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (xFile == null) return;
+    setState(() {
+      _logoPath = xFile.path;
+      // U produkciji ovdje bi se uploadalo na Cloudinary i dobio URL.
+      // Za demo šaljemo null (logo_url ostaje prazan u bazi).
+      // Ako imaš Cloudinary integration, dodaj ovdje.
+      _logoUrl = null;
+    });
+  }
+
+  void _removeLogo() {
+    setState(() { _logoPath = null; _logoUrl = null; });
+  }
+
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
     if (!_valid || _loading) return;
     HapticFeedback.mediumImpact();
     setState(() { _loading = true; _error = null; });
+
+    final emailRegex = RegExp(r'^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(_emailCtrl.text.trim())) {
+      setState(() => _error = 'Unesite ispravnu email adresu.');
+      return;
+    }
 
     try {
       final resp = await http.post(
@@ -88,6 +118,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           'orgName':  _orgNameCtrl.text.trim(),
           'email':    _emailCtrl.text.trim().toLowerCase(),
           'password': _passCtrl.text,
+          'logoUrl':  _logoUrl,  // null za demo, URL kad integriraš Cloudinary
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -125,13 +156,32 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           animation: _bgAnim,
           builder: (_, __) => CustomPaint(painter: _GradBgPainter(_bgAnim.value)),
         )),
+
+        // ── Back gumb ──────────────────────────────────────────────────────
+        Positioned(
+          top: mq.padding.top + 14,
+          left: 16,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: Colors.white.withOpacity(0.30), width: 1),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+
         Center(
           child: FadeTransition(
             opacity: _cardFade,
             child: SlideTransition(
               position: _cardSlide,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(28, mq.padding.top + 20, 28, mq.padding.bottom + 20),
+                padding: EdgeInsets.fromLTRB(24, mq.padding.top + 64, 24, mq.padding.bottom + 16),
                 child: Stack(clipBehavior: Clip.none, children: [
                   Container(
                     decoration: BoxDecoration(
@@ -149,7 +199,13 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                         const SizedBox(height: 4),
                         Text('Organizirajte događanja i spajajte ljude.',
                             style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 13.5)),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 20),
+
+                        // ── Logo upload ──────────────────────────────────────
+                        _lbl('Logo tvrtke (opcionalno)'),
+                        const SizedBox(height: 10),
+                        _buildLogoUploader(),
+                        const SizedBox(height: 16),
 
                         _lbl('Naziv organizacije'),
                         const SizedBox(height: 6),
@@ -238,10 +294,9 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, 3))],
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.business_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 7),
-                        Text('MeetCute za Tvrtke', style: const TextStyle(
-                            color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Text('MeetCute',
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900))),
                       ]),
                     )),
                   ),
@@ -251,6 +306,61 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           ),
         ),
       ]),
+    );
+  }
+
+  Widget _buildLogoUploader() {
+    return GestureDetector(
+      onTap: _logoPath == null ? _pickLogo : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        height: 90,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _logoPath != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
+            width: _logoPath != null ? 1.5 : 1.2,
+          ),
+          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: _logoPath != null
+            ? Row(children: [
+          const SizedBox(width: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(File(_logoPath!), width: 62, height: 62, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text('Logo odabran ✓', style: TextStyle(color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            Text('Logo će biti prikazan na tvojim eventima', style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 12)),
+          ])),
+          GestureDetector(
+            onTap: _removeLogo,
+            child: Container(
+              margin: const EdgeInsets.only(right: 14),
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle,
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.30))),
+              child: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 17),
+            ),
+          ),
+        ])
+            : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.add_photo_alternate_rounded, color: _bordo, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Dodaj logo tvrtke', style: TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
+            Text('PNG, JPG · opcionalno', style: TextStyle(color: _bordo.withOpacity(0.45), fontSize: 12)),
+          ]),
+        ]),
+      ),
     );
   }
 
@@ -342,7 +452,6 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
   );
 }
 
-// Isti gradient painter kao u onboarding_screen.dart
 class _GradBgPainter extends CustomPainter {
   final double t;
   _GradBgPainter(this.t);

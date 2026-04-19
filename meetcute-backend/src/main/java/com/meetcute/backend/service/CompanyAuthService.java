@@ -33,6 +33,7 @@ public class CompanyAuthService {
                 .orgName(req.getOrgName().trim())
                 .email(req.getEmail().trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
+                .logoUrl(req.getLogoUrl())
                 .build();
 
         company = companyRepository.save(company);
@@ -108,6 +109,7 @@ public class CompanyAuthService {
                 .username(company.getUsername())
                 .orgName(company.getOrgName())
                 .email(company.getEmail())
+                .logoUrl(company.getLogoUrl())
                 .build();
 
         return CompanyAuthResponse.builder()

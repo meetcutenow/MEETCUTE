@@ -11,6 +11,7 @@ class CompanyAuthState {
   String? _username;
   String? _orgName;
   String? _email;
+  String? _logoUrl;
 
   String? get accessToken  => _accessToken;
   String? get refreshToken => _refreshToken;
@@ -18,6 +19,7 @@ class CompanyAuthState {
   String? get username     => _username;
   String? get orgName      => _orgName;
   String? get email        => _email;
+  String? get logoUrl      => _logoUrl;
   bool    get isLoggedIn   => _accessToken != null && _accessToken!.isNotEmpty;
 
   static const _kAccess    = 'company_access_token';
@@ -26,6 +28,7 @@ class CompanyAuthState {
   static const _kUsername  = 'company_username';
   static const _kOrgName   = 'company_org_name';
   static const _kEmail     = 'company_email';
+  static const _kLogoUrl   = 'company_logo_url';
 
   static Future<bool> loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,6 +40,7 @@ class CompanyAuthState {
     instance._username     = prefs.getString(_kUsername);
     instance._orgName      = prefs.getString(_kOrgName);
     instance._email        = prefs.getString(_kEmail);
+    instance._logoUrl      = prefs.getString(_kLogoUrl);
     return true;
   }
 
@@ -48,6 +52,7 @@ class CompanyAuthState {
     _username     = c['username'];
     _orgName      = c['orgName'];
     _email        = c['email'];
+    _logoUrl      = c['logoUrl'];
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kAccess,   _accessToken  ?? '');
@@ -56,10 +61,11 @@ class CompanyAuthState {
     await prefs.setString(_kUsername, _username     ?? '');
     await prefs.setString(_kOrgName,  _orgName      ?? '');
     await prefs.setString(_kEmail,    _email        ?? '');
+    if (_logoUrl != null) await prefs.setString(_kLogoUrl, _logoUrl!);
   }
 
   Future<void> clear() async {
-    _accessToken = _refreshToken = _companyId = _username = _orgName = _email = null;
+    _accessToken = _refreshToken = _companyId = _username = _orgName = _email = _logoUrl = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kAccess);
     await prefs.remove(_kRefresh);
@@ -67,5 +73,6 @@ class CompanyAuthState {
     await prefs.remove(_kUsername);
     await prefs.remove(_kOrgName);
     await prefs.remove(_kEmail);
+    await prefs.remove(_kLogoUrl);
   }
 }

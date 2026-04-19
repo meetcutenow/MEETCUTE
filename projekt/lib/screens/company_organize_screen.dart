@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'company_auth_state.dart';
+import 'company_event_model.dart';
 import '../screens/events_nearby.dart' show AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
 
 const Color _bordo      = Color(0xFF700D25);
@@ -18,10 +22,17 @@ const _categories = [
 ];
 const _currencies = ['EUR', 'HRK', 'USD', 'GBP'];
 
+const _autoColors = [
+  '#6DD5E8', '#FFD166', '#95D5B2', '#FFB3C6',
+  '#B5D8FF', '#FFCCAA', '#C8B5FF', '#AAF0D1',
+];
+
 class _LatLng { final double lat, lng; const _LatLng(this.lat, this.lng); }
 
 class CompanyOrganizeScreen extends StatefulWidget {
-  const CompanyOrganizeScreen({super.key});
+  // Ako je editEvent != null → edit mode, inače → create mode
+  final CompanyEvent? editEvent;
+  const CompanyOrganizeScreen({super.key, this.editEvent});
   @override State<CompanyOrganizeScreen> createState() => _CompanyOrganizeScreenState();
 }
 
@@ -46,19 +57,26 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   bool        _submitting  = false;
   bool        _isGeocoding = false;
 
-  // ── Validacija adrese ──────────────────────────────────────
+  String? _coverImagePath;
+  final ImagePicker _picker = ImagePicker();
+
   bool  _addrChecking = false;
   bool? _addrValid;
   String? _addrError;
   Timer? _addrDebounce;
-
-  // ── Validacija vremena ─────────────────────────────────────
   String? _timeError;
 
   late final AnimationController _entryCtrl;
   late final Animation<double>   _entryFade;
   late final AnimationController _btnCtrl;
   late final Animation<double>   _btnScale;
+
+  bool get _isEditMode => widget.editEvent != null;
+
+  String _randomCardColor() {
+    final r = math.Random();
+    return _autoColors[r.nextInt(_autoColors.length)];
+  }
 
   @override
   void initState() {
@@ -69,12 +87,67 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     _btnScale = Tween<double>(begin: 1.0, end: 0.94)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
     _entryCtrl.forward();
-
     _locationCtrl.addListener(_onAddrChanged);
     _timeCtrl.addListener(_onTimeChanged);
-
     for (final c in [_titleCtrl, _descCtrl, _maxPeopleCtrl, _ticketPriceCtrl]) {
       c.addListener(() { if (mounted) setState(() {}); });
+    }
+
+    // Ako je edit mode — popuni polja postojećim podacima
+    if (_isEditMode) _populateFromEvent(widget.editEvent!);
+  }
+
+  void _populateFromEvent(CompanyEvent ev) {
+    _titleCtrl.text = ev.title;
+    _descCtrl.text  = ev.description ?? '';
+    _locationCtrl.text = ev.specificLocation ?? '';
+    _maxPeopleCtrl.text = ev.maxAttendees?.toString() ?? '';
+
+    // Grad
+    if (_cities.contains(ev.city)) _selectedCity = ev.city;
+
+    // Kategorija
+    final catNames = _categories.map((c) => c.$1).toList();
+    if (catNames.contains(ev.category)) _selectedCategory = ev.category;
+
+    // Dobna skupina
+    try {
+      _selAge = AgeGroup.values.firstWhere((g) => g.name == ev.ageGroup,
+          orElse: () => AgeGroup.all);
+    } catch (_) {}
+
+    // Spol
+    try {
+      _selGender = GenderGroup.values.firstWhere((g) => g.name == ev.genderGroup,
+          orElse: () => GenderGroup.all);
+    } catch (_) {}
+
+    // Datum
+    if (ev.eventDate != null) {
+      try {
+        final parts = ev.eventDate!.split('-');
+        _pickedDate = DateTime(
+            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+        _selectedDate = '${parts[2]}.${parts[1]}.${parts[0]}.';
+      } catch (_) {}
+    }
+
+    // Vrijeme
+    if (ev.timeStart != null) {
+      final start = ev.timeStart!.length >= 5 ? ev.timeStart!.substring(0, 5) : ev.timeStart!;
+      if (ev.timeEnd != null) {
+        final end = ev.timeEnd!.length >= 5 ? ev.timeEnd!.substring(0, 5) : ev.timeEnd!;
+        _timeCtrl.text = '$start – $end';
+      } else {
+        _timeCtrl.text = start;
+      }
+    }
+
+    // Ulaznice
+    if (ev.ticketPrice != null) {
+      _hasTickets = true;
+      _ticketPriceCtrl.text = ev.ticketPrice!.toStringAsFixed(2);
+      _selectedCurrency = ev.ticketCurrency ?? 'EUR';
     }
   }
 
@@ -87,31 +160,31 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     super.dispose();
   }
 
-  // ── Provjera adrese s debounceom 800ms — identično organize_meetup ──
+  Future<void> _pickCoverPhoto() async {
+    HapticFeedback.lightImpact();
+    final xFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (xFile == null) return;
+    setState(() => _coverImagePath = xFile.path);
+  }
+
+  void _removeCoverPhoto() => setState(() => _coverImagePath = null);
+
   void _onAddrChanged() {
     if (!mounted) return;
     final text = _locationCtrl.text.trim();
     _addrDebounce?.cancel();
-
     if (text.isEmpty) {
       setState(() { _addrValid = null; _addrError = null; _addrChecking = false; });
       return;
     }
-
     setState(() { _addrChecking = true; _addrValid = null; _addrError = null; });
-
     _addrDebounce = Timer(const Duration(milliseconds: 800), () async {
       if (!mounted) return;
       final current = _locationCtrl.text.trim();
       if (current != text) return;
-
       final city = _selectedCity ?? '';
-      final query = '$text${city.isNotEmpty ? ', $city' : ''}, Croatia';
-      final result = await _geocode(query);
-
-      if (!mounted) return;
-      if (_locationCtrl.text.trim() != text) return;
-
+      final result = await _geocode('$text${city.isNotEmpty ? ', $city' : ''}, Croatia');
+      if (!mounted || _locationCtrl.text.trim() != text) return;
       setState(() {
         _addrChecking = false;
         _addrValid    = result != null;
@@ -120,17 +193,14 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     });
   }
 
-  // ── Provjera formata vremena — identično organize_meetup ──
   void _onTimeChanged() {
     if (!mounted) return;
     final text = _timeCtrl.text.trim();
     if (text.isEmpty) { setState(() => _timeError = null); return; }
-
     final single = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$');
     final range  = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)\s*[–\-]\s*([01]?\d|2[0-3]):([0-5]\d)$');
     setState(() => _timeError = (single.hasMatch(text) || range.hasMatch(text))
-        ? null
-        : 'Format: 10:00 ili 10:00 – 12:00');
+        ? null : 'Format: 10:00 ili 10:00 – 12:00');
   }
 
   Future<_LatLng?> _geocode(String address) async {
@@ -152,9 +222,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   }
 
   (String?, String?) _parseTime(String text) {
-    final t     = text.trim();
+    final t = text.trim();
     final range = RegExp(r'^(\d{2}:\d{2})\s*[–\-]\s*(\d{2}:\d{2})$');
-    final m     = range.firstMatch(t);
+    final m = range.firstMatch(t);
     if (m != null) return (m.group(1), m.group(2));
     if (t.length == 5) return (t, null);
     return (null, null);
@@ -192,12 +262,13 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     if (picked == null) return;
     setState(() {
       _pickedDate   = picked;
-      final d = picked.day.toString().padLeft(2, '0');
+      final d  = picked.day.toString().padLeft(2, '0');
       final mo = picked.month.toString().padLeft(2, '0');
       _selectedDate = '$d.$mo.${picked.year}.';
     });
   }
 
+  // ── SUBMIT: create ili update ovisno o modu ───────────────────────────────
   Future<void> _submit() async {
     if (!_isValid || _submitting) { _showValidationSnack(); return; }
     HapticFeedback.mediumImpact();
@@ -206,9 +277,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
     _LatLng? coords;
     final loc = _locationCtrl.text.trim();
-    if (loc.isNotEmpty) {
-      coords = await _geocode('$loc, $_selectedCity, Croatia');
-    }
+    if (loc.isNotEmpty) coords = await _geocode('$loc, $_selectedCity, Croatia');
     if (!mounted) return;
     setState(() => _isGeocoding = false);
 
@@ -218,35 +287,53 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         '${_pickedDate!.day.toString().padLeft(2, '0')}';
 
     final body = <String, dynamic>{
-      'title':           _titleCtrl.text.trim(),
-      'description':     _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      'city':            _selectedCity!,
+      'title':            _titleCtrl.text.trim(),
+      'description':      _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      'city':             _selectedCity!,
       'specificLocation': loc.isEmpty ? null : loc,
-      'eventDate':       eventDate,
-      'timeStart':       timeStart,
-      'timeEnd':         timeEnd,
-      'category':        _selectedCategory!,
-      'ageGroup':        _selAge.name,
-      'genderGroup':     _selGender.name,
-      'maxAttendees':    int.tryParse(_maxPeopleCtrl.text.trim()),
-      'cardColorHex':    '#700D25',
-      'latitude':        coords?.lat,
-      'longitude':       coords?.lng,
+      'eventDate':        eventDate,
+      'timeStart':        timeStart,
+      'timeEnd':          timeEnd,
+      'category':         _selectedCategory!,
+      'ageGroup':         _selAge.name,
+      'genderGroup':      _selGender.name,
+      'maxAttendees':     int.tryParse(_maxPeopleCtrl.text.trim()),
+      'latitude':         coords?.lat,
+      'longitude':        coords?.lng,
     };
+
+    // Create mode dobiva random boju; edit mode zadržava postojeću
+    if (!_isEditMode) body['cardColorHex'] = _randomCardColor();
+
     if (_hasTickets) {
       body['ticketPrice']    = double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.'));
       body['ticketCurrency'] = _selectedCurrency;
     }
 
     try {
-      final resp = await http.post(
-        Uri.parse('$_base/company/events'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+      final http.Response resp;
+
+      if (_isEditMode) {
+        // PUT /api/company/events/{id}
+        resp = await http.put(
+          Uri.parse('$_base/company/events/${widget.editEvent!.id}'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15));
+      } else {
+        // POST /api/company/events
+        resp = await http.post(
+          Uri.parse('$_base/company/events'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       if (!mounted) return;
@@ -254,7 +341,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       if (resp.statusCode == 200 && decoded['success'] == true) {
         _showSuccess();
       } else {
-        _showSnack(decoded['message'] ?? 'Greška pri kreiranju eventa.');
+        _showSnack(decoded['message'] ?? 'Greška pri spremanju događaja.');
       }
     } catch (e) {
       if (mounted) _showSnack('Greška: $e');
@@ -277,33 +364,42 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: Colors.white, borderRadius: BorderRadius.circular(28),
-            boxShadow: [BoxShadow(color: _bordo.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
+            boxShadow: [BoxShadow(
+                color: _bordo.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 68, height: 68,
-              decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded, color: _bordo, size: 34),
-            ),
+            Container(width: 68, height: 68,
+                decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
+                child: Icon(
+                  _isEditMode ? Icons.check_circle_outline_rounded : Icons.check_rounded,
+                  color: _bordo, size: 34,
+                )),
             const SizedBox(height: 18),
-            const Text('Event kreiran! 🎉', style: TextStyle(color: _bordo,
-                fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4)),
+            Text(
+              _isEditMode ? 'Događaj ažuriran!' : 'Događaj kreiran! 🎉',
+              style: const TextStyle(color: _bordo,
+                  fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4),
+            ),
             const SizedBox(height: 10),
-            Text('Vaš event je objavljen i vidljiv korisnicima MeetCute-a.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14, height: 1.55)),
+            Text(
+              _isEditMode
+                  ? 'Svi prijavljeni korisnici su obaviješteni o izmjenama.'
+                  : 'Vaš događaj je objavljen i vidljiv korisnicima MeetCute-a.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14, height: 1.55),
+            ),
             const SizedBox(height: 24),
             GestureDetector(
-              onTap: () { Navigator.of(context).pop(); Navigator.of(context).pop(true); },
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: _bordo, borderRadius: BorderRadius.circular(25),
-                  boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 16, offset: const Offset(0, 6))],
-                ),
-                child: const Center(child: Text('U redu', style: TextStyle(
-                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
-              ),
+              onTap: () {
+                Navigator.of(context).pop();  // zatvori dialog
+                Navigator.of(context).pop(true); // vrati true → refresh liste
+              },
+              child: Container(height: 50,
+                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(25),
+                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30),
+                          blurRadius: 16, offset: const Offset(0, 6))]),
+                  child: const Center(child: Text('U redu', style: TextStyle(
+                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)))),
             ),
           ]),
         ),
@@ -323,13 +419,12 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   void _showValidationSnack() {
     String msg = 'Popuni sva obavezna polja';
-    if (_addrChecking)     msg = 'Pričekaj provjeru adrese...';
+    if (_addrChecking)           msg = 'Pričekaj provjeru adrese...';
     else if (_addrValid == false) msg = 'Adresa nije ispravna — ispravi je';
     else if (_timeError != null)  msg = 'Format vremena: 10:00 ili 10:00 – 12:00';
     _showSnack(msg);
   }
 
-  // ── Build ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -338,7 +433,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       body: FadeTransition(
         opacity: _entryFade,
         child: Column(children: [
-          // Header
+          // ── Header ────────────────────────────────────────────────────────
           Container(
             color: Colors.white,
             padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 18, bottom: 18),
@@ -349,20 +444,46 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
               ),
               const SizedBox(width: 4),
-              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Organiziraj događaj', style: TextStyle(color: _bordo, fontSize: 22,
-                    fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-                Text('Kreirajte event za svoju zajednicu', style: TextStyle(
-                    color: _bordo, fontSize: 13, fontWeight: FontWeight.w400)),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  _isEditMode ? 'Uredi događaj' : 'Organiziraj događaj',
+                  style: const TextStyle(color: _bordo, fontSize: 22,
+                      fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                ),
+                Text(
+                  _isEditMode
+                      ? 'Izmijeni detalje — sudionici će biti obaviješteni'
+                      : 'Kreirajte događaj za svoju zajednicu',
+                  style: const TextStyle(color: _bordo, fontSize: 13, fontWeight: FontWeight.w400),
+                ),
               ])),
+              // Edit mode badge
+              if (_isEditMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _bordoLight, borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _bordo.withOpacity(0.25)),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.edit_rounded, color: _bordo, size: 13),
+                    SizedBox(width: 5),
+                    Text('Uređivanje', style: TextStyle(
+                        color: _bordo, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
             ]),
           ),
 
-          // Scroll sadržaj
           Expanded(child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.fromLTRB(20, 4, 20, mq.padding.bottom + 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+              _label('Naslovna slika (opcionalno)'),
+              const SizedBox(height: 8),
+              _buildCoverPhoto(),
+              const SizedBox(height: 18),
 
               _label('Naziv događaja *'),
               const SizedBox(height: 8),
@@ -377,7 +498,6 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               _label('Specifična lokacija'),
               const SizedBox(height: 8),
               _field(_locationCtrl, 'npr. Dom sportova, Zagreb', Icons.place_rounded),
-              // ── Status provjere adrese ─────────────────────
               if (_locationCtrl.text.trim().isNotEmpty) ...[
                 const SizedBox(height: 6),
                 _addrStatusWidget(),
@@ -394,12 +514,11 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               _ageChips(),
               const SizedBox(height: 18),
 
-              _label('Za koga je event?'),
+              _label('Za koga je događaj?'),
               const SizedBox(height: 10),
               _genderChips(),
               const SizedBox(height: 18),
 
-              // Datum + Vrijeme u redu
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _label('Datum *'),
@@ -412,7 +531,6 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                   const SizedBox(height: 8),
                   _field(_timeCtrl, '10:00 – 12:00', Icons.access_time_rounded,
                       keyboard: TextInputType.text),
-                  // ── Status provjere vremena ──────────────
                   if (_timeError != null) ...[
                     const SizedBox(height: 5),
                     Row(children: [
@@ -431,7 +549,6 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               _field(_maxPeopleCtrl, '100', Icons.people_rounded, keyboard: TextInputType.number),
               const SizedBox(height: 24),
 
-              // ── Ulaznice ─────────────────────────────────
               _ticketBox(),
               const SizedBox(height: 18),
 
@@ -440,7 +557,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               _descField(),
               const SizedBox(height: 32),
 
-              // ── Submit gumb ───────────────────────────────
+              // ── Submit gumb ──────────────────────────────────────────────
               ScaleTransition(
                 scale: _btnScale,
                 child: GestureDetector(
@@ -453,24 +570,30 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                       color: (_isValid && !_submitting) ? _bordo : _bordo.withOpacity(0.28),
                       borderRadius: BorderRadius.circular(27),
                       boxShadow: (_isValid && !_submitting) ? [BoxShadow(
-                          color: _bordo.withOpacity(0.32), blurRadius: 18, offset: const Offset(0, 7))] : [],
+                          color: _bordo.withOpacity(0.32), blurRadius: 18,
+                          offset: const Offset(0, 7))] : [],
                     ),
                     child: Center(child: (_submitting || _isGeocoding)
                         ? const SizedBox(width: 22, height: 22,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                         : Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.celebration_rounded,
-                          color: _isValid ? Colors.white : Colors.white.withOpacity(0.45), size: 20),
-                      const SizedBox(width: 10),
-                      Text('Objavi događaj', style: TextStyle(
+                      Icon(
+                        _isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
                         color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                        fontSize: 16, fontWeight: FontWeight.w800,
-                      )),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _isEditMode ? 'Spremi izmjene' : 'Objavi događaj',
+                        style: TextStyle(
+                          color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
+                          fontSize: 16, fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ])),
                   ),
                 ),
               ),
-
             ]),
           )),
         ]),
@@ -478,33 +601,92 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     );
   }
 
-  // ── Widgets ────────────────────────────────────────────────
+  // ── Helpers (isti kao original) ───────────────────────────────────────────
+
+  Widget _buildCoverPhoto() {
+    return GestureDetector(
+      onTap: _coverImagePath == null ? _pickCoverPhoto : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        height: 130,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _coverImagePath != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
+            width: _coverImagePath != null ? 1.5 : 1.2,
+          ),
+          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        child: _coverImagePath != null
+            ? Stack(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Image.file(File(_coverImagePath!),
+                width: double.infinity, height: 130, fit: BoxFit.cover),
+          ),
+          Positioned(bottom: 10, left: 10,
+              child: GestureDetector(
+                onTap: _pickCoverPhoto,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.edit_rounded, color: Colors.white, size: 13),
+                    SizedBox(width: 5),
+                    Text('Promijeni', style: TextStyle(
+                        color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              )),
+          Positioned(top: 10, right: 10,
+              child: GestureDetector(
+                onTap: _removeCoverPhoto,
+                child: Container(
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.50), shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                ),
+              )),
+        ])
+            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 48, height: 48,
+              decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.add_photo_alternate_rounded, color: _bordo, size: 24)),
+          const SizedBox(height: 10),
+          const Text('Dodaj naslovnu sliku', style: TextStyle(
+              color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text('PNG, JPG · opcionalno', style: TextStyle(
+              color: _bordo.withOpacity(0.45), fontSize: 12)),
+        ]),
+      ),
+    );
+  }
 
   Widget _addrStatusWidget() {
-    if (_addrChecking) {
-      return Row(children: [
-        SizedBox(width: 13, height: 13,
-            child: CircularProgressIndicator(strokeWidth: 1.8, color: _bordo.withOpacity(0.50))),
-        const SizedBox(width: 7),
-        Text('Provjera adrese...', style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 11.5)),
-      ]);
-    }
-    if (_addrValid == true) {
-      return Row(children: [
-        Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 14),
-        const SizedBox(width: 5),
-        Text('Adresa pronađena', style: TextStyle(
-            color: Colors.green.shade600, fontSize: 11.5, fontWeight: FontWeight.w600)),
-      ]);
-    }
-    if (_addrValid == false) {
-      return Row(children: [
-        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 14),
-        const SizedBox(width: 5),
-        Expanded(child: Text(_addrError ?? 'Adresa nije pronađena.',
-            style: const TextStyle(color: Colors.redAccent, fontSize: 11.5))),
-      ]);
-    }
+    if (_addrChecking) return Row(children: [
+      SizedBox(width: 13, height: 13,
+          child: CircularProgressIndicator(strokeWidth: 1.8, color: _bordo.withOpacity(0.50))),
+      const SizedBox(width: 7),
+      Text('Provjera adrese...', style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 11.5)),
+    ]);
+    if (_addrValid == true) return Row(children: [
+      Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 14),
+      const SizedBox(width: 5),
+      Text('Adresa pronađena', style: TextStyle(
+          color: Colors.green.shade600, fontSize: 11.5, fontWeight: FontWeight.w600)),
+    ]);
+    if (_addrValid == false) return Row(children: [
+      const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 14),
+      const SizedBox(width: 5),
+      Expanded(child: Text(_addrError ?? 'Adresa nije pronađena.',
+          style: const TextStyle(color: Colors.redAccent, fontSize: 11.5))),
+    ]);
     return const SizedBox.shrink();
   }
 
@@ -517,21 +699,18 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(
-            color: _hasTickets ? _bordo : Colors.grey.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.confirmation_number_rounded,
-              color: _hasTickets ? Colors.white : Colors.grey, size: 20),
-        ),
+        Container(width: 40, height: 40,
+            decoration: BoxDecoration(
+                color: _hasTickets ? _bordo : Colors.grey.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.confirmation_number_rounded,
+                color: _hasTickets ? Colors.white : Colors.grey, size: 20)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Naplaćivanje ulaznica', style: TextStyle(
               color: _hasTickets ? _bordo : Colors.grey.shade700,
               fontSize: 14.5, fontWeight: FontWeight.w700)),
-          Text('Postavi cijenu ulaznice za event',
+          Text('Postavi cijenu ulaznice za događaj',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
         ])),
         Switch(value: _hasTickets, activeColor: _bordo,
@@ -560,9 +739,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _bordo.withOpacity(0.15)),
-            ),
+                color: Colors.white, borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _bordo.withOpacity(0.15))),
             child: Row(children: [
               Icon(Icons.bar_chart_rounded, color: _bordo.withOpacity(0.60), size: 16),
               const SizedBox(width: 8),
@@ -595,12 +773,10 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           Icon(icon, color: _bordo.withOpacity(0.45), size: 18),
           const SizedBox(width: 10),
           Expanded(child: TextField(
-            controller: ctrl, keyboardType: keyboard,
-            onChanged: (_) => setState(() {}),
+            controller: ctrl, keyboardType: keyboard, onChanged: (_) => setState(() {}),
             style: const TextStyle(color: _bordo, fontSize: 14.5, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: _bordo.withOpacity(0.30), fontSize: 14.5),
+              hintText: hint, hintStyle: TextStyle(color: _bordo.withOpacity(0.30), fontSize: 14.5),
               border: InputBorder.none, isDense: true,
             ),
           )),
@@ -663,9 +839,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: _selectedDate != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
-          width: 1.2,
-        ),
+            color: _selectedDate != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
+            width: 1.2),
         boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Row(children: [

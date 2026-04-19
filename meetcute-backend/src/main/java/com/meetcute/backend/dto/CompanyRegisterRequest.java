@@ -22,4 +22,7 @@ public class CompanyRegisterRequest {
     @NotBlank(message = "Lozinka je obavezna")
     @Size(min = 8)
     private String password;
+
+    // Opcionalni URL loga (Cloudinary ili drugi CDN)
+    private String logoUrl;
 }

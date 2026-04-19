@@ -22,8 +22,9 @@ public class EventService {
     private final EventAttendeeRepository attendeeRepository;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final UserPhotoRepository photoRepository;
 
-    // Svi aktivni eventi — uključuje i company evente koji imaju is_company_event=1
+
     public List<EventResponse> getAllEvents(String userId) {
         return eventRepository.findByIsActiveTrueOrderByEventDateAsc()
                 .stream()
@@ -155,14 +156,45 @@ public class EventService {
         return toResponse(event, userId);
     }
 
-    // Dohvati companyName za company evente
-    private String getCompanyName(String companyId) {
+    public List<AttendeeResponse> getEventAttendees(String eventId, String requestingUserId) {
+        // Provjera - samo kreator eventa ili company vlasnik može vidjeti listu
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
+
+        // Ako je company event, provjeri je li tražitelj company vlasnik
+        // (Možeš i otvoriti za sve korisnike ako želiš)
+
+        return attendeeRepository.findActiveByEventId(eventId)
+                .stream()
+                .map(ea -> {
+                    User user = ea.getUser();
+                    UserProfile profile = user.getProfile();
+                    String photoUrl = photoRepository.findByUserIdOrderByPhotoOrder(user.getId())
+                            .stream()
+                            .filter(UserPhoto::getIsPrimary)
+                            .map(UserPhoto::getPhotoUrl)
+                            .findFirst().orElse(null);
+                    return AttendeeResponse.builder()
+                            .userId(user.getId())
+                            .displayName(user.getDisplayName())
+                            .photoUrl(photoUrl)
+                            .gender(profile != null && profile.getGender() != null
+                                    ? profile.getGender().name() : null)
+                            .birthYear(profile != null ? profile.getBirthYear() : null)
+                            .build();
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // ── Dohvati naziv i logo tvrtke za company evente ─────────────────────────
+    private String[] getCompanyInfo(String companyId) {
         try {
             return jdbcTemplate.queryForObject(
-                    "SELECT org_name FROM companies WHERE id = ?",
-                    String.class, companyId);
+                    "SELECT org_name, logo_url FROM companies WHERE id = ?",
+                    (rs, i) -> new String[]{ rs.getString("org_name"), rs.getString("logo_url") },
+                    companyId);
         } catch (Exception e) {
-            return null;
+            return new String[]{ null, null };
         }
     }
 
@@ -173,10 +205,14 @@ public class EventService {
                         .map(a -> "joined".equals(a.getStatus()))
                         .orElse(false);
 
-        // companyName — dohvati samo za company evente
-        String companyName = null;
+        String companyName    = null;
+        String companyLogoUrl = null;
         if (Boolean.TRUE.equals(e.getIsCompanyEvent()) && e.getCompanyId() != null) {
-            companyName = getCompanyName(e.getCompanyId());
+            String[] info = getCompanyInfo(e.getCompanyId());
+            if (info != null) {
+                companyName    = info[0];
+                companyLogoUrl = info[1];
+            }
         }
 
         return EventResponse.builder()
@@ -205,6 +241,7 @@ public class EventService {
                 .ticketPrice(e.getTicketPrice())
                 .ticketCurrency(e.getTicketCurrency())
                 .companyName(companyName)
+                .companyLogoUrl(companyLogoUrl)
                 .build();
     }
 }

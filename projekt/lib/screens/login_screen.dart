@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -19,10 +21,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
 
-  // 0 = Osoba, 1 = Tvrtka
-  int _tab = 0;
+  int _tab = 0; // 0 = Osoba, 1 = Organizacija
 
-  // Controlleri — dijele se između tabova
   final _usernameCtrl = TextEditingController();
   final _passCtrl     = TextEditingController();
 
@@ -30,34 +30,45 @@ class _LoginScreenState extends State<LoginScreen>
   bool    _showPassword = false;
   String? _error;
 
+  // Smooth tab animation
   late final AnimationController _entryCtrl;
   late final Animation<double>   _entryFade;
-  late final AnimationController _tabAnim;
-  late final Animation<double>   _tabFade;
+  late final AnimationController _bgCtrl;
+  late final Animation<double>   _bgAnim;
   late final AnimationController _btnCtrl;
   late final Animation<double>   _btnScale;
+  late final AnimationController _tabSlideCtrl;
+  late final Animation<double>   _tabSlideFade;
+  late final Animation<Offset>   _tabSlidePos;
 
   @override
   void initState() {
     super.initState();
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+    _bgCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+    _bgAnim = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
+
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _tabAnim   = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-    _tabFade    = CurvedAnimation(parent: _tabAnim, curve: Curves.easeOut);
-    _btnCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
-    _btnScale  = Tween<double>(begin: 1.0, end: 0.94)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
     _entryCtrl.forward();
-    _tabAnim.forward();
+
+    _tabSlideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+    _tabSlideFade = CurvedAnimation(parent: _tabSlideCtrl, curve: Curves.easeOut);
+    _tabSlidePos  = Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _tabSlideCtrl, curve: Curves.easeOutCubic));
+    _tabSlideCtrl.value = 1.0;
+
+    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
+    _btnScale = Tween<double>(begin: 1.0, end: 0.94)
+        .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
 
     for (final c in [_usernameCtrl, _passCtrl]) {
-      c.addListener(() { if (mounted) setState(() { _error = null; }); });
+      c.addListener(() { if (mounted) setState(() => _error = null); });
     }
   }
 
   @override
   void dispose() {
-    _entryCtrl.dispose(); _tabAnim.dispose(); _btnCtrl.dispose();
+    _bgCtrl.dispose(); _entryCtrl.dispose(); _btnCtrl.dispose(); _tabSlideCtrl.dispose();
     _usernameCtrl.dispose(); _passCtrl.dispose();
     super.dispose();
   }
@@ -65,7 +76,8 @@ class _LoginScreenState extends State<LoginScreen>
   void _switchTab(int index) {
     if (_tab == index) return;
     HapticFeedback.selectionClick();
-    _tabAnim.reverse().then((_) {
+    // Smooth slide-fade out → switch → slide-fade in
+    _tabSlideCtrl.reverse().then((_) {
       if (!mounted) return;
       setState(() {
         _tab = index;
@@ -73,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen>
         _usernameCtrl.clear();
         _passCtrl.clear();
       });
-      _tabAnim.forward();
+      _tabSlideCtrl.forward();
     });
   }
 
@@ -88,17 +100,13 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() { _loading = true; _error = null; });
 
     try {
-      if (_tab == 0) {
-        await _loginUser();
-      } else {
-        await _loginCompany();
-      }
+      if (_tab == 0) await _loginUser();
+      else           await _loginCompany();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  // ── Login kao korisnik ─────────────────────────────────────
   Future<void> _loginUser() async {
     try {
       final resp = await http.post(
@@ -114,8 +122,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
 
       if (resp.statusCode == 200 && decoded['success'] == true) {
-        final data = decoded['data'] as Map<String, dynamic>;
-        await AuthState.instance.saveFromResponse(data);
+        await AuthState.instance.saveFromResponse(decoded['data']);
         if (!mounted) return;
         _navigateTo(const HomeScreen());
       } else {
@@ -126,7 +133,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // ── Login kao tvrtka ───────────────────────────────────────
   Future<void> _loginCompany() async {
     try {
       final resp = await http.post(
@@ -168,164 +174,212 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: FadeTransition(
-        opacity: _entryFade,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(24, mq.padding.top + 16, 24, mq.padding.bottom + 24),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-              // ── Back ─────────────────────────────────────────
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded, color: _bordo, size: 18),
-                ),
-              ),
-              const SizedBox(height: 28),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        body: Stack(children: [
+          // Animated gradient background (isti kao onboarding)
+          Positioned.fill(child: AnimatedBuilder(
+            animation: _bgAnim,
+            builder: (_, __) => CustomPaint(painter: _GradBgPainter(_bgAnim.value)),
+          )),
 
-              // ── Naslov ────────────────────────────────────────
-              const Text('Dobrodošli nazad!',
-                  style: TextStyle(color: _bordo, fontSize: 28,
-                      fontWeight: FontWeight.w900, letterSpacing: -0.8)),
-              const SizedBox(height: 6),
-              Text('Prijavite se u svoj račun',
-                  style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 15)),
-              const SizedBox(height: 32),
+          // Blurred decorative circles
+          Positioned(top: -60, right: -40,
+              child: Container(width: 200, height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.04),
+                  ))),
+          Positioned(bottom: mq.size.height * 0.15, left: -60,
+              child: Container(width: 160, height: 160,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.03),
+                  ))),
 
-              // ── Tab odabir: Osoba / Tvrtka ────────────────────
-              _TabSwitcher(selected: _tab, onChanged: _switchTab),
-              const SizedBox(height: 28),
-
-              // ── Forma ─────────────────────────────────────────
-              FadeTransition(
-                opacity: _tabFade,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-                  // Username
-                  _label(_tab == 0 ? 'Korisničko ime' : 'Korisničko ime tvrtke'),
-                  const SizedBox(height: 8),
-                  _inputField(
-                    controller: _usernameCtrl,
-                    hint: _tab == 0 ? 'npr. ivan123' : 'npr. eventco',
-                    icon: _tab == 0 ? Icons.person_rounded : Icons.business_rounded,
-                    keyboard: TextInputType.text,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Lozinka
-                  _label('Lozinka'),
-                  const SizedBox(height: 8),
-                  _passwordField(),
-                  const SizedBox(height: 12),
-
-                  // Greška
-                  if (_error != null) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.redAccent.withOpacity(0.25)),
-                      ),
-                      child: Row(children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(_error!,
-                            style: const TextStyle(color: Colors.redAccent,
-                                fontSize: 13, fontWeight: FontWeight.w500))),
-                      ]),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  const SizedBox(height: 8),
-
-                  // ── Login gumb ────────────────────────────────
-                  ScaleTransition(
-                    scale: _btnScale,
-                    child: GestureDetector(
-                      onTapDown: (_) { if (_isValid && !_loading) _btnCtrl.forward(); },
-                      onTapUp: (_) { _btnCtrl.reverse(); _login(); },
-                      onTapCancel: () => _btnCtrl.reverse(),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 260),
-                        height: 54, width: double.infinity,
+          // Card container
+          Center(
+            child: FadeTransition(
+              opacity: _entryFade,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(24, mq.padding.top + 20, 24, mq.padding.bottom + 24),
+                child: Stack(clipBehavior: Clip.none, children: [
+                  // Glassmorphism card
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: (_isValid && !_loading) ? _bordo : _bordo.withOpacity(0.28),
-                          borderRadius: BorderRadius.circular(27),
-                          boxShadow: (_isValid && !_loading) ? [BoxShadow(
-                              color: _bordo.withOpacity(0.32), blurRadius: 18,
-                              offset: const Offset(0, 7))] : [],
+                          color: const Color(0xFFF0E8EA).withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: Colors.white.withOpacity(0.40), width: 1),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.25),
+                                blurRadius: 40, offset: const Offset(0, 16)),
+                          ],
                         ),
-                        child: Center(child: _loading
-                            ? const SizedBox(width: 22, height: 22,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                            : Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(
-                            _tab == 0 ? Icons.login_rounded : Icons.business_center_rounded,
-                            color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            _tab == 0 ? 'Prijavi se' : 'Prijavi se kao tvrtka',
-                            style: TextStyle(
-                              color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                              fontSize: 15.5, fontWeight: FontWeight.w800,
+                        padding: EdgeInsets.fromLTRB(22, 48, 22, 28),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+                          // Naslov
+                          const Text('Dobrodošli nazad!',
+                              style: TextStyle(color: _bordo, fontSize: 24,
+                                  fontWeight: FontWeight.w900, letterSpacing: -0.6)),
+                          const SizedBox(height: 5),
+                          Text('Prijavite se u svoj račun',
+                              style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14)),
+                          const SizedBox(height: 24),
+
+                          // Tab switcher
+                          _TabSwitcher(selected: _tab, onChanged: _switchTab),
+                          const SizedBox(height: 24),
+
+                          // Forma s animacijom
+                          FadeTransition(
+                            opacity: _tabSlideFade,
+                            child: SlideTransition(
+                              position: _tabSlidePos,
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+                                _label(_tab == 0 ? 'Korisničko ime' : 'Korisničko ime organizacije'),
+                                const SizedBox(height: 8),
+                                _inputField(
+                                  controller: _usernameCtrl,
+                                  hint: _tab == 0 ? 'npr. ivan123' : 'npr. eventco',
+                                  icon: _tab == 0 ? Icons.person_rounded : Icons.business_rounded,
+                                ),
+                                const SizedBox(height: 16),
+
+                                _label('Lozinka'),
+                                const SizedBox(height: 8),
+                                _passwordField(),
+
+                                if (_error != null) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.redAccent.withOpacity(0.25)),
+                                    ),
+                                    child: Row(children: [
+                                      const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: Text(_error!,
+                                          style: const TextStyle(color: Colors.redAccent,
+                                              fontSize: 13, fontWeight: FontWeight.w500))),
+                                    ]),
+                                  ),
+                                ],
+                              ]),
                             ),
                           ),
-                        ])),
+
+                          const SizedBox(height: 24),
+
+                          // Login gumb
+                          ScaleTransition(
+                            scale: _btnScale,
+                            child: GestureDetector(
+                              onTapDown: (_) { if (_isValid && !_loading) _btnCtrl.forward(); },
+                              onTapUp: (_) { _btnCtrl.reverse(); _login(); },
+                              onTapCancel: () => _btnCtrl.reverse(),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 260),
+                                height: 52, width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: (_isValid && !_loading) ? _bordo : _bordo.withOpacity(0.28),
+                                  borderRadius: BorderRadius.circular(26),
+                                  boxShadow: (_isValid && !_loading) ? [BoxShadow(
+                                      color: _bordo.withOpacity(0.35), blurRadius: 18,
+                                      offset: const Offset(0, 7))] : [],
+                                ),
+                                child: Center(child: _loading
+                                    ? const SizedBox(width: 22, height: 22,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(_tab == 0 ? Icons.login_rounded : Icons.business_center_rounded,
+                                      color: _isValid ? Colors.white : Colors.white.withOpacity(0.45), size: 18),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _tab == 0 ? 'Prijavi se' : 'Prijavi se kao organizacija',
+                                    style: TextStyle(
+                                      color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
+                                      fontSize: 15, fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ])),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          Row(children: [
+                            Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text('ili', style: TextStyle(
+                                  color: _bordo.withOpacity(0.35), fontSize: 13)),
+                            ),
+                            Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
+                          ]),
+                          const SizedBox(height: 20),
+
+                          Center(child: GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: RichText(text: TextSpan(
+                              text: _tab == 0 ? 'Nemaš račun? ' : 'Nemaš račun organizacije? ',
+                              style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 14),
+                              children: [
+                                TextSpan(
+                                  text: 'Registriraj se',
+                                  style: const TextStyle(
+                                      color: _bordo, fontWeight: FontWeight.w800,
+                                      decoration: TextDecoration.underline),
+                                ),
+                              ],
+                            )),
+                          )),
+                        ]),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 32),
-
-                  // ── Divider ───────────────────────────────────
-                  Row(children: [
-                    Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('ili', style: TextStyle(
-                          color: _bordo.withOpacity(0.35), fontSize: 13)),
-                    ),
-                    Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
-                  ]),
-                  const SizedBox(height: 24),
-
-                  // ── Link na registraciju ──────────────────────
-                  Center(child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: RichText(text: TextSpan(
-                      text: _tab == 0 ? 'Nemaš račun? ' : 'Nemaš račun tvrtke? ',
-                      style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 14),
-                      children: [
-                        TextSpan(
-                          text: 'Registriraj se',
-                          style: const TextStyle(
-                              color: _bordo, fontWeight: FontWeight.w800,
-                              decoration: TextDecoration.underline),
+                  // Logo pill na vrhu kartice
+                  Positioned(top: -17, left: 0, right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: _bordo,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 12, offset: const Offset(0, 4),
+                          )],
                         ),
-                      ],
-                    )),
-                  )),
+                        child: Image.asset('assets/images/logo.png',
+                            height: 22, fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Text('MeetCute',
+                                style: TextStyle(color: Colors.white,
+                                    fontSize: 14, fontWeight: FontWeight.w900))),
+                      ),
+                    ),
+                  ),
                 ]),
               ),
-            ]),
+            ),
           ),
-        ),
+        ]),
       ),
     );
   }
-
-  // ── Widgets ────────────────────────────────────────────────
 
   Widget _label(String text) => Text(text,
       style: const TextStyle(color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700));
@@ -334,40 +388,36 @@ class _LoginScreenState extends State<LoginScreen>
     required TextEditingController controller,
     required String hint,
     required IconData icon,
-    TextInputType? keyboard,
-  }) =>
-      Container(
-        height: 54,
-        decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05),
-              blurRadius: 10, offset: const Offset(0, 3))],
+  }) => Container(
+    height: 52,
+    decoration: BoxDecoration(
+      color: Colors.white, borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
+      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+    ),
+    child: Row(children: [
+      const SizedBox(width: 14),
+      Icon(icon, color: _bordo.withOpacity(0.40), size: 20),
+      const SizedBox(width: 10),
+      Expanded(child: TextField(
+        controller: controller,
+        style: const TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15),
+          border: InputBorder.none, isDense: true,
         ),
-        child: Row(children: [
-          const SizedBox(width: 14),
-          Icon(icon, color: _bordo.withOpacity(0.40), size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: TextField(
-            controller: controller, keyboardType: keyboard,
-            style: const TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15),
-              border: InputBorder.none, isDense: true,
-            ),
-          )),
-          const SizedBox(width: 12),
-        ]),
-      );
+      )),
+      const SizedBox(width: 12),
+    ]),
+  );
 
   Widget _passwordField() => Container(
-    height: 54,
+    height: 52,
     decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(16),
+      color: Colors.white, borderRadius: BorderRadius.circular(14),
       border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05),
-          blurRadius: 10, offset: const Offset(0, 3))],
+      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
     ),
     child: Row(children: [
       const SizedBox(width: 14),
@@ -397,15 +447,39 @@ class _LoginScreenState extends State<LoginScreen>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB SWITCHER — Osoba / Tvrtka
-// ═══════════════════════════════════════════════════════════════════════════════
+// ── Tab switcher s poboljšanom animacijom ─────────────────────
 
-class _TabSwitcher extends StatelessWidget {
+class _TabSwitcher extends StatefulWidget {
   final int selected;
   final ValueChanged<int> onChanged;
-
   const _TabSwitcher({required this.selected, required this.onChanged});
+  @override State<_TabSwitcher> createState() => _TabSwitcherState();
+}
+
+class _TabSwitcherState extends State<_TabSwitcher> with SingleTickerProviderStateMixin {
+  late AnimationController _indicatorCtrl;
+  late Animation<double> _indicatorAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _indicatorCtrl = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 260), value: widget.selected.toDouble());
+    _indicatorAnim = CurvedAnimation(parent: _indicatorCtrl, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void didUpdateWidget(_TabSwitcher old) {
+    super.didUpdateWidget(old);
+    if (old.selected != widget.selected) {
+      widget.selected == 1
+          ? _indicatorCtrl.forward()
+          : _indicatorCtrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() { _indicatorCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -415,40 +489,77 @@ class _TabSwitcher extends StatelessWidget {
       decoration: BoxDecoration(
         color: _bordoLight,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _bordo.withOpacity(0.15)),
       ),
-      child: Row(children: [
-        _tab(0, Icons.person_rounded, 'Osoba'),
-        _tab(1, Icons.business_rounded, 'Tvrtka'),
-      ]),
+      child: LayoutBuilder(builder: (_, box) {
+        final tabW = (box.maxWidth - 8) / 2;
+        return Stack(children: [
+          // Animated indicator
+          AnimatedBuilder(
+            animation: _indicatorAnim,
+            builder: (_, __) => Transform.translate(
+              offset: Offset(_indicatorAnim.value * tabW, 0),
+              child: Container(
+                width: tabW, height: double.infinity,
+                decoration: BoxDecoration(
+                  color: _bordo,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(
+                      color: _bordo.withOpacity(0.30), blurRadius: 12, offset: const Offset(0, 4))],
+                ),
+              ),
+            ),
+          ),
+          // Tab buttons
+          Row(children: [
+            _tab(0, Icons.person_rounded, 'Osoba', tabW),
+            _tab(1, Icons.business_rounded, 'Organizacija', tabW),
+          ]),
+        ]);
+      }),
     );
   }
 
-  Widget _tab(int index, IconData icon, String label) {
-    final active = selected == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onChanged(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeInOut,
-          decoration: BoxDecoration(
-            color: active ? _bordo : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: active ? [BoxShadow(
-                color: _bordo.withOpacity(0.28), blurRadius: 10,
-                offset: const Offset(0, 3))] : [],
+  Widget _tab(int index, IconData icon, String label, double w) {
+    final active = widget.selected == index;
+    return GestureDetector(
+      onTap: () => widget.onChanged(index),
+      child: SizedBox(width: w, height: double.infinity,
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Icon(icon, key: ValueKey('icon_${index}_$active'),
+                size: 16, color: active ? Colors.white : _bordo.withOpacity(0.50)),
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 17,
-                color: active ? Colors.white : _bordo.withOpacity(0.50)),
-            const SizedBox(width: 7),
-            Text(label, style: TextStyle(
+          const SizedBox(width: 6),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
               color: active ? Colors.white : _bordo.withOpacity(0.55),
-              fontSize: 14, fontWeight: FontWeight.w700,
-            )),
-          ]),
-        ),
+              fontSize: 13.5, fontWeight: FontWeight.w700,
+            ),
+            child: Text(label),
+          ),
+        ]),
       ),
     );
   }
+}
+
+// Gradient background painter (isti kao onboarding)
+class _GradBgPainter extends CustomPainter {
+  final double t;
+  _GradBgPainter(this.t);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final wave = math.sin(t * math.pi * 2) * 0.5 + 0.5;
+    final grad = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: const [Color(0xFF700D25), Color(0xFF4A0818), Color(0xFF0D0005)],
+      stops: [0.0, 0.40 + wave * 0.08, 1.0],
+    );
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..shader = grad.createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
+  }
+  @override bool shouldRepaint(_GradBgPainter o) => o.t != t;
 }

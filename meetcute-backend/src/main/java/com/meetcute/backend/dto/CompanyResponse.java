@@ -8,4 +8,5 @@ public class CompanyResponse {
     private String username;
     private String orgName;
     private String email;
+    private String logoUrl;
 }

@@ -12,76 +12,137 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CompanyEventService {
 
-    private final EventRepository eventRepository;
-    private final EventAttendeeRepository attendeeRepository;
-    private final CompanyRepository companyRepository;
-    private final JdbcTemplate jdbcTemplate;
+    private final EventRepository            eventRepository;
+    private final EventAttendeeRepository    attendeeRepository;
+    private final CompanyRepository          companyRepository;
+    private final NotificationRepository     notificationRepository;
+    private final JdbcTemplate               jdbcTemplate;
 
+    // ── Kreiraj event ─────────────────────────────────────────────────────────
     @Transactional
     public EventResponse createCompanyEvent(CreateCompanyEventRequest req, String companyId) {
         Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("Tvrtka nije pronađena."));
+                .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
-        Event event = Event.builder()
-                .title(req.getTitle())
-                .description(req.getDescription())
-                .city(req.getCity())
-                .specificLocation(req.getSpecificLocation())
-                .eventDate(LocalDate.parse(req.getEventDate()))
-                .timeStart(req.getTimeStart() != null ? LocalTime.parse(req.getTimeStart()) : null)
-                .timeEnd(req.getTimeEnd() != null ? LocalTime.parse(req.getTimeEnd()) : null)
-                .category(req.getCategory())
-                .ageGroup(req.getAgeGroup() != null ? req.getAgeGroup() : "all")
-                .genderGroup(req.getGenderGroup() != null ? req.getGenderGroup() : "all")
-                .maxAttendees(req.getMaxAttendees())
-                .cardColorHex(req.getCardColorHex() != null ? req.getCardColorHex() : "#700D25")
-                .latitude(req.getLatitude())
-                .longitude(req.getLongitude())
-                .isUserEvent(false)
-                .isActive(true)
-                .build();
+        String currency  = req.getTicketCurrency() != null ? req.getTicketCurrency() : "EUR";
+        String cardColor = req.getCardColorHex()   != null ? req.getCardColorHex()   : "#6DD5E8";
+        String eventId   = UUID.randomUUID().toString();
 
-        event = eventRepository.save(event);
+        LocalDate eventDate = LocalDate.parse(req.getEventDate());
+        LocalTime timeStart = req.getTimeStart() != null ? LocalTime.parse(req.getTimeStart()) : null;
+        LocalTime timeEnd   = req.getTimeEnd()   != null ? LocalTime.parse(req.getTimeEnd())   : null;
 
-        String currency = req.getTicketCurrency() != null ? req.getTicketCurrency() : "EUR";
         jdbcTemplate.update(
-                "UPDATE events SET company_id = ?, is_company_event = 1, ticket_price = ?, ticket_currency = ? WHERE id = ?",
-                companyId,
-                req.getTicketPrice(),
-                currency,
-                event.getId()
+                "INSERT INTO events (id, company_id, title, description, city, specific_location, " +
+                        "latitude, longitude, event_date, time_start, time_end, category, age_group, " +
+                        "gender_group, max_attendees, ticket_price, ticket_currency, card_color_hex, " +
+                        "is_user_event, is_company_event, is_active, created_at, updated_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 1, NOW(), NOW())",
+                eventId, companyId,
+                req.getTitle(), req.getDescription(), req.getCity(), req.getSpecificLocation(),
+                req.getLatitude(), req.getLongitude(),
+                eventDate.toString(),
+                timeStart != null ? timeStart.toString() : null,
+                timeEnd   != null ? timeEnd.toString()   : null,
+                req.getCategory(),
+                req.getAgeGroup()    != null ? req.getAgeGroup()    : "all",
+                req.getGenderGroup() != null ? req.getGenderGroup() : "all",
+                req.getMaxAttendees(), req.getTicketPrice(), currency, cardColor
         );
 
-        return toResponse(event, companyId, req.getTicketPrice(), currency, company.getOrgName());
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event nije mogao biti kreiran."));
+
+        return toResponse(event, companyId, req.getTicketPrice(), currency,
+                company.getOrgName(), company.getLogoUrl(), company.getEmail());
     }
 
+    // ── Dohvati evente organizacije ───────────────────────────────────────────
     public List<EventResponse> getCompanyEvents(String companyId) {
         Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("Tvrtka nije pronađena."));
+                .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
-        String sql = "SELECT * FROM events WHERE company_id = ? AND is_active = 1 ORDER BY event_date ASC";
-        List<String> eventIds = jdbcTemplate.query(
-                sql,
-                (rs, i) -> rs.getString("id"),
-                companyId
-        );
+        List<Event> events = eventRepository.findByCompanyIdAndIsActiveTrueOrderByEventDateAsc(companyId);
 
-        return eventIds.stream().map(id -> {
-            Event event = eventRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
-            Object[] extra = fetchExtra(id);
-            Double price = extra[0] != null ? ((BigDecimal) extra[0]).doubleValue() : null;
-            String curr = extra[1] != null ? (String) extra[1] : "EUR";
-            return toResponse(event, companyId, price, curr, company.getOrgName());
+        return events.stream().map(event -> {
+            Double price = event.getTicketPrice();
+            String curr  = event.getTicketCurrency() != null ? event.getTicketCurrency() : "EUR";
+            return toResponse(event, companyId, price, curr,
+                    company.getOrgName(), company.getLogoUrl(), company.getEmail());
         }).collect(Collectors.toList());
     }
 
+    // ── Uredi event + obavijesti prijavljene ──────────────────────────────────
+    @Transactional
+    public EventResponse updateCompanyEvent(String eventId, String companyId, UpdateEventRequest req) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Događaj nije pronađen."));
+
+        if (event.getCompanyId() == null || !event.getCompanyId().equals(companyId)) {
+            throw new RuntimeException("Nemate pravo uređivati ovaj događaj.");
+        }
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
+
+        if (req.getTitle() != null)            event.setTitle(req.getTitle());
+        if (req.getDescription() != null)      event.setDescription(req.getDescription());
+        if (req.getCity() != null)             event.setCity(req.getCity());
+        if (req.getSpecificLocation() != null) event.setSpecificLocation(req.getSpecificLocation());
+        if (req.getEventDate() != null)        event.setEventDate(LocalDate.parse(req.getEventDate()));
+        if (req.getTimeStart() != null)        event.setTimeStart(LocalTime.parse(req.getTimeStart()));
+        if (req.getTimeEnd() != null)          event.setTimeEnd(LocalTime.parse(req.getTimeEnd()));
+        if (req.getCategory() != null)         event.setCategory(req.getCategory());
+        if (req.getAgeGroup() != null)         event.setAgeGroup(req.getAgeGroup());
+        if (req.getGenderGroup() != null)      event.setGenderGroup(req.getGenderGroup());
+        if (req.getMaxAttendees() != null)     event.setMaxAttendees(req.getMaxAttendees());
+        if (req.getCardColorHex() != null)     event.setCardColorHex(req.getCardColorHex());
+        if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
+        if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
+
+        eventRepository.save(event);
+
+        notifyAttendees(eventId,
+                "Događaj izmijenjen",
+                "\"" + event.getTitle() + "\" je ažuriran od strane organizatora "
+                        + company.getOrgName() + ". Provjeri nove detalje.",
+                "#FFD166");
+
+        return toResponse(event, companyId, event.getTicketPrice(), event.getTicketCurrency(),
+                company.getOrgName(), company.getLogoUrl(), company.getEmail());
+    }
+
+    // ── Obriši event + obavijesti prijavljene ─────────────────────────────────
+    @Transactional
+    public void deleteCompanyEvent(String eventId, String companyId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Događaj nije pronađen."));
+
+        if (event.getCompanyId() == null || !event.getCompanyId().equals(companyId)) {
+            throw new RuntimeException("Nemate pravo brisati ovaj događaj.");
+        }
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
+
+        notifyAttendees(eventId,
+                "Događaj otkazan",
+                "Nažalost, \"" + event.getTitle() + "\" je otkazan od strane organizatora "
+                        + company.getOrgName() + ".",
+                "#D93025");
+
+        event.setIsActive(false);
+        eventRepository.save(event);
+    }
+
+    // ── Statistike ────────────────────────────────────────────────────────────
     public List<CompanyEventStatsResponse> getEventStats(String companyId) {
         String sql = "SELECT event_id, title, event_date, total_joined, total_cancelled, " +
                 "male_count, female_count, other_count, age_18_25, age_26_35, age_36_45, age_45plus, " +
@@ -110,16 +171,30 @@ public class CompanyEventService {
         }, companyId);
     }
 
-    private Object[] fetchExtra(String eventId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT ticket_price, ticket_currency FROM events WHERE id = ?",
-                (rs, i) -> new Object[]{rs.getObject("ticket_price"), rs.getString("ticket_currency")},
-                eventId
-        );
+    // ── Interni: pošalji obavijest svim prijavljenim ──────────────────────────
+    private void notifyAttendees(String eventId, String title, String body, String accentColor) {
+        try {
+            List<EventAttendee> attendees = attendeeRepository.findActiveByEventId(eventId);
+            for (EventAttendee ea : attendees) {
+                try {
+                    Notification n = Notification.builder()
+                            .user(ea.getUser())
+                            .type("event_update")
+                            .title(title)
+                            .body(body)
+                            .eventId(eventId)
+                            .accentColor(accentColor)
+                            .build();
+                    notificationRepository.save(n);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
     }
 
+    // ── Mapper ────────────────────────────────────────────────────────────────
     private EventResponse toResponse(Event e, String companyId, Double ticketPrice,
-                                     String currency, String orgName) {
+                                     String currency, String orgName,
+                                     String logoUrl, String email) {
         int count = attendeeRepository.countByEventIdAndStatus(e.getId(), "joined");
         return EventResponse.builder()
                 .id(e.getId())
@@ -127,9 +202,9 @@ public class CompanyEventService {
                 .title(e.getTitle())
                 .city(e.getCity())
                 .specificLocation(e.getSpecificLocation())
-                .eventDate(e.getEventDate() != null ? e.getEventDate().toString() : null)
-                .timeStart(e.getTimeStart() != null ? e.getTimeStart().toString() : null)
-                .timeEnd(e.getTimeEnd() != null ? e.getTimeEnd().toString() : null)
+                .eventDate(e.getEventDate()  != null ? e.getEventDate().toString()  : null)
+                .timeStart(e.getTimeStart()  != null ? e.getTimeStart().toString()  : null)
+                .timeEnd(e.getTimeEnd()      != null ? e.getTimeEnd().toString()    : null)
                 .description(e.getDescription())
                 .category(e.getCategory())
                 .ageGroup(e.getAgeGroup())
@@ -139,13 +214,15 @@ public class CompanyEventService {
                 .isFull(e.getMaxAttendees() != null && count >= e.getMaxAttendees())
                 .cardColorHex(e.getCardColorHex())
                 .isUserEvent(false)
+                .isCompanyEvent(true)
                 .latitude(e.getLatitude())
                 .longitude(e.getLongitude())
                 .isAttending(false)
                 .ticketPrice(ticketPrice)
                 .ticketCurrency(currency)
                 .companyName(orgName)
-                .isCompanyEvent(true)
+                .companyLogoUrl(logoUrl)
+                .companyEmail(email)
                 .build();
     }
 }

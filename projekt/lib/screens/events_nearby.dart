@@ -65,10 +65,14 @@ class EventData {
   final bool isUserEvent;
   final bool isCompanyEvent;
   final String? companyName;
+  final String? companyLogoUrl;
+  final String? companyEmail;
   final int maxAttendees;
   final String? userImagePath;
   final AgeGroup ageGroup;
   final GenderGroup genderGroup;
+  final double? ticketPrice;
+  final String? ticketCurrency;
 
   const EventData({
     this.id = '',
@@ -88,10 +92,14 @@ class EventData {
     this.isUserEvent = false,
     this.isCompanyEvent = false,
     this.companyName,
+    this.companyLogoUrl,
+    this.companyEmail,
     this.maxAttendees = 0,
     this.userImagePath,
     this.ageGroup = AgeGroup.all,
     this.genderGroup = GenderGroup.all,
+    this.ticketPrice,
+    this.ticketCurrency,
   });
 }
 
@@ -310,6 +318,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
       if (resp.statusCode == 200) {
         final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List;
 
+        // Očisti stare backend evente
         for (final c in _cities) {
           _userEventsByCity[c.name]?.removeWhere((e) => e.id.isNotEmpty);
         }
@@ -317,14 +326,21 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
         for (final e in list) {
           final isUserEvent    = e['isUserEvent']    == true;
           final isCompanyEvent = e['isCompanyEvent'] == true;
+
+          // ── KLJUČNI FIX: prikaži i user i company evente ──────────────────
           if (!isUserEvent && !isCompanyEvent) continue;
 
           final city = e['city'] as String? ?? '';
           if (!_cities.any((c) => c.name == city)) continue;
 
           final defaultHex = isCompanyEvent ? '700D25' : '6DD5E8';
-          final cardHex = (e['cardColorHex'] as String? ?? '#$defaultHex').replaceAll('#', '');
-          final cardColor = Color(int.parse('0xFF$cardHex'));
+          final cardHexRaw = (e['cardColorHex'] as String? ?? '#$defaultHex').replaceAll('#', '');
+          Color cardColor;
+          try {
+            cardColor = Color(int.parse('FF$cardHexRaw', radix: 16));
+          } catch (_) {
+            cardColor = isCompanyEvent ? const Color(0xFF700D25) : const Color(0xFF6DD5E8);
+          }
 
           final dateStr = e['eventDate'] as String? ?? '';
           String dateDay = '', dateMonth = '';
@@ -370,9 +386,13 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
             isUserEvent:      isUserEvent,
             isCompanyEvent:   isCompanyEvent,
             companyName:      e['companyName'] as String?,
+            companyLogoUrl:   e['companyLogoUrl'] as String?,
+            companyEmail:     e['companyEmail'] as String?,
             maxAttendees:     (e['maxAttendees'] as int?) ?? 0,
             ageGroup:         ageGroup,
             genderGroup:      genderGroup,
+            ticketPrice:      (e['ticketPrice'] as num?)?.toDouble(),
+            ticketCurrency:   e['ticketCurrency'] as String?,
           );
 
           _userEventsByCity.putIfAbsent(city, () => []);
@@ -381,7 +401,9 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
         if (mounted) setState(() {});
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Backend load error: $e');
+    }
     if (mounted) setState(() => _backendLoading = false);
   }
 
@@ -872,7 +894,8 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final e      = widget.event;
     final c      = e.cardColor;
-    final isUser = e.isUserEvent;
+    final isUser    = e.isUserEvent;
+    final isCompany = e.isCompanyEvent;
     final hasImg = e.userImagePath != null && e.userImagePath!.isNotEmpty;
 
     return ClipRRect(
@@ -903,8 +926,18 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                     const Icon(Icons.people_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
                     Text('max ${e.maxAttendees}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                   ]))),
-        // CHANGED: "Event korisnika" badge for ALL user events (not just creator)
-        if (isUser)
+        // Badge za company event
+        if (isCompany)
+          Positioned(top: 12, left: 12,
+              child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.90), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.business_rounded, color: _bordo, size: 12), const SizedBox(width: 4),
+                    Text(e.companyName ?? 'Tvrtka', style: const TextStyle(color: _bordo, fontSize: 11, fontWeight: FontWeight.w700)),
+                  ]))),
+        // Badge za user event
+        if (isUser && !isCompany)
           Positioned(top: 12, left: 12,
               child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -921,6 +954,17 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                   Icon(Icons.touch_app_rounded, color: Colors.white, size: 13), SizedBox(width: 4),
                   Text('detalji', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                 ]))),
+        // Ticket price badge
+        if (e.ticketPrice != null && e.ticketPrice! > 0)
+          Positioned(bottom: 90, left: 12,
+              child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.50), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.confirmation_number_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
+                    Text('${e.ticketPrice!.toStringAsFixed(0)} ${e.ticketCurrency ?? 'EUR'}',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                  ]))),
         Positioned(
           bottom: 0, left: 0, right: 0,
           child: Container(
@@ -1056,15 +1100,49 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
   }
 
   void _toggleJoin() async {
+    if (widget.event.isCompanyEvent) {
+      // Company eventi — prijava putem backend API-a
+      if (!AuthState.instance.isLoggedIn) {
+        _showSnack('Moraš biti prijavljen/a da se prijavljuješ na evente.');
+        return;
+      }
+    }
     if (!_joined && widget.event.isUserEvent && widget.event.maxAttendees > 0) {
       if (_effectiveAttendees(widget.event) >= widget.event.maxAttendees) { _showFull(); return; }
     }
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward(); await _btnCtrl.reverse();
+
+    // Pokušaj backend toggle ako event ima ID
+    if (widget.event.id.isNotEmpty && AuthState.instance.isLoggedIn) {
+      try {
+        final resp = await http.post(
+          Uri.parse('http://localhost:8080/api/events/${widget.event.id}/attend'),
+          headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
+        ).timeout(const Duration(seconds: 8));
+        if (resp.statusCode != 200) {
+          final decoded = jsonDecode(utf8.decode(resp.bodyBytes));
+          _showSnack(decoded['message'] ?? 'Greška pri prijavi.');
+          return;
+        }
+      } catch (_) {
+        // Nastavi lokalno ako backend nije dostupan
+      }
+    }
+
     final was = _joined;
     setState(() { _attendanceState[widget.event.title] = !was; });
     _countCtrl.forward(from: 0);
     NotificationState.instance.onAttendanceChanged(widget.event.title, widget.event.location, widget.event.cardColor, !was);
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white)),
+      backgroundColor: _bordo, behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.all(16),
+    ));
   }
 
   void _showFull() {
@@ -1172,32 +1250,20 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       if (resp.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Događaj obrisan.', style: TextStyle(color: Colors.white)),
-          backgroundColor: kPrimaryDark,
-          behavior: SnackBarBehavior.floating,
+          backgroundColor: kPrimaryDark, behavior: SnackBarBehavior.floating,
         ));
         Navigator.pop(context, 'deleted');
       } else {
         final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(decoded['message'] ?? 'Greška pri brisanju.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ));
+        _showSnack(decoded['message'] ?? 'Greška pri brisanju.');
       }
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Ne mogu se spojiti na server.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
+      if (mounted) _showSnack('Ne mogu se spojiti na server.');
     }
   }
 
   Future<void> _editEvent() async {
     final e = widget.event;
-
     String eventDate = '';
     if (e.id.isNotEmpty) {
       try {
@@ -1318,19 +1384,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                   Text(e.maxAttendees > 0 ? 'Event korisnika · max ${e.maxAttendees} mjesta' : 'Event korisnika',
                                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                 ]))),
-                        // Badge za company event
-                        if (e.isCompanyEvent) Positioned(bottom: 16, left: 20,
-                            child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.92),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 10)]),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  const Icon(Icons.business_rounded, color: _bordo, size: 14), const SizedBox(width: 5),
-                                  Text(e.companyName != null ? e.companyName! : 'Tvrtka',
-                                      style: const TextStyle(color: _bordo, fontSize: 12, fontWeight: FontWeight.w700)),
-                                ]))),
                         _cw(top: 28, left: 18, w: 70, h: 32), _cw(top: 14, right: 60, w: 50, h: 24),
                         _cw(top: 60, right: 16, w: 36, h: 18),
                       ])))),
@@ -1438,32 +1491,83 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                               )),
 
                           const SizedBox(height: 24),
-                          // Company badge u detail screenu
+
+                          // ── Company info kartica ───────────────────────────
                           if (e.isCompanyEvent && e.companyName != null) ...[
                             Container(
                               margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               decoration: BoxDecoration(
-                                color: _bordoLight,
-                                borderRadius: BorderRadius.circular(14),
+                                color: isDark ? kDarkCard : _bordoLight,
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: _bordo.withOpacity(0.20)),
                               ),
-                              child: Row(children: [
-                                Container(
-                                  width: 34, height: 34,
-                                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(10)),
-                                  child: const Icon(Icons.business_rounded, color: Colors.white, size: 18),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                // ── Gornji red: logo + naziv + cijena ─────────
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                                  child: Row(children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: e.companyLogoUrl != null
+                                          ? Image.network(e.companyLogoUrl!, width: 40, height: 40, fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => _orgIcon())
+                                          : _orgIcon(),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text('Organizira', style: TextStyle(
+                                          color: _bordo.withOpacity(0.55), fontSize: 11.5, fontWeight: FontWeight.w500)),
+                                      Text(e.companyName!, style: TextStyle(
+                                          color: isDark ? kDarkText : _bordo, fontSize: 14.5, fontWeight: FontWeight.w800)),
+                                    ])),
+                                    if (e.ticketPrice != null && e.ticketPrice! > 0)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: _bordo, borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Column(children: [
+                                          Text('${e.ticketPrice!.toStringAsFixed(2)} ${e.ticketCurrency ?? 'EUR'}',
+                                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                                          Text('ulaznica', style: TextStyle(color: Colors.white.withOpacity(0.70), fontSize: 10)),
+                                        ]),
+                                      ),
+                                  ]),
                                 ),
-                                const SizedBox(width: 12),
-                                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text('Organizira', style: TextStyle(
-                                      color: _bordo.withOpacity(0.55), fontSize: 11.5, fontWeight: FontWeight.w500)),
-                                  Text(e.companyName!, style: const TextStyle(
-                                      color: _bordo, fontSize: 14.5, fontWeight: FontWeight.w800)),
-                                ]),
+                                // ── Plaćanje info (samo za plaćene evente) ────
+                                if (e.ticketPrice != null && e.ticketPrice! > 0) ...[
+                                  Divider(height: 1, color: _bordo.withOpacity(0.12)),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Icon(Icons.info_outline_rounded, color: _bordo.withOpacity(0.60), size: 15),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: Text(
+                                        'Prijavom će vaša ulaznica biti osigurana. Plaćanje se vrši uživo pri dolasku na događaj.',
+                                        style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70),
+                                            fontSize: 12.5, height: 1.5),
+                                      )),
+                                    ]),
+                                  ),
+                                ],
+                                // ── Kontakt mail ──────────────────────────────
+                                if (e.companyEmail != null && e.companyEmail!.isNotEmpty) ...[
+                                  Divider(height: 1, color: _bordo.withOpacity(0.12)),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                                    child: Row(children: [
+                                      Icon(Icons.mail_outline_rounded, color: _bordo.withOpacity(0.60), size: 15),
+                                      const SizedBox(width: 8),
+                                      Text('Kontakt: ${e.companyEmail!}',
+                                          style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70),
+                                              fontSize: 12.5)),
+                                    ]),
+                                  ),
+                                ],
                               ]),
                             ),
                           ],
+
                           Text('Opis', style: TextStyle(color: isDark ? kDarkText : Colors.black87,
                               fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                           const SizedBox(height: 10),
@@ -1507,6 +1611,12 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     );
   }
 
+  Widget _orgIcon() => Container(
+    width: 40, height: 40,
+    decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(10)),
+    child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
+  );
+
   Widget _detailRow(bool isDark, IconData icon, String label, String value, Color primary) {
     return Row(children: [
       Container(
@@ -1538,7 +1648,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     final cardBg  = isDark ? kDarkCard : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordoDark;
 
-    // Moj vlastiti event — Edit + Delete gumbi
     if (_isMyEvent) {
       return AnimatedContainer(
         duration: const Duration(milliseconds: 380),
@@ -1581,8 +1690,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       );
     }
 
-    // CHANGED: tuđi user eventi SADA prikazuju Join gumb (uklonjen SizedBox.shrink() blok)
-    // Normalni event i tuđi user event — Join gumb
     final isFull = widget.event.maxAttendees > 0 &&
         _effectiveAttendees(widget.event) >= widget.event.maxAttendees && !_joined;
 

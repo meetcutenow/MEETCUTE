@@ -70,4 +70,13 @@ public class EventController {
         EventResponse event = eventService.toggleAttendance(id, userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.ok(event));
     }
+
+    @GetMapping("/{id}/attendees")
+    public ResponseEntity<ApiResponse<List<AttendeeResponse>>> getAttendees(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        List<AttendeeResponse> attendees = eventService.getEventAttendees(id, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.ok(attendees));
+    }
+
 }
