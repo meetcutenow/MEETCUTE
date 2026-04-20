@@ -36,7 +36,6 @@ public class AuthService {
             throw new RuntimeException("Moraš imati najmanje 18 godina.");
         }
 
-        // Validacija pref age raspona
         if (req.getPrefAgeFrom() != null && req.getPrefAgeTo() != null
                 && req.getPrefAgeFrom() > req.getPrefAgeTo()) {
             throw new RuntimeException("Gornja granica dobi mora biti veća od donje.");
@@ -53,11 +52,10 @@ public class AuthService {
 
         user = userRepository.save(user);
 
-        UserProfile.Gender gender = mapGender(req.getGender());
-        UserProfile.HairColor hairColor = mapHairColor(req.getHairColor());
-        UserProfile.EyeColor eyeColor = mapEyeColor(req.getEyeColor());
-
-        // seekingGender — normaliziramo na 'zensko'/'musko'/'sve'
+        // Sve kao String — baza koristi VARCHAR ne ENUM
+        String gender     = normalizeGender(req.getGender());
+        String hairColor  = normalizeHairColor(req.getHairColor());
+        String eyeColor   = normalizeEyeColor(req.getEyeColor());
         String seekingGender = req.getSeekingGender() != null
                 ? req.getSeekingGender().trim().toLowerCase()
                 : "sve";
@@ -184,35 +182,40 @@ public class AuthService {
         return Integer.toHexString(token.hashCode()) + token.substring(token.length() - 8);
     }
 
-    private UserProfile.Gender mapGender(String value) {
-        if (value == null) return UserProfile.Gender.ostalo;
-        return switch (value.toLowerCase().replace("ž", "z").replace("š", "s").replace("ć", "c").replace("č", "c")) {
-            case "zensko", "žensko", "female" -> UserProfile.Gender.zensko;
-            case "musko", "muško", "male"     -> UserProfile.Gender.musko;
-            default                            -> UserProfile.Gender.ostalo;
-        };
+    // Normalizacija na vrijednosti koje baza čuva (VARCHAR)
+    private String normalizeGender(String value) {
+        if (value == null) return "ostalo";
+        final String v = normalize(value);
+        if (v.contains("zen") || v.contains("female")) return "zensko";
+        if (v.contains("mus") || v.contains("male"))   return "musko";
+        return "ostalo";
     }
 
-    private UserProfile.HairColor mapHairColor(String value) {
-        if (value == null) return UserProfile.HairColor.ostalo;
-        return switch (value.toLowerCase()) {
-            case "plava"                     -> UserProfile.HairColor.plava;
-            case "smeda", "smeđa", "smedja"  -> UserProfile.HairColor.smeda;
-            case "crna"                      -> UserProfile.HairColor.crna;
-            case "crvena"                    -> UserProfile.HairColor.crvena;
-            case "sijeda"                    -> UserProfile.HairColor.sijeda;
-            default                          -> UserProfile.HairColor.ostalo;
-        };
+    private String normalizeHairColor(String value) {
+        if (value == null) return "ostalo";
+        final String v = normalize(value);
+        if (v.contains("plav"))  return "plava";
+        if (v.contains("smed"))  return "smeda";
+        if (v.contains("crven")) return "crvena";
+        if (v.contains("crn"))   return "crna";
+        if (v.contains("sijed")) return "sijeda";
+        return "ostalo";
     }
 
-    private UserProfile.EyeColor mapEyeColor(String value) {
-        if (value == null) return UserProfile.EyeColor.smede;
-        return switch (value.toLowerCase()) {
-            case "smede", "smeđe", "smedje"  -> UserProfile.EyeColor.smede;
-            case "zelene"                    -> UserProfile.EyeColor.zelene;
-            case "plave"                     -> UserProfile.EyeColor.plave;
-            case "sive"                      -> UserProfile.EyeColor.sive;
-            default                          -> UserProfile.EyeColor.smede;
-        };
+    private String normalizeEyeColor(String value) {
+        if (value == null) return "smede";
+        final String v = normalize(value);
+        if (v.contains("smed"))  return "smede";
+        if (v.contains("zelen")) return "zelene";
+        if (v.contains("plav"))  return "plave";
+        if (v.contains("siv"))   return "sive";
+        return "smede";
+    }
+
+    private String normalize(String s) {
+        return s.toLowerCase()
+                .replace("đ", "d").replace("š", "s")
+                .replace("č", "c").replace("ć", "c")
+                .replace("ž", "z");
     }
 }

@@ -33,17 +33,15 @@ public class UserProfile {
     @Column(name = "height_cm")
     private Integer heightCm;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "gender")
-    private Gender gender;
+    // VARCHAR u bazi — koristimo String, ne Java enum
+    @Column(name = "gender", length = 20)
+    private String gender;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "hair_color")
-    private HairColor hairColor;
+    @Column(name = "hair_color", length = 20)
+    private String hairColor;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "eye_color")
-    private EyeColor eyeColor;
+    @Column(name = "eye_color", length = 20)
+    private String eyeColor;
 
     @Column(name = "seeking_gender", length = 20)
     @Builder.Default
@@ -95,8 +93,4 @@ public class UserProfile {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-    public enum Gender { zensko, musko, ostalo }
-    public enum HairColor { plava, smeda, crna, crvena, sijeda, ostalo }
-    public enum EyeColor { smede, zelene, plave, sive }
 }

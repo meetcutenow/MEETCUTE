@@ -110,8 +110,9 @@ public class CompanyEventService {
 
         eventRepository.save(event);
 
-        // Notify attendees AFTER saving the event — use safe method
-        notifyAttendeesAfterUpdate(eventId,
+        // Koristimo direktni SQL INSERT da zaobiđemo Hibernate ENUM validaciju
+        // DB enum ne sadrži 'event_update', koristimo 'new_event' koji postoji
+        notifyAttendeesSql(eventId,
                 "Događaj izmijenjen",
                 "\"" + event.getTitle() + "\" je ažuriran od strane organizatora "
                         + company.getOrgName() + ". Provjeri nove detalje.",
@@ -134,7 +135,7 @@ public class CompanyEventService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
-        notifyAttendeesAfterUpdate(eventId,
+        notifyAttendeesSql(eventId,
                 "Događaj otkazan",
                 "Nažalost, \"" + event.getTitle() + "\" je otkazan od strane organizatora "
                         + company.getOrgName() + ".",
@@ -173,29 +174,21 @@ public class CompanyEventService {
         }, companyId);
     }
 
-    // ── Interni: pošalji obavijest svim prijavljenim (sigurna verzija) ────────
-    private void notifyAttendeesAfterUpdate(String eventId, String title, String body, String accentColor) {
+
+    private void notifyAttendeesSql(String eventId, String title, String body, String accentColor) {
         try {
-            // Dohvati user ID-ove direktno iz baze kako bi se izbjegao null proxy problem
             List<String> userIds = jdbcTemplate.queryForList(
                     "SELECT user_id FROM event_attendees WHERE event_id = ? AND status = 'joined'",
                     String.class, eventId);
 
             for (String userId : userIds) {
                 try {
-                    User user = userRepository.getReferenceById(userId);
-                    Notification n = Notification.builder()
-                            .user(user)
-                            .type("event_update")
-                            .title(title)
-                            .body(body)
-                            .eventId(eventId)
-                            .accentColor(accentColor)
-                            .build();
-                    notificationRepository.save(n);
-                } catch (Exception e) {
-                    // Ne blokiraj update zbog jedne neuspjele obavijesti
-                }
+                    jdbcTemplate.update(
+                            "INSERT INTO notifications " +
+                                    "(user_id, type, title, body, event_id, accent_color, is_read, created_at) " +
+                                    "VALUES (?, 'new_event', ?, ?, ?, ?, 0, NOW())",
+                            userId, title, body, eventId, accentColor);
+                } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
     }

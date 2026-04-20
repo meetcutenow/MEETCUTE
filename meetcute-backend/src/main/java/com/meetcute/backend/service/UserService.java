@@ -102,14 +102,16 @@ public class UserService {
         if (user.getProfile() != null) {
             UserProfile p = user.getProfile();
             int age = p.getBirthYear() != null ? Year.now().getValue() - p.getBirthYear() : 0;
+
             profileResp = ProfileResponse.builder()
                     .birthYear(p.getBirthYear())
                     .age(age)
-                    .gender(p.getGender() != null ? p.getGender().name() : null)
+                    // gender, hairColor, eyeColor su sad String — direktno, bez .name()
+                    .gender(p.getGender())
                     .seekingGender(p.getSeekingGender())
                     .heightCm(p.getHeightCm())
-                    .hairColor(p.getHairColor() != null ? p.getHairColor().name() : null)
-                    .eyeColor(p.getEyeColor() != null ? p.getEyeColor().name() : null)
+                    .hairColor(p.getHairColor())
+                    .eyeColor(p.getEyeColor())
                     .hasPiercing(p.getHasPiercing())
                     .hasTattoo(p.getHasTattoo())
                     .iceBreaker(p.getIceBreaker())

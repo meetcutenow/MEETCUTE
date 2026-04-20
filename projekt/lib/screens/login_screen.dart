@@ -18,8 +18,7 @@ class LoginScreen extends StatefulWidget {
   @override State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
 
   int _tab = 0; // 0 = Osoba, 1 = Organizacija
 
@@ -30,20 +29,25 @@ class _LoginScreenState extends State<LoginScreen>
   bool    _showPassword = false;
   String? _error;
 
-  // Smooth tab animation
   late final AnimationController _entryCtrl;
   late final Animation<double>   _entryFade;
+
   late final AnimationController _bgCtrl;
   late final Animation<double>   _bgAnim;
+
   late final AnimationController _btnCtrl;
   late final Animation<double>   _btnScale;
-  late final AnimationController _tabSlideCtrl;
-  late final Animation<double>   _tabSlideFade;
-  late final Animation<Offset>   _tabSlidePos;
+
+  // Tab switching — smooth crossfade + slide
+  late final AnimationController _tabCtrl;
+  late final Animation<double>   _tabFade;
+  late final Animation<Offset>   _tabSlide;
+  int _animatingTab = 0; // koji je tab trenutno vidljiv u animaciji
 
   @override
   void initState() {
     super.initState();
+
     _bgCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
     _bgAnim = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
 
@@ -51,15 +55,17 @@ class _LoginScreenState extends State<LoginScreen>
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entryCtrl.forward();
 
-    _tabSlideCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
-    _tabSlideFade = CurvedAnimation(parent: _tabSlideCtrl, curve: Curves.easeOut);
-    _tabSlidePos  = Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _tabSlideCtrl, curve: Curves.easeOutCubic));
-    _tabSlideCtrl.value = 1.0;
-
     _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
     _btnScale = Tween<double>(begin: 1.0, end: 0.94)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
+
+    // Tab animation — starts at full (visible)
+    _tabCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
+    _tabFade = CurvedAnimation(parent: _tabCtrl, curve: Curves.easeInOut);
+    _tabSlide = Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _tabCtrl, curve: Curves.easeOutCubic));
+    _tabCtrl.value = 1.0;
+    _animatingTab = 0;
 
     for (final c in [_usernameCtrl, _passCtrl]) {
       c.addListener(() { if (mounted) setState(() => _error = null); });
@@ -68,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _bgCtrl.dispose(); _entryCtrl.dispose(); _btnCtrl.dispose(); _tabSlideCtrl.dispose();
+    _bgCtrl.dispose(); _entryCtrl.dispose(); _btnCtrl.dispose(); _tabCtrl.dispose();
     _usernameCtrl.dispose(); _passCtrl.dispose();
     super.dispose();
   }
@@ -76,29 +82,29 @@ class _LoginScreenState extends State<LoginScreen>
   void _switchTab(int index) {
     if (_tab == index) return;
     HapticFeedback.selectionClick();
-    // Smooth slide-fade out → switch → slide-fade in
-    _tabSlideCtrl.reverse().then((_) {
+
+    // Fade out → switch content → fade + slide in
+    _tabCtrl.reverse().then((_) {
       if (!mounted) return;
       setState(() {
         _tab = index;
+        _animatingTab = index;
         _error = null;
         _usernameCtrl.clear();
         _passCtrl.clear();
       });
-      _tabSlideCtrl.forward();
+      _tabCtrl.forward();
     });
   }
 
   bool get _isValid =>
-      _usernameCtrl.text.trim().isNotEmpty &&
-          _passCtrl.text.length >= 6;
+      _usernameCtrl.text.trim().isNotEmpty && _passCtrl.text.length >= 6;
 
   Future<void> _login() async {
     if (!_isValid || _loading) return;
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward(); await _btnCtrl.reverse();
     setState(() { _loading = true; _error = null; });
-
     try {
       if (_tab == 0) await _loginUser();
       else           await _loginCompany();
@@ -112,15 +118,10 @@ class _LoginScreenState extends State<LoginScreen>
       final resp = await http.post(
         Uri.parse('$_base/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': _usernameCtrl.text.trim().toLowerCase(),
-          'password': _passCtrl.text,
-        }),
+        body: jsonEncode({'username': _usernameCtrl.text.trim().toLowerCase(), 'password': _passCtrl.text}),
       ).timeout(const Duration(seconds: 10));
-
       final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       if (!mounted) return;
-
       if (resp.statusCode == 200 && decoded['success'] == true) {
         await AuthState.instance.saveFromResponse(decoded['data']);
         if (!mounted) return;
@@ -128,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen>
       } else {
         setState(() => _error = decoded['message'] ?? 'Pogrešno korisničko ime ili lozinka.');
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _error = 'Ne mogu se spojiti na server.');
     }
   }
@@ -138,15 +139,10 @@ class _LoginScreenState extends State<LoginScreen>
       final resp = await http.post(
         Uri.parse('$_base/company/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': _usernameCtrl.text.trim().toLowerCase(),
-          'password': _passCtrl.text,
-        }),
+        body: jsonEncode({'username': _usernameCtrl.text.trim().toLowerCase(), 'password': _passCtrl.text}),
       ).timeout(const Duration(seconds: 10));
-
       final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       if (!mounted) return;
-
       if (resp.statusCode == 200 && decoded['success'] == true) {
         await CompanyAuthState.instance.saveFromResponse(decoded['data']);
         if (!mounted) return;
@@ -154,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen>
       } else {
         setState(() => _error = decoded['message'] ?? 'Pogrešno korisničko ime ili lozinka.');
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _error = 'Ne mogu se spojiti na server.');
     }
   }
@@ -179,27 +175,11 @@ class _LoginScreenState extends State<LoginScreen>
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         body: Stack(children: [
-          // Animated gradient background (isti kao onboarding)
           Positioned.fill(child: AnimatedBuilder(
             animation: _bgAnim,
             builder: (_, __) => CustomPaint(painter: _GradBgPainter(_bgAnim.value)),
           )),
 
-          // Blurred decorative circles
-          Positioned(top: -60, right: -40,
-              child: Container(width: 200, height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.04),
-                  ))),
-          Positioned(bottom: mq.size.height * 0.15, left: -60,
-              child: Container(width: 160, height: 160,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.03),
-                  ))),
-
-          // Card container
           Center(
             child: FadeTransition(
               opacity: _entryFade,
@@ -207,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen>
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(24, mq.padding.top + 20, 24, mq.padding.bottom + 24),
                 child: Stack(clipBehavior: Clip.none, children: [
-                  // Glassmorphism card
+                  // Card
                   ClipRRect(
                     borderRadius: BorderRadius.circular(28),
                     child: BackdropFilter(
@@ -217,34 +197,27 @@ class _LoginScreenState extends State<LoginScreen>
                           color: const Color(0xFFF0E8EA).withOpacity(0.95),
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(color: Colors.white.withOpacity(0.40), width: 1),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.25),
-                                blurRadius: 40, offset: const Offset(0, 16)),
-                          ],
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 40, offset: const Offset(0, 16))],
                         ),
-                        padding: EdgeInsets.fromLTRB(22, 48, 22, 28),
+                        padding: const EdgeInsets.fromLTRB(22, 48, 22, 28),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
                           // Naslov
-                          const Text('Dobrodošli nazad!',
-                              style: TextStyle(color: _bordo, fontSize: 24,
-                                  fontWeight: FontWeight.w900, letterSpacing: -0.6)),
+                          const Text('Dobrodošli nazad!', style: TextStyle(color: _bordo, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6)),
                           const SizedBox(height: 5),
-                          Text('Prijavite se u svoj račun',
-                              style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14)),
+                          Text('Prijavite se u svoj račun', style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14)),
                           const SizedBox(height: 24),
 
                           // Tab switcher
-                          _TabSwitcher(selected: _tab, onChanged: _switchTab),
+                          _SmoothTabSwitcher(selected: _tab, onChanged: _switchTab),
                           const SizedBox(height: 24),
 
                           // Forma s animacijom
                           FadeTransition(
-                            opacity: _tabSlideFade,
+                            opacity: _tabFade,
                             child: SlideTransition(
-                              position: _tabSlidePos,
+                              position: _tabSlide,
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
                                 _label(_tab == 0 ? 'Korisničko ime' : 'Korisničko ime organizacije'),
                                 const SizedBox(height: 8),
                                 _inputField(
@@ -253,11 +226,9 @@ class _LoginScreenState extends State<LoginScreen>
                                   icon: _tab == 0 ? Icons.person_rounded : Icons.business_rounded,
                                 ),
                                 const SizedBox(height: 16),
-
                                 _label('Lozinka'),
                                 const SizedBox(height: 8),
                                 _passwordField(),
-
                                 if (_error != null) ...[
                                   const SizedBox(height: 12),
                                   Container(
@@ -270,9 +241,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     child: Row(children: [
                                       const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
                                       const SizedBox(width: 8),
-                                      Expanded(child: Text(_error!,
-                                          style: const TextStyle(color: Colors.redAccent,
-                                              fontSize: 13, fontWeight: FontWeight.w500))),
+                                      Expanded(child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500))),
                                     ]),
                                   ),
                                 ],
@@ -295,24 +264,16 @@ class _LoginScreenState extends State<LoginScreen>
                                 decoration: BoxDecoration(
                                   color: (_isValid && !_loading) ? _bordo : _bordo.withOpacity(0.28),
                                   borderRadius: BorderRadius.circular(26),
-                                  boxShadow: (_isValid && !_loading) ? [BoxShadow(
-                                      color: _bordo.withOpacity(0.35), blurRadius: 18,
-                                      offset: const Offset(0, 7))] : [],
+                                  boxShadow: (_isValid && !_loading) ? [BoxShadow(color: _bordo.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 7))] : [],
                                 ),
                                 child: Center(child: _loading
-                                    ? const SizedBox(width: 22, height: 22,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                                     : Row(mainAxisSize: MainAxisSize.min, children: [
                                   Icon(_tab == 0 ? Icons.login_rounded : Icons.business_center_rounded,
                                       color: _isValid ? Colors.white : Colors.white.withOpacity(0.45), size: 18),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    _tab == 0 ? 'Prijavi se' : 'Prijavi se kao organizacija',
-                                    style: TextStyle(
-                                      color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                                      fontSize: 15, fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                                  Text(_tab == 0 ? 'Prijavi se' : 'Prijavi se kao organizacija',
+                                      style: TextStyle(color: _isValid ? Colors.white : Colors.white.withOpacity(0.45), fontSize: 15, fontWeight: FontWeight.w800)),
                                 ])),
                               ),
                             ),
@@ -322,11 +283,8 @@ class _LoginScreenState extends State<LoginScreen>
 
                           Row(children: [
                             Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('ili', style: TextStyle(
-                                  color: _bordo.withOpacity(0.35), fontSize: 13)),
-                            ),
+                            Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('ili', style: TextStyle(color: _bordo.withOpacity(0.35), fontSize: 13))),
                             Expanded(child: Divider(color: _bordo.withOpacity(0.12))),
                           ]),
                           const SizedBox(height: 20),
@@ -336,14 +294,7 @@ class _LoginScreenState extends State<LoginScreen>
                             child: RichText(text: TextSpan(
                               text: _tab == 0 ? 'Nemaš račun? ' : 'Nemaš račun organizacije? ',
                               style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 14),
-                              children: [
-                                TextSpan(
-                                  text: 'Registriraj se',
-                                  style: const TextStyle(
-                                      color: _bordo, fontWeight: FontWeight.w800,
-                                      decoration: TextDecoration.underline),
-                                ),
-                              ],
+                              children: [TextSpan(text: 'Registriraj se', style: const TextStyle(color: _bordo, fontWeight: FontWeight.w800, decoration: TextDecoration.underline))],
                             )),
                           )),
                         ]),
@@ -351,26 +302,15 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
 
-                  // Logo pill na vrhu kartice
+                  // Logo pill
                   Positioned(top: -17, left: 0, right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: _bordo,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 12, offset: const Offset(0, 4),
-                          )],
-                        ),
-                        child: Image.asset('assets/images/logo.png',
-                            height: 22, fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Text('MeetCute',
-                                style: TextStyle(color: Colors.white,
-                                    fontSize: 14, fontWeight: FontWeight.w900))),
-                      ),
-                    ),
+                    child: Center(child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+                      decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 4))]),
+                      child: Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text('MeetCute', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900))),
+                    )),
                   ),
                 ]),
               ),
@@ -381,100 +321,90 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _label(String text) => Text(text,
-      style: const TextStyle(color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700));
+  Widget _label(String text) => Text(text, style: const TextStyle(color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700));
 
-  Widget _inputField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-  }) => Container(
-    height: 52,
-    decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
-    ),
-    child: Row(children: [
-      const SizedBox(width: 14),
-      Icon(icon, color: _bordo.withOpacity(0.40), size: 20),
-      const SizedBox(width: 10),
-      Expanded(child: TextField(
-        controller: controller,
-        style: const TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15),
-          border: InputBorder.none, isDense: true,
-        ),
-      )),
-      const SizedBox(width: 12),
-    ]),
-  );
+  Widget _inputField({required TextEditingController controller, required String hint, required IconData icon}) =>
+      Container(
+        height: 52,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
+            boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))]),
+        child: Row(children: [
+          const SizedBox(width: 14),
+          Icon(icon, color: _bordo.withOpacity(0.40), size: 20),
+          const SizedBox(width: 10),
+          Expanded(child: TextField(
+            controller: controller,
+            style: const TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(hintText: hint, hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15), border: InputBorder.none, isDense: true),
+          )),
+          const SizedBox(width: 12),
+        ]),
+      );
 
   Widget _passwordField() => Container(
     height: 52,
-    decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
-    ),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
+        boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))]),
     child: Row(children: [
       const SizedBox(width: 14),
       Icon(Icons.lock_rounded, color: _bordo.withOpacity(0.40), size: 20),
       const SizedBox(width: 10),
       Expanded(child: TextField(
-        controller: _passCtrl,
-        obscureText: !_showPassword,
+        controller: _passCtrl, obscureText: !_showPassword,
         style: const TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          hintText: 'Lozinka',
-          hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15),
-          border: InputBorder.none, isDense: true,
-        ),
+        decoration: InputDecoration(hintText: 'Lozinka', hintStyle: TextStyle(color: _bordo.withOpacity(0.28), fontSize: 15), border: InputBorder.none, isDense: true),
       )),
       GestureDetector(
         onTap: () => setState(() => _showPassword = !_showPassword),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Icon(
-            _showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-            color: _bordo.withOpacity(0.35), size: 20,
-          ),
-        ),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Icon(_showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: _bordo.withOpacity(0.35), size: 20)),
       ),
     ]),
   );
 }
 
-// ── Tab switcher s poboljšanom animacijom ─────────────────────
+// ── Smooth Tab Switcher ───────────────────────────────────────────────────────
 
-class _TabSwitcher extends StatefulWidget {
+class _SmoothTabSwitcher extends StatefulWidget {
   final int selected;
   final ValueChanged<int> onChanged;
-  const _TabSwitcher({required this.selected, required this.onChanged});
-  @override State<_TabSwitcher> createState() => _TabSwitcherState();
+  const _SmoothTabSwitcher({required this.selected, required this.onChanged});
+  @override State<_SmoothTabSwitcher> createState() => _SmoothTabSwitcherState();
 }
 
-class _TabSwitcherState extends State<_TabSwitcher> with SingleTickerProviderStateMixin {
+class _SmoothTabSwitcherState extends State<_SmoothTabSwitcher>
+    with SingleTickerProviderStateMixin {
+
   late AnimationController _indicatorCtrl;
-  late Animation<double> _indicatorAnim;
+  // Smooth interpolation: 0.0 = Osoba, 1.0 = Organizacija
+  late Animation<double> _indicatorPos;
 
   @override
   void initState() {
     super.initState();
-    _indicatorCtrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 260), value: widget.selected.toDouble());
-    _indicatorAnim = CurvedAnimation(parent: _indicatorCtrl, curve: Curves.easeOutCubic);
+    _indicatorCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      value: widget.selected.toDouble(),
+    );
+    _indicatorPos = CurvedAnimation(
+      parent: _indicatorCtrl,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
-  void didUpdateWidget(_TabSwitcher old) {
+  void didUpdateWidget(_SmoothTabSwitcher old) {
     super.didUpdateWidget(old);
     if (old.selected != widget.selected) {
-      widget.selected == 1
-          ? _indicatorCtrl.forward()
-          : _indicatorCtrl.reverse();
+      // Animate indicator smoothly to new position
+      if (widget.selected == 1) {
+        _indicatorCtrl.animateTo(1.0, curve: Curves.easeOutCubic);
+      } else {
+        _indicatorCtrl.animateTo(0.0, curve: Curves.easeOutCubic);
+      }
     }
   }
 
@@ -494,23 +424,23 @@ class _TabSwitcherState extends State<_TabSwitcher> with SingleTickerProviderSta
       child: LayoutBuilder(builder: (_, box) {
         final tabW = (box.maxWidth - 8) / 2;
         return Stack(children: [
-          // Animated indicator
+          // Sliding indicator
           AnimatedBuilder(
-            animation: _indicatorAnim,
+            animation: _indicatorPos,
             builder: (_, __) => Transform.translate(
-              offset: Offset(_indicatorAnim.value * tabW, 0),
+              offset: Offset(_indicatorPos.value * tabW, 0),
               child: Container(
-                width: tabW, height: double.infinity,
+                width: tabW,
+                height: double.infinity,
                 decoration: BoxDecoration(
                   color: _bordo,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(
-                      color: _bordo.withOpacity(0.30), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: _bordo.withOpacity(0.28), blurRadius: 10, offset: const Offset(0, 3))],
                 ),
               ),
             ),
           ),
-          // Tab buttons
+          // Tab labels
           Row(children: [
             _tab(0, Icons.person_rounded, 'Osoba', tabW),
             _tab(1, Icons.business_rounded, 'Organizacija', tabW),
@@ -526,14 +456,15 @@ class _TabSwitcherState extends State<_TabSwitcher> with SingleTickerProviderSta
       onTap: () => widget.onChanged(index),
       child: SizedBox(width: w, height: double.infinity,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          // Icon crossfades between active/inactive colour
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 220),
             child: Icon(icon, key: ValueKey('icon_${index}_$active'),
                 size: 16, color: active ? Colors.white : _bordo.withOpacity(0.50)),
           ),
           const SizedBox(width: 6),
           AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 220),
             style: TextStyle(
               color: active ? Colors.white : _bordo.withOpacity(0.55),
               fontSize: 13.5, fontWeight: FontWeight.w700,
@@ -546,7 +477,7 @@ class _TabSwitcherState extends State<_TabSwitcher> with SingleTickerProviderSta
   }
 }
 
-// Gradient background painter (isti kao onboarding)
+// Gradient background
 class _GradBgPainter extends CustomPainter {
   final double t;
   _GradBgPainter(this.t);

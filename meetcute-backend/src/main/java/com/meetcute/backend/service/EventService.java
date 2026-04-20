@@ -157,12 +157,8 @@ public class EventService {
     }
 
     public List<AttendeeResponse> getEventAttendees(String eventId, String requestingUserId) {
-        // Provjera - samo kreator eventa ili company vlasnik može vidjeti listu
-        Event event = eventRepository.findById(eventId)
+        eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije pronađen."));
-
-        // Ako je company event, provjeri je li tražitelj company vlasnik
-        // (Možeš i otvoriti za sve korisnike ako želiš)
 
         return attendeeRepository.findActiveByEventId(eventId)
                 .stream()
@@ -178,23 +174,26 @@ public class EventService {
                             .userId(user.getId())
                             .displayName(user.getDisplayName())
                             .photoUrl(photoUrl)
-                            .gender(profile != null && profile.getGender() != null
-                                    ? profile.getGender().name() : null)
+                            // gender je sad String — direktno, bez .name()
+                            .gender(profile != null ? profile.getGender() : null)
                             .birthYear(profile != null ? profile.getBirthYear() : null)
                             .build();
                 })
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    // ── Dohvati naziv i logo tvrtke za company evente ─────────────────────────
     private String[] getCompanyInfo(String companyId) {
         try {
             return jdbcTemplate.queryForObject(
-                    "SELECT org_name, logo_url FROM companies WHERE id = ?",
-                    (rs, i) -> new String[]{ rs.getString("org_name"), rs.getString("logo_url") },
+                    "SELECT org_name, logo_url, email FROM companies WHERE id = ?",
+                    (rs, i) -> new String[]{
+                            rs.getString("org_name"),
+                            rs.getString("logo_url"),
+                            rs.getString("email")
+                    },
                     companyId);
         } catch (Exception e) {
-            return new String[]{ null, null };
+            return new String[]{ null, null, null };
         }
     }
 
@@ -207,11 +206,13 @@ public class EventService {
 
         String companyName    = null;
         String companyLogoUrl = null;
+        String companyEmail   = null;
         if (Boolean.TRUE.equals(e.getIsCompanyEvent()) && e.getCompanyId() != null) {
             String[] info = getCompanyInfo(e.getCompanyId());
             if (info != null) {
                 companyName    = info[0];
                 companyLogoUrl = info[1];
+                companyEmail   = info[2];
             }
         }
 
@@ -242,6 +243,7 @@ public class EventService {
                 .ticketCurrency(e.getTicketCurrency())
                 .companyName(companyName)
                 .companyLogoUrl(companyLogoUrl)
+                .companyEmail(companyEmail)
                 .build();
     }
 }

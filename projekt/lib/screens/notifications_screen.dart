@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'auth_state.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems, kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
 import 'chat_screen.dart' show ChatState, ChatScreen;
 import 'profile_screen.dart';
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 import 'app_read_state.dart';
+import 'dart:convert';
 
 enum NotifType { joined, cancelled, reminder, newEvent, general }
 
@@ -29,7 +32,7 @@ class AppNotification {
     this.eventLocation,
     this.accentColor,
     required this.timestamp,
-    this.isRead = false,
+    this.isRead = false, String? eventId,
   });
 }
 
@@ -243,6 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _listCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 100));
     _navBarCtrl.forward();
+    await _fetchFromBackend(); // povlači s backenda pri otvaranju
     await Future.delayed(const Duration(milliseconds: 1800));
     if (mounted) await NotificationState.instance.markAllRead();
   }
@@ -258,6 +262,53 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchFromBackend() async {
+    if (!AuthState.instance.isLoggedIn) return;
+    try {
+      final resp = await http.get(
+        Uri.parse('http://localhost:8080/api/notifications'),
+        headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
+      ).timeout(const Duration(seconds: 8));
+
+      if (!mounted || resp.statusCode != 200) return;
+
+      final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
+
+      for (final n in list) {
+        final id = 'backend_${n['id']}';
+        // Preskoci duplikate
+        if (NotificationState.instance.all.any((e) => e.id == id)) continue;
+
+        NotifType type;
+        switch (n['type'] as String? ?? '') {
+          case 'joined_event':   type = NotifType.joined;   break;
+          case 'cancelled_event': type = NotifType.cancelled; break;
+          case 'new_event':      type = NotifType.newEvent;  break;
+          default:               type = NotifType.general;   break;
+        }
+
+        Color accent = const Color(0xFF700D25);
+        final c = n['accentColor'] as String?;
+        if (c != null && c.length == 7 && c.startsWith('#')) {
+          try { accent = Color(int.parse('FF${c.substring(1)}', radix: 16)); } catch (_) {}
+        }
+
+        // Ubaci na vrh liste (push() ubacuje na index 0)
+        NotificationState.instance.push(AppNotification(
+          id: id,
+          type: type,
+          title: n['title'] as String? ?? '',
+          body: n['body'] as String? ?? '',
+          eventId: n['eventId'] as String?,
+          accentColor: accent,
+          timestamp: DateTime.tryParse(n['createdAt'] as String? ?? '') ?? DateTime.now(),
+          isRead: n['isRead'] == true,
+        ));
+      }
+      if (mounted) setState(() {});
+    } catch (_) {} 
   }
 
   void _onNavTap(int index) {
@@ -516,32 +567,39 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       if (now.difference(n.timestamp).inHours < 24) today.add(n);
       else earlier.add(n);
     }
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      children: [
-        if (today.isNotEmpty) ...[
-          _sectionLabel('Danas'),
-          const SizedBox(height: 10),
-          ...today.asMap().entries.map((e) => _NotifTile(
-            key: ValueKey(e.value.id),
-            notif: e.value,
-            animDelay: Duration(milliseconds: e.key * 60),
-            onDismiss: () => NotificationState.instance.remove(e.value.id),
-          )),
+    return RefreshIndicator(
+      onRefresh: _fetchFromBackend,
+      color: kPrimaryDark,
+      backgroundColor: Colors.white,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        children: [
+          if (today.isNotEmpty) ...[
+            _sectionLabel('Danas'),
+            const SizedBox(height: 10),
+            ...today.asMap().entries.map((e) => _NotifTile(
+              key: ValueKey(e.value.id),
+              notif: e.value,
+              animDelay: Duration(milliseconds: e.key * 60),
+              onDismiss: () => NotificationState.instance.remove(e.value.id),
+            )),
+          ],
+          if (earlier.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _sectionLabel('Ranije'),
+            const SizedBox(height: 10),
+            ...earlier.asMap().entries.map((e) => _NotifTile(
+              key: ValueKey(e.value.id),
+              notif: e.value,
+              animDelay: Duration(milliseconds: (today.length + e.key) * 60),
+              onDismiss: () => NotificationState.instance.remove(e.value.id),
+            )),
+          ],
         ],
-        if (earlier.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _sectionLabel('Ranije'),
-          const SizedBox(height: 10),
-          ...earlier.asMap().entries.map((e) => _NotifTile(
-            key: ValueKey(e.value.id),
-            notif: e.value,
-            animDelay: Duration(milliseconds: (today.length + e.key) * 60),
-            onDismiss: () => NotificationState.instance.remove(e.value.id),
-          )),
-        ],
-      ],
+      ),
     );
   }
 

@@ -20,8 +20,6 @@ const _categories = [
   ('Kultura', '🎭'), ('Priroda', '🌿'), ('Hrana', '🍕'),
   ('Glazba', '🎵'), ('Zabava', '🎪'), ('Edukacija', '📚'),
 ];
-const _currencies = ['EUR', 'HRK', 'USD', 'GBP'];
-
 const _autoColors = [
   '#6DD5E8', '#FFD166', '#95D5B2', '#FFB3C6',
   '#B5D8FF', '#FFCCAA', '#C8B5FF', '#AAF0D1',
@@ -47,7 +45,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   String?     _selectedCity;
   String?     _selectedCategory;
-  String?     _selectedCurrency = 'EUR';
+  String      _selectedCurrency = 'EUR';
   DateTime?   _pickedDate;
   String?     _selectedDate;
   AgeGroup    _selAge    = AgeGroup.all;
@@ -724,7 +722,17 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _label('Valuta'),
             const SizedBox(height: 8),
-            _currencyDrop(),
+            Container(
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white, borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
+                boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+              ),
+              child: const Center(
+                child: Text('EUR', style: TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+              ),
+            ),
           ])),
         ]),
         if (_ticketPriceCtrl.text.isNotEmpty && _maxPeopleCtrl.text.isNotEmpty) ...[
@@ -740,7 +748,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               Text(() {
                 final price = double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.')) ?? 0;
                 final max   = int.tryParse(_maxPeopleCtrl.text) ?? 0;
-                return 'Max. prihod: ${(price * max).toStringAsFixed(2)} ${_selectedCurrency ?? 'EUR'}';
+                return 'Max. prihod: ${(price * max).toStringAsFixed(2)} $_selectedCurrency';
               }(), style: TextStyle(color: _bordo, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ]),
           ),
@@ -808,22 +816,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     )),
   );
 
-  Widget _currencyDrop() => Container(
-    height: 52,
-    decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    child: DropdownButtonHideUnderline(child: DropdownButton<String>(
-      value: _selectedCurrency, isExpanded: true,
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _bordo.withOpacity(0.45)),
-      style: const TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w500),
-      dropdownColor: Colors.white, borderRadius: BorderRadius.circular(14),
-      onChanged: (v) => setState(() => _selectedCurrency = v),
-      items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-    )),
-  );
+
 
   Widget _datePicker() => GestureDetector(
     onTap: _pickDate,
