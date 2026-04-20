@@ -23,6 +23,7 @@ public class CompanyEventService {
     private final EventAttendeeRepository    attendeeRepository;
     private final CompanyRepository          companyRepository;
     private final NotificationRepository     notificationRepository;
+    private final UserRepository             userRepository;
     private final JdbcTemplate               jdbcTemplate;
 
     // ── Kreiraj event ─────────────────────────────────────────────────────────
@@ -109,7 +110,8 @@ public class CompanyEventService {
 
         eventRepository.save(event);
 
-        notifyAttendees(eventId,
+        // Notify attendees AFTER saving the event — use safe method
+        notifyAttendeesAfterUpdate(eventId,
                 "Događaj izmijenjen",
                 "\"" + event.getTitle() + "\" je ažuriran od strane organizatora "
                         + company.getOrgName() + ". Provjeri nove detalje.",
@@ -132,7 +134,7 @@ public class CompanyEventService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
-        notifyAttendees(eventId,
+        notifyAttendeesAfterUpdate(eventId,
                 "Događaj otkazan",
                 "Nažalost, \"" + event.getTitle() + "\" je otkazan od strane organizatora "
                         + company.getOrgName() + ".",
@@ -171,14 +173,19 @@ public class CompanyEventService {
         }, companyId);
     }
 
-    // ── Interni: pošalji obavijest svim prijavljenim ──────────────────────────
-    private void notifyAttendees(String eventId, String title, String body, String accentColor) {
+    // ── Interni: pošalji obavijest svim prijavljenim (sigurna verzija) ────────
+    private void notifyAttendeesAfterUpdate(String eventId, String title, String body, String accentColor) {
         try {
-            List<EventAttendee> attendees = attendeeRepository.findActiveByEventId(eventId);
-            for (EventAttendee ea : attendees) {
+            // Dohvati user ID-ove direktno iz baze kako bi se izbjegao null proxy problem
+            List<String> userIds = jdbcTemplate.queryForList(
+                    "SELECT user_id FROM event_attendees WHERE event_id = ? AND status = 'joined'",
+                    String.class, eventId);
+
+            for (String userId : userIds) {
                 try {
+                    User user = userRepository.getReferenceById(userId);
                     Notification n = Notification.builder()
-                            .user(ea.getUser())
+                            .user(user)
                             .type("event_update")
                             .title(title)
                             .body(body)
@@ -186,7 +193,9 @@ public class CompanyEventService {
                             .accentColor(accentColor)
                             .build();
                     notificationRepository.save(n);
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    // Ne blokiraj update zbog jedne neuspjele obavijesti
+                }
             }
         } catch (Exception ignored) {}
     }

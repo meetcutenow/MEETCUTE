@@ -345,10 +345,12 @@ class _DarkToggle extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: value ? accent : Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 6, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )],
               ),
-              child: Icon(value ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded,
-                  size: 13, color: value ? primary : const Color(0xFFFFB300)),
             ),
           ),
         ),

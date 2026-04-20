@@ -561,7 +561,8 @@ class _DarkToggle extends StatelessWidget {
   final bool value;
   final Color primary, accent;
   final VoidCallback onTap;
-  const _DarkToggle({required this.value, required this.primary, required this.accent, required this.onTap});
+  const _DarkToggle({required this.value, required this.primary,
+    required this.accent, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -583,11 +584,14 @@ class _DarkToggle extends StatelessWidget {
               duration: const Duration(milliseconds: 300),
               width: 23, height: 23,
               decoration: BoxDecoration(
-                color: value ? accent : Colors.white, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 6, offset: const Offset(0, 2))],
+                shape: BoxShape.circle,
+                color: value ? accent : Colors.white,
+                boxShadow: [BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )],
               ),
-              child: Icon(value ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded,
-                  size: 13, color: value ? primary : const Color(0xFFFFB300)),
             ),
           ),
         ),
