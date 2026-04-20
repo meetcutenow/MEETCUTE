@@ -165,11 +165,10 @@ public class EventService {
                 .map(ea -> {
                     User user = ea.getUser();
                     UserProfile profile = user.getProfile();
-                    String photoUrl = photoRepository.findByUserIdOrderByPhotoOrder(user.getId())
-                            .stream()
-                            .filter(UserPhoto::getIsPrimary)
+                    String photoUrl = photoRepository
+                            .findPrimaryPhoto(user.getId())
                             .map(UserPhoto::getPhotoUrl)
-                            .findFirst().orElse(null);
+                            .orElse(null);
                     return AttendeeResponse.builder()
                             .userId(user.getId())
                             .displayName(user.getDisplayName())

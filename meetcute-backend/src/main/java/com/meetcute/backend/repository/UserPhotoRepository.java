@@ -23,5 +23,7 @@ public interface UserPhotoRepository extends JpaRepository<UserPhoto, Long> {
     @Transactional
     @Query("UPDATE UserPhoto p SET p.isPrimary = false WHERE p.user.id = :userId")
     void resetPrimaryPhoto(@Param("userId") String userId);
-}
 
+    @Query("SELECT p FROM UserPhoto p WHERE p.user.id = :userId AND p.isPrimary = true")
+    Optional<UserPhoto> findPrimaryPhoto(@Param("userId") String userId);
+}

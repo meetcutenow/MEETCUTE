@@ -194,7 +194,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(22, 48, 22, mq.padding.bottom + 24),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Registracija tvrtke 🏢',
+                        Text('Registracija organizacije',
                             style: TextStyle(color: _bordo, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.4)),
                         const SizedBox(height: 4),
                         Text('Organizirajte događanja i spajajte ljude.',
@@ -202,7 +202,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                         const SizedBox(height: 20),
 
                         // ── Logo upload ──────────────────────────────────────
-                        _lbl('Logo tvrtke (opcionalno)'),
+                        _lbl('Logo'),
                         const SizedBox(height: 10),
                         _buildLogoUploader(),
                         const SizedBox(height: 16),
@@ -266,7 +266,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                               child: Center(child: _loading
                                   ? const SizedBox(width: 22, height: 22,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                  : Text('Registriraj tvrtku',
+                                  : Text('Registriraj organizaciju',
                                   style: TextStyle(
                                     color: _valid ? Colors.white : Colors.white.withOpacity(0.45),
                                     fontSize: 15, fontWeight: FontWeight.w700,
@@ -356,8 +356,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           ),
           const SizedBox(width: 14),
           Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Dodaj logo tvrtke', style: TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
-            Text('PNG, JPG · opcionalno', style: TextStyle(color: _bordo.withOpacity(0.45), fontSize: 12)),
+            Text('Dodaj logo', style: TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
+            Text('PNG, JPG (opcionalno)', style: TextStyle(color: _bordo.withOpacity(0.45), fontSize: 12)),
           ]),
         ]),
       ),
