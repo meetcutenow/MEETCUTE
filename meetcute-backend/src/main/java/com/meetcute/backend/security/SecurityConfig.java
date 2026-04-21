@@ -33,6 +33,8 @@ class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final MeetCuteUserDetailsService userDetailsService;
 
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -97,6 +99,13 @@ class SecurityConfig {
                         // Public read
                         .requestMatchers(HttpMethod.GET,  "/api/events/**").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/questions").permitAll()
+                        // Upload i photos — NOVO, mora biti PRIJE anyRequest
+                        .requestMatchers(HttpMethod.POST, "/api/upload").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/users/me/photos").authenticated()
+                        .requestMatchers(HttpMethod.GET,  "/api/users/me/photos").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/me/photos").authenticated()
+                        .requestMatchers(HttpMethod.PUT,  "/api/company/auth/profile").authenticated()
+                        // Sve ostalo
                         .anyRequest().authenticated()
                 )
                 .userDetailsService(userDetailsService)

@@ -4,10 +4,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import '../services/profile_storage.dart';
 import 'auth_state.dart';
 import 'company_auth_state.dart';
 import 'home_screen.dart' show HomeScreen;
 import 'company_home_screen.dart';
+import 'onboarding_screen.dart';
+import 'onboarding_screen.dart' show globalProfileData, RegistrationState;
+import 'profile_setup_screen.dart' show ProfileSetupData;
 
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
@@ -124,6 +128,44 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (!mounted) return;
       if (resp.statusCode == 200 && decoded['success'] == true) {
         await AuthState.instance.saveFromResponse(decoded['data']);
+        try {
+          final profileResp = await http.get(
+            Uri.parse('$_base/users/me'),
+            headers: {
+              'Authorization': 'Bearer ${AuthState.instance.accessToken}',
+            },
+          ).timeout(const Duration(seconds: 8));
+
+          if (profileResp.statusCode == 200) {
+            final data = jsonDecode(utf8.decode(profileResp.bodyBytes))['data']
+            as Map<String, dynamic>;
+            final profile   = data['profile'] as Map<String, dynamic>? ?? {};
+            final photos    = List<String>.from(data['photoUrls'] ?? []);
+            final interests = List<String>.from(data['interests'] ?? []);
+
+            RegistrationState.instance.displayName = data['displayName'] ?? '';
+            RegistrationState.instance.username    = data['username'] ?? '';
+
+            globalProfileData = ProfileSetupData(
+              photoPaths:    photos,
+              birthDay:      profile['birthDay'],
+              birthMonth:    profile['birthMonth'],
+              birthYear:     profile['birthYear'],
+              height:        profile['heightCm']?.toString(),
+              gender:        profile['gender'],
+              hairColor:     profile['hairColor'],
+              eyeColor:      profile['eyeColor'],
+              piercing:   profile['hasPiercing'] == true ? 'da' : 'ne',
+              tattoo:     profile['hasTattoo']   == true ? 'da' : 'ne',
+              interests:     interests,
+              iceBreaker:    profile['iceBreaker'] ?? '',
+              seekingGender: profile['seekingGender'],
+              prefAgeFrom:   profile['prefAgeFrom'],
+              prefAgeTo:     profile['prefAgeTo'],
+            );
+            await ProfileStorage.saveProfile(globalProfileData);
+          }
+        } catch (_) {}
         if (!mounted) return;
         _navigateTo(const HomeScreen());
       } else {

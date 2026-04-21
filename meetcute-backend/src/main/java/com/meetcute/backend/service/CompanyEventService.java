@@ -40,12 +40,13 @@ public class CompanyEventService {
         LocalTime timeStart = req.getTimeStart() != null ? LocalTime.parse(req.getTimeStart()) : null;
         LocalTime timeEnd   = req.getTimeEnd()   != null ? LocalTime.parse(req.getTimeEnd())   : null;
 
+        // Postojeći INSERT — zamijeni s ovim:
         jdbcTemplate.update(
                 "INSERT INTO events (id, company_id, title, description, city, specific_location, " +
                         "latitude, longitude, event_date, time_start, time_end, category, age_group, " +
                         "gender_group, max_attendees, ticket_price, ticket_currency, card_color_hex, " +
-                        "is_user_event, is_company_event, is_active, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 1, NOW(), NOW())",
+                        "cover_photo_url, is_user_event, is_company_event, is_active, created_at, updated_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 1, NOW(), NOW())",
                 eventId, companyId,
                 req.getTitle(), req.getDescription(), req.getCity(), req.getSpecificLocation(),
                 req.getLatitude(), req.getLongitude(),
@@ -55,18 +56,19 @@ public class CompanyEventService {
                 req.getCategory(),
                 req.getAgeGroup()    != null ? req.getAgeGroup()    : "all",
                 req.getGenderGroup() != null ? req.getGenderGroup() : "all",
-                req.getMaxAttendees(), req.getTicketPrice(), currency, cardColor
+                req.getMaxAttendees(), req.getTicketPrice(), currency, cardColor,
+                req.getCoverPhotoUrl()  // NOVO
         );
 
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event nije mogao biti kreiran."));
 
         return toResponse(event, companyId, req.getTicketPrice(), currency,
-                company.getOrgName(), company.getLogoUrl(), company.getEmail());
+                company.getOrgName(), company.getLogoUrl(), company.getEmail(), null);
     }
 
     // ── Dohvati evente organizacije ───────────────────────────────────────────
-    public List<EventResponse> getCompanyEvents(String companyId) {
+    public List<EventResponse> getCompanyEvents(String companyId, String userId) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
@@ -76,7 +78,7 @@ public class CompanyEventService {
             Double price = event.getTicketPrice();
             String curr  = event.getTicketCurrency() != null ? event.getTicketCurrency() : "EUR";
             return toResponse(event, companyId, price, curr,
-                    company.getOrgName(), company.getLogoUrl(), company.getEmail());
+                    company.getOrgName(), company.getLogoUrl(), company.getEmail(), userId);
         }).collect(Collectors.toList());
     }
 
@@ -107,11 +109,10 @@ public class CompanyEventService {
         if (req.getCardColorHex() != null)     event.setCardColorHex(req.getCardColorHex());
         if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
         if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
+        if (req.getCoverPhotoUrl() != null)    event.setCoverPhotoUrl(req.getCoverPhotoUrl());
 
         eventRepository.save(event);
 
-        // Koristimo direktni SQL INSERT da zaobiđemo Hibernate ENUM validaciju
-        // DB enum ne sadrži 'event_update', koristimo 'new_event' koji postoji
         notifyAttendeesSql(eventId,
                 "Događaj izmijenjen",
                 "\"" + event.getTitle() + "\" je ažuriran od strane organizatora "
@@ -119,7 +120,7 @@ public class CompanyEventService {
                 "#FFD166");
 
         return toResponse(event, companyId, event.getTicketPrice(), event.getTicketCurrency(),
-                company.getOrgName(), company.getLogoUrl(), company.getEmail());
+                company.getOrgName(), company.getLogoUrl(), company.getEmail(), null);
     }
 
     // ── Obriši event + obavijesti prijavljene ─────────────────────────────────
@@ -196,8 +197,12 @@ public class CompanyEventService {
     // ── Mapper ────────────────────────────────────────────────────────────────
     private EventResponse toResponse(Event e, String companyId, Double ticketPrice,
                                      String currency, String orgName,
-                                     String logoUrl, String email) {
+                                     String logoUrl, String email, String userId) {
         int count = attendeeRepository.countByEventIdAndStatus(e.getId(), "joined");
+        boolean attending = userId != null &&
+                attendeeRepository.findByEventIdAndUserId(e.getId(), userId)
+                        .map(a -> "joined".equals(a.getStatus()))
+                        .orElse(false);
         return EventResponse.builder()
                 .id(e.getId())
                 .creatorId(companyId)
@@ -219,7 +224,7 @@ public class CompanyEventService {
                 .isCompanyEvent(true)
                 .latitude(e.getLatitude())
                 .longitude(e.getLongitude())
-                .isAttending(false)
+                .isAttending(attending)
                 .ticketPrice(ticketPrice)
                 .ticketCurrency(currency)
                 .companyName(orgName)

@@ -22,6 +22,14 @@ public class NotificationService {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
+    @Transactional
+    public void deleteNotification(Long id, String userId) {
+        notificationRepository.findById(id).ifPresent(n -> {
+            if (n.getUser().getId().equals(userId)) {
+                notificationRepository.delete(n);
+            }
+        });
+    }
 
     @Transactional
     public void markAllRead(String userId) {

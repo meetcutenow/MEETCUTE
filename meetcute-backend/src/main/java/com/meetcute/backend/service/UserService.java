@@ -21,6 +21,7 @@ public class UserService {
     private final UserInterestRepository interestRepository;
     private final UserLocationRepository locationRepository;
     private final SecretQuestionRepository questionRepository;
+    private final InterestRepository interestLookup;
 
     public UserResponse getMyProfile(String userId) {
         User user = userRepository.findById(userId)
@@ -42,14 +43,36 @@ public class UserService {
         UserProfile profile = profileRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Profil nije pronađen."));
 
-        if (req.getIceBreaker() != null)       profile.setIceBreaker(req.getIceBreaker());
         if (req.getSeekingGender() != null)    profile.setSeekingGender(req.getSeekingGender().trim().toLowerCase());
         if (req.getMaxDistancePrefM() != null) profile.setMaxDistancePrefM(req.getMaxDistancePrefM());
         if (req.getIsVisible() != null)        profile.setIsVisible(req.getIsVisible());
         if (req.getPrefAgeFrom() != null)      profile.setPrefAgeFrom(req.getPrefAgeFrom());
         if (req.getPrefAgeTo() != null)        profile.setPrefAgeTo(req.getPrefAgeTo());
+        if (req.getIceBreaker() != null)       profile.setIceBreaker(req.getIceBreaker());
+        if (req.getHeightCm() != null)   profile.setHeightCm(req.getHeightCm());
+        if (req.getHairColor() != null)  profile.setHairColor(req.getHairColor());
+        if (req.getEyeColor() != null)   profile.setEyeColor(req.getEyeColor());
+        if (req.getHasPiercing() != null) profile.setHasPiercing(req.getHasPiercing());
+        if (req.getHasTattoo() != null)  profile.setHasTattoo(req.getHasTattoo());
+        if (req.getGender() != null)     profile.setGender(req.getGender());
+        if (req.getBirthDay() != null)   profile.setBirthDay(req.getBirthDay());
+        if (req.getBirthMonth() != null) profile.setBirthMonth(req.getBirthMonth());
+        if (req.getBirthYear() != null)  profile.setBirthYear(req.getBirthYear());
 
         profileRepository.save(profile);
+        if (req.getInterestIds() != null && !req.getInterestIds().isEmpty()) {
+            interestRepository.deleteByUserId(userId);
+            req.getInterestIds().forEach(interestId -> {
+                interestLookup.findById(interestId).ifPresent(interest -> {
+                    UserInterest ui = UserInterest.builder()
+                            .id(new UserInterest.UserInterestId(userId, interestId))
+                            .user(userRepository.getReferenceById(userId))
+                            .interest(interest)
+                            .build();
+                    interestRepository.save(ui);
+                });
+            });
+        }
         User user = userRepository.findById(userId).orElseThrow();
         return toResponse(user);
     }
@@ -104,9 +127,10 @@ public class UserService {
             int age = p.getBirthYear() != null ? Year.now().getValue() - p.getBirthYear() : 0;
 
             profileResp = ProfileResponse.builder()
+                    .birthDay(p.getBirthDay())
+                    .birthMonth(p.getBirthMonth())
                     .birthYear(p.getBirthYear())
                     .age(age)
-                    // gender, hairColor, eyeColor su sad String — direktno, bez .name()
                     .gender(p.getGender())
                     .seekingGender(p.getSeekingGender())
                     .heightCm(p.getHeightCm())

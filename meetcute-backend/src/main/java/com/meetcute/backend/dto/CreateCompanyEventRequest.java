@@ -19,6 +19,8 @@ public class CreateCompanyEventRequest {
     @NotNull
     private String eventDate;
 
+    private String coverPhotoUrl;
+
     private String timeStart;
     private String timeEnd;
 

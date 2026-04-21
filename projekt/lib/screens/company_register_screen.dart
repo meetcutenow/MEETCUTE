@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../services/cloudinary_service.dart';
 import 'company_auth_state.dart';
 import 'company_home_screen.dart';
 
@@ -126,6 +127,29 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
 
       if (resp.statusCode == 200 && decoded['success'] == true) {
         await CompanyAuthState.instance.saveFromResponse(decoded['data']);
+
+        if (_logoPath != null) {
+          try {
+            final token = CompanyAuthState.instance.accessToken!;
+            final result = await CloudinaryService.uploadImage(
+              filePath: _logoPath!,
+              token: token,
+              folder: 'meetcute/logos',
+            );
+            // Spremi logo URL u bazu
+            await http.put(
+              Uri.parse('$_base/company/auth/profile'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({'logoUrl': result.url}),
+            );
+          } catch (e) {
+            debugPrint('Upload loga nije uspio: $e');
+          }
+        }
+
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
@@ -144,6 +168,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+
   }
 
   @override

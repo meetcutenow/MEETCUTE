@@ -546,6 +546,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (photos.isNotEmpty) {
       final path = photos.first;
 
+      if (path.startsWith('http')) {
+        return Image.network(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackAvatar(),
+        );
+      }
+
       if (path.startsWith('assets/')) {
         return Image.asset(
           path,

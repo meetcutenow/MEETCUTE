@@ -9,11 +9,13 @@ import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 import 'app_read_state.dart';
 import 'dart:convert';
+import 'dart:async';
 
 enum NotifType { joined, cancelled, reminder, newEvent, general }
 
 class AppNotification {
   final String id;
+  final String? backendId; // ID iz baze za brisanje
   final NotifType type;
   final String title;
   final String body;
@@ -25,6 +27,7 @@ class AppNotification {
 
   AppNotification({
     required this.id,
+    this.backendId,
     required this.type,
     required this.title,
     required this.body,
@@ -32,7 +35,8 @@ class AppNotification {
     this.eventLocation,
     this.accentColor,
     required this.timestamp,
-    this.isRead = false, String? eventId,
+    this.isRead = false,
+    String? eventId,
   });
 }
 
@@ -45,6 +49,10 @@ class NotificationState {
   final List<AppNotification> _notifications = [];
   final List<VoidCallback> _listeners = [];
 
+  // Set ID-eva obavijesti koje su trajno obrisane
+  static const _kDeletedIds = 'deleted_notif_backend_ids';
+  static final Set<String> _deletedBackendIds = {};
+
   List<AppNotification> get all => List.unmodifiable(_notifications);
 
   int get unreadCount => _notifications
@@ -55,8 +63,21 @@ class NotificationState {
   void removeListener(VoidCallback cb) => _listeners.remove(cb);
   void _notify() { for (final cb in _listeners) cb(); }
 
+  // Učitaj obrisane ID-eve iz SharedPreferences
+  static Future<void> loadDeletedIds() async {
+    final prefs = await AppReadState.getPrefsInstance();
+    final list = prefs.getStringList(_kDeletedIds) ?? [];
+    _deletedBackendIds.addAll(list);
+  }
+
+
+
   void push(AppNotification n) {
+    // Preskoci ako je trajno obrisana
+    if (n.backendId != null && _deletedBackendIds.contains(n.backendId)) return;
     if (AppReadState.isNotifRead(n.id)) n.isRead = true;
+    // Preskoci duplikate
+    if (_notifications.any((e) => e.id == n.id)) return;
     _notifications.insert(0, n);
     _notify();
   }
@@ -76,17 +97,49 @@ class NotificationState {
     _notify();
   }
 
-  void remove(String id) {
-    _notifications.removeWhere((n) => n.id == id);
+  Future<void> removeAndDeleteFromBackend(String localId, String? backendId) async {
+    _notifications.removeWhere((n) => n.id == localId);
+
+    if (backendId != null) {
+      _deletedBackendIds.add(backendId);
+      // Spremi trajno obrisane ID-eve
+      final prefs = await AppReadState.getPrefsInstance();
+      await prefs.setStringList(_kDeletedIds, _deletedBackendIds.toList());
+
+      // Pošalji DELETE na backend
+      if (AuthState.instance.isLoggedIn) {
+        try {
+          await http.delete(
+            Uri.parse('http://localhost:8080/api/notifications/$backendId'),
+            headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
+          ).timeout(const Duration(seconds: 5));
+        } catch (_) {}
+      }
+    }
     _notify();
   }
 
+  void remove(String id) {
+    final notif = _notifications.firstWhere((n) => n.id == id,
+        orElse: () => AppNotification(
+            id: '', type: NotifType.general, title: '', body: '',
+            timestamp: DateTime.now()));
+    removeAndDeleteFromBackend(id, notif.backendId);
+  }
+
   void clear() {
+    // Obriši sve s backenda
+    for (final n in _notifications) {
+      if (n.backendId != null) {
+        removeAndDeleteFromBackend(n.id, n.backendId);
+      }
+    }
     _notifications.clear();
     _notify();
   }
 
-  void onAttendanceChanged(String eventName, String location, Color cardColor, bool joined) {
+  void onAttendanceChanged(String eventName, String location,
+      Color cardColor, bool joined) {
     if (joined) {
       push(AppNotification(
         id: 'join_${eventName}_${DateTime.now().millisecondsSinceEpoch}',
@@ -103,13 +156,85 @@ class NotificationState {
         id: 'cancel_${eventName}_${DateTime.now().millisecondsSinceEpoch}',
         type: NotifType.cancelled,
         title: 'Prijava otkazana',
-        body: 'Otkazao/la si sudjelovanje na "$eventName". Uvijek se možeš ponovo prijaviti.',
+        body: 'Otkazao/la si sudjelovanje na "$eventName".',
         eventName: eventName,
         eventLocation: location,
         accentColor: cardColor,
         timestamp: DateTime.now(),
       ));
     }
+  }
+}
+
+
+// ── POLLING SERVICE ───────────────────────────────────────────────────────────
+
+class NotificationPollingService {
+  static Timer? _timer;
+  static DateTime? _lastPollTime;
+
+  static void start() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _poll());
+    // Odmah povuci
+    _poll();
+  }
+
+  static void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  static Future<void> _poll() async {
+    if (!AuthState.instance.isLoggedIn) return;
+    try {
+      final resp = await http.get(
+        Uri.parse('http://localhost:8080/api/notifications'),
+        headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
+      ).timeout(const Duration(seconds: 8));
+
+      if (resp.statusCode != 200) return;
+
+      final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
+
+      bool hasNew = false;
+      for (final n in list) {
+        final backendId = n['id'].toString();
+
+        // Preskoci trajno obrisane
+        if (NotificationState._deletedBackendIds.contains(backendId)) continue;
+
+        final localId = 'backend_$backendId';
+        if (NotificationState.instance._notifications.any((e) => e.id == localId)) continue;
+
+        NotifType type;
+        switch (n['type'] as String? ?? '') {
+          case 'joined_event':    type = NotifType.joined;   break;
+          case 'cancelled_event': type = NotifType.cancelled; break;
+          case 'new_event':       type = NotifType.newEvent;  break;
+          default:                type = NotifType.general;   break;
+        }
+
+        Color accent = const Color(0xFF700D25);
+        final c = n['accentColor'] as String?;
+        if (c != null && c.length == 7 && c.startsWith('#')) {
+          try { accent = Color(int.parse('FF${c.substring(1)}', radix: 16)); } catch (_) {}
+        }
+
+        NotificationState.instance.push(AppNotification(
+          id: localId,
+          backendId: backendId,
+          type: type,
+          title: n['title'] as String? ?? '',
+          body: n['body'] as String? ?? '',
+          eventId: n['eventId'] as String?,
+          accentColor: accent,
+          timestamp: DateTime.tryParse(n['createdAt'] as String? ?? '') ?? DateTime.now(),
+          isRead: n['isRead'] == true,
+        ));
+        hasNew = true;
+      }
+    } catch (_) {}
   }
 }
 
@@ -121,54 +246,10 @@ void seedStaticNotifications() {
   final now = DateTime.now();
   final staticNotifs = [
     AppNotification(
-      id: 'remind_1',
-      type: NotifType.reminder,
-      title: 'Event za 2 sata ⏰',
-      body: '"Running dating" počinje za 2 sata na Jezeru Jarun. Spremi tenisice!',
-      eventName: 'Running dating',
-      eventLocation: 'Jezero Jarun',
-      accentColor: const Color(0xFF6DD5E8),
-      timestamp: now.subtract(const Duration(minutes: 5)),
-      isRead: false,
-    ),
-    AppNotification(
-      id: 'new_1',
-      type: NotifType.newEvent,
-      title: 'Novi event u tvojoj blizini 📍',
-      body: '"Piknik u parku" na Maksimiru — već 35 ljudi ide! Pridruži se ekipi.',
-      eventName: 'Piknik u parku',
-      eventLocation: 'Park Maksimir',
-      accentColor: const Color(0xFF95D5B2),
-      timestamp: now.subtract(const Duration(hours: 1)),
-      isRead: false,
-    ),
-    AppNotification(
-      id: 'remind_2',
-      type: NotifType.reminder,
-      title: 'Sutra imaš zakazan event 🗓️',
-      body: '"Večer komedije" u HNK-u počinje sutra u 20:00. Ne zaboravi!',
-      eventName: 'Večer komedije',
-      eventLocation: 'HNK Zagreb',
-      accentColor: const Color(0xFFFFB3C6),
-      timestamp: now.subtract(const Duration(hours: 3)),
-      isRead: false,
-    ),
-    AppNotification(
-      id: 'new_2',
-      type: NotifType.newEvent,
-      title: 'Novi event! ✨',
-      body: '"Street food festival" na Trgu bana Jelačića — ulaz slobodan.',
-      eventName: 'Street food festival',
-      eventLocation: 'Trg bana Jelačića',
-      accentColor: const Color(0xFFFFD166),
-      timestamp: now.subtract(const Duration(hours: 6)),
-      isRead: false,
-    ),
-    AppNotification(
       id: 'general_1',
       type: NotifType.general,
       title: 'Dobrodošao/la na MeetCute 💘',
-      body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude. Tvoja nova avantura počinje ovdje!',
+      body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude!',
       accentColor: const Color(0xFF700D25),
       timestamp: now.subtract(const Duration(days: 1)),
       isRead: false,
@@ -177,7 +258,9 @@ void seedStaticNotifications() {
 
   for (final n in staticNotifs) {
     if (AppReadState.isNotifRead(n.id)) n.isRead = true;
-    NotificationState.instance._notifications.add(n);
+    if (!NotificationState.instance._notifications.any((e) => e.id == n.id)) {
+      NotificationState.instance._notifications.add(n);
+    }
   }
 }
 
@@ -246,8 +329,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _listCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 100));
     _navBarCtrl.forward();
-    await _fetchFromBackend(); // povlači s backenda pri otvaranju
-    await Future.delayed(const Duration(milliseconds: 1800));
+    // Povuci s backenda
+    await NotificationPollingService._poll();
+    // Označi sve kao pročitano nakon 2s
+    await Future.delayed(const Duration(milliseconds: 2000));
     if (mounted) await NotificationState.instance.markAllRead();
   }
 
@@ -262,53 +347,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchFromBackend() async {
-    if (!AuthState.instance.isLoggedIn) return;
-    try {
-      final resp = await http.get(
-        Uri.parse('http://localhost:8080/api/notifications'),
-        headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
-      ).timeout(const Duration(seconds: 8));
-
-      if (!mounted || resp.statusCode != 200) return;
-
-      final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
-
-      for (final n in list) {
-        final id = 'backend_${n['id']}';
-        // Preskoci duplikate
-        if (NotificationState.instance.all.any((e) => e.id == id)) continue;
-
-        NotifType type;
-        switch (n['type'] as String? ?? '') {
-          case 'joined_event':   type = NotifType.joined;   break;
-          case 'cancelled_event': type = NotifType.cancelled; break;
-          case 'new_event':      type = NotifType.newEvent;  break;
-          default:               type = NotifType.general;   break;
-        }
-
-        Color accent = const Color(0xFF700D25);
-        final c = n['accentColor'] as String?;
-        if (c != null && c.length == 7 && c.startsWith('#')) {
-          try { accent = Color(int.parse('FF${c.substring(1)}', radix: 16)); } catch (_) {}
-        }
-
-        // Ubaci na vrh liste (push() ubacuje na index 0)
-        NotificationState.instance.push(AppNotification(
-          id: id,
-          type: type,
-          title: n['title'] as String? ?? '',
-          body: n['body'] as String? ?? '',
-          eventId: n['eventId'] as String?,
-          accentColor: accent,
-          timestamp: DateTime.tryParse(n['createdAt'] as String? ?? '') ?? DateTime.now(),
-          isRead: n['isRead'] == true,
-        ));
-      }
-      if (mounted) setState(() {});
-    } catch (_) {} 
   }
 
   void _onNavTap(int index) {
@@ -338,6 +376,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ),
       transitionDuration: const Duration(milliseconds: 320),
     )).then((_) {
+      if (!mounted) return;
       _navTapCtrls[index].reverse();
       _navTapCtrls[2].forward(from: 0.0);
       setState(() => _selectedNavIndex = 2);
@@ -552,7 +591,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 300),
           style: TextStyle(color: primary.withOpacity(isDark ? 0.65 : 0.40), fontSize: 14, height: 1.5),
-          child: const Text('Nema novih obavijesti.\nPrijavi se na event i vidi što se događa! 🎉',
+          child: const Text('Nema novih obavijesti.',
               textAlign: TextAlign.center),
         ),
       ]),
@@ -568,13 +607,11 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       else earlier.add(n);
     }
     return RefreshIndicator(
-      onRefresh: _fetchFromBackend,
+      onRefresh: () => NotificationPollingService._poll(),
       color: kPrimaryDark,
       backgroundColor: Colors.white,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
         children: [
           if (today.isNotEmpty) ...[

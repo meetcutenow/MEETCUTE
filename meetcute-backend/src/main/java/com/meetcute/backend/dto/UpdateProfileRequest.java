@@ -1,7 +1,7 @@
 package com.meetcute.backend.dto;
 
-import jakarta.validation.constraints.*;
 import lombok.*;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UpdateProfileRequest {
@@ -11,4 +11,14 @@ public class UpdateProfileRequest {
     private Boolean isVisible;
     private Integer prefAgeFrom;
     private Integer prefAgeTo;
+    private Integer heightCm;
+    private String hairColor;
+    private String eyeColor;
+    private Boolean hasPiercing;
+    private Boolean hasTattoo;
+    private String gender;
+    private List<Integer> interestIds;
+    private Integer birthDay;
+    private Integer birthMonth;
+    private Integer birthYear;
 }

@@ -20,4 +20,5 @@ public class UpdateEventRequest {
     private Double  longitude;
     private Double  ticketPrice;
     private String  ticketCurrency;
+    private String coverPhotoUrl;
 }

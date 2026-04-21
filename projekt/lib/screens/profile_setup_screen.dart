@@ -165,11 +165,15 @@ class _ProfileStep1State extends State<ProfileStep1> {
               ? ClipRRect(
             borderRadius: BorderRadius.circular(13),
             child: Stack(fit: StackFit.expand, children: [
-              _isAsset(photos[idx])
-                  ? Image.asset(photos[idx], fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _emptyPhotoContent())
-                  : Image.file(File(photos[idx]), fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _emptyPhotoContent()),
+              if (photos[idx].startsWith('http'))
+                Image.network(photos[idx], fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _emptyPhotoContent())
+              else if (_isAsset(photos[idx]))
+                Image.asset(photos[idx], fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _emptyPhotoContent())
+              else
+                Image.file(File(photos[idx]), fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _emptyPhotoContent()),
               Positioned(bottom: 4, right: 4,
                 child: Container(width: 24, height: 24,
                     decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
@@ -388,10 +392,11 @@ class _ProfileStep2State extends State<ProfileStep2> with TickerProviderStateMix
     final selected = widget.data.interests;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 4),
         child: Text('Odaberi svoje interese:',
             style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 16, fontWeight: FontWeight.w600)),
       ),
+
       Expanded(
         child: GridView.builder(
           physics: const BouncingScrollPhysics(),
@@ -760,7 +765,6 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
     String msg = '';
     if (from == null) { ok = false; msg = 'Upiši donju granicu dobi.'; }
     else if (to == null) { ok = false; msg = 'Upiši gornju granicu dobi.'; }
-    // CHANGED: min age 16 → 18
     else if (from < 18 || from > 99) { ok = false; msg = 'Minimalna dob je 18 godina.'; }
     else if (to < 18 || to > 99) { ok = false; msg = 'Maksimalna dob je 99 godina.'; }
     else if (from > to) { ok = false; msg = 'Gornja granica mora biti veća od donje.'; }
@@ -830,21 +834,62 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   void _update(ProfileSetupData newData) => setState(() => _data = newData);
 
+  String? _validateStep0() {
+    if (_data.photoPaths.length < 2) return 'Potrebne su najmanje 2 fotografije.';
+
+    if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null) {
+      return 'Datum rođenja je obavezan.';
+    }
+
+    final year  = _data.birthYear!;
+    final month = _data.birthMonth!;
+    final day   = _data.birthDay!;
+
+    if (month < 1 || month > 12) return 'Neispravan mjesec (1-12).';
+    if (day < 1 || day > 31)     return 'Neispravan dan (1-31).';
+
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    if (day > daysInMonth) return 'Neispravan dan za odabrani mjesec.';
+
+    final today    = DateTime.now();
+    final birthday = DateTime(year, month, day);
+    final age      = today.year - birthday.year -
+        ((today.month < birthday.month ||
+            (today.month == birthday.month && today.day < birthday.day)) ? 1 : 0);
+    if (age < 18)    return 'Mora imati najmanje 18 godina.';
+    if (year < 1900) return 'Neispravan datum rođenja.';
+
+    if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
+    final h = int.tryParse(_data.height ?? '');
+    if (h == null || h < 50 || h > 250) return 'Visina: 50-250 cm.';
+    if (_data.gender == null)    return 'Spol je obavezan.';
+    if (_data.hairColor == null) return 'Boja kose je obavezna.';
+    if (_data.eyeColor == null)  return 'Boja očiju je obavezna.';
+    if (_data.piercing == null)  return 'Odaberite opciju za pirsing.';
+    if (_data.tattoo == null)    return 'Odaberite opciju za tetovažu.';
+    return null;
+  }
+
   void _next() {
-    if (_step == 3) {
-      final err = _validateStep4();
-      if (err != null) {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          backgroundColor: kPrimaryDark,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 3),
-        ));
-        return;
-      }
+    // Validacija po stepovima
+    String? err;
+    if (_step == 0) err = _validateStep0();
+    if (_step == 1 && _data.interests.length < 2) {
+      err = 'Odaberi najmanje 2 interesa.';
+    }
+    if (_step == 3) err = _validateStep4();
+
+    if (err != null) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: kPrimaryDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
     }
 
     if (_step < _totalSteps - 1) {
@@ -865,7 +910,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     if (_data.prefAgeTo == null) return 'Upiši gornju granicu dobi.';
     final from = _data.prefAgeFrom!;
     final to   = _data.prefAgeTo!;
-    // CHANGED: min age 16 → 18
     if (from < 18 || from > 99) return 'Minimalna dob je 18 godina.';
     if (to < 18 || to > 99) return 'Maksimalna dob je 99 godina.';
     if (from > to) return 'Gornja granica mora biti veća od donje.';
@@ -905,7 +949,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  // CHANGED: removed step label text, bigger progress bar (10px height)
   Widget _buildHeader(MediaQueryData mq) {
     return Container(
       color: Colors.white,

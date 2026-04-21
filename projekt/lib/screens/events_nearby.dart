@@ -110,14 +110,13 @@ void addUserEvent(String cityName, EventData event) {
   _userEventsByCity[cityName]!.insert(0, event);
 }
 
-final _attendanceState = <String, bool>{};
+final attendanceState = <String, bool>{};
 
 int _effectiveAttendees(EventData e) {
-  final joined = _attendanceState[e.title];
+  final joined = attendanceState[e.title];
   if (joined == null) return e.attendees;
   return joined ? e.attendees + 1 : e.attendees;
 }
-
 class _City  { final String name; const _City(this.name); }
 class _Cat   { final String label; final IconData? icon; final String? emoji;
 const _Cat({required this.label, this.icon, this.emoji}); }
@@ -397,6 +396,10 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
           _userEventsByCity.putIfAbsent(city, () => []);
           _userEventsByCity[city]!.add(event);
+
+          if (e['isAttending'] == true) {
+            attendanceState[event.title] = true;
+          }
         }
 
         if (mounted) setState(() {});
@@ -917,15 +920,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
         _cloud(top: 18, left: 14, w: 52, h: 24),
         _cloud(top: 8, right: 46, w: 38, h: 18),
         _cloud(top: 44, right: 10, w: 28, h: 14),
-        if (e.maxAttendees > 0)
-          Positioned(top: 12, right: 12,
-              child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(20)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.people_rounded, color: Colors.white, size: 12), const SizedBox(width: 4),
-                    Text('max ${e.maxAttendees}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ]))),
         // Badge za company event
         if (isCompany)
           Positioned(top: 12, left: 12,
@@ -1055,7 +1049,7 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailState extends State<EventDetailScreen> with TickerProviderStateMixin {
-  bool get _joined => _attendanceState[widget.event.title] ?? false;
+  bool get _joined => attendanceState[widget.event.title] ?? false;
 
   late final AnimationController _entryCtrl, _heroCtrl, _btnCtrl, _countCtrl, _mapCtrl;
   late final Animation<double> _entryFade, _heroScale, _btnScale, _countAnim;
@@ -1131,7 +1125,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     }
 
     final was = _joined;
-    setState(() { _attendanceState[widget.event.title] = !was; });
+    setState(() { attendanceState[widget.event.title] = !was; });
     _countCtrl.forward(from: 0);
     NotificationState.instance.onAttendanceChanged(widget.event.title, widget.event.location, widget.event.cardColor, !was);
   }
@@ -1497,9 +1491,12 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                             Container(
                               margin: const EdgeInsets.only(bottom: 16),
                               decoration: BoxDecoration(
-                                color: isDark ? kDarkCard : _bordoLight,
+                                color: isDark ? const Color(0xFF2A1A1E) : _bordoLight,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: _bordo.withOpacity(0.20)),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.20),
+                                  width: isDark ? 1.5 : 1.0,
+                                ),
                               ),
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 // ── Gornji red: logo + naziv + cijena ─────────
@@ -1516,9 +1513,11 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                     const SizedBox(width: 12),
                                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                       Text('Organizira', style: TextStyle(
-                                          color: _bordo.withOpacity(0.55), fontSize: 11.5, fontWeight: FontWeight.w500)),
+                                          color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.55),
+                                          fontSize: 11.5, fontWeight: FontWeight.w500)),
                                       Text(e.companyName!, style: TextStyle(
-                                          color: isDark ? kDarkText : _bordo, fontSize: 14.5, fontWeight: FontWeight.w800)),
+                                          color: isDark ? const Color(0xFFFFB3C6) : _bordo,
+                                          fontSize: 14.5, fontWeight: FontWeight.w800)),
                                     ])),
                                     if (e.ticketPrice != null && e.ticketPrice! > 0)
                                       Container(
@@ -1536,15 +1535,16 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                 ),
                                 // ── Plaćanje info (samo za plaćene evente) ────
                                 if (e.ticketPrice != null && e.ticketPrice! > 0) ...[
-                                  Divider(height: 1, color: _bordo.withOpacity(0.12)),
+                                  Divider(height: 1, color: isDark ? const Color(0xFFBF8997).withOpacity(0.25) : _bordo.withOpacity(0.12)),
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      Icon(Icons.info_outline_rounded, color: _bordo.withOpacity(0.60), size: 15),
+                                      Icon(Icons.info_outline_rounded,
+                                          color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.60), size: 15),
                                       const SizedBox(width: 8),
                                       Expanded(child: Text(
                                         'Prijavom će vaša ulaznica biti osigurana. Plaćanje se vrši uživo pri dolasku na događaj.',
-                                        style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70),
+                                        style: TextStyle(color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.70),
                                             fontSize: 12.5, height: 1.5),
                                       )),
                                     ]),
@@ -1556,7 +1556,8 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                                     child: Row(children: [
-                                      Icon(Icons.mail_outline_rounded, color: _bordo.withOpacity(0.60), size: 15),
+                                      Icon(Icons.mail_outline_rounded,
+                                          color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.60), size: 15),
                                       const SizedBox(width: 8),
                                       Text('Kontakt: ${e.companyEmail!}',
                                           style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70),

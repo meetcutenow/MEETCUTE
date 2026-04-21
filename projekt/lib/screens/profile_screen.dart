@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'dart:io' as dart_io;
+import '../services/cloudinary_service.dart';
 import 'home_screen.dart'
     show kPrimaryDark, kPrimaryLight, kGradientStart, kGradientEnd;
 import 'profile_setup_screen.dart';
@@ -11,6 +12,21 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_state.dart';
 
+
+
+String _calculateAge(ProfileSetupData data) {
+  if (data.birthYear == null) return '—';
+  final today      = DateTime.now();
+  final birthDay   = data.birthDay   ?? 1;
+  final birthMonth = data.birthMonth ?? 1;
+  final birthYear  = data.birthYear!;
+  int age = today.year - birthYear;
+  if (today.month < birthMonth ||
+      (today.month == birthMonth && today.day < birthDay)) {
+    age--;
+  }
+  return age.toString();
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -61,6 +77,16 @@ class _ProfileScreenState extends State<ProfileScreen>
     _run();
   }
 
+  List<int> _mapInterestIds(List<String> names) {
+    const m = {
+      'Crtanje':1,'Fotografija':2,'Pisanje':3,'Film':4,
+      'Trčanje':5,'Biciklizam':6,'Planinarenje':7,'Teretana':8,
+      'Boks':9,'Tenis':10,'Nogomet':11,'Odbojka':12,
+      'Kuhanje':13,'Putovanja':14,'Gaming':15,'Formula':16,'Glazba':17
+    };
+    return names.map((x) => m[x]).whereType<int>().toList();
+  }
+
   void _rebuildChipFade() {
     final count = _interests.length;
     _chipFade = List.generate(count, (i) {
@@ -76,6 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     _entryCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 400));
     _staggerCtrl.forward();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -117,9 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ..forward();
   }
 
-  // ── ISPRAVKA: ProfileSetupScreen se stvara kao lokalna varijabla ──────────
   void _openSetup() {
-    // ignore: undefined_identifier
     final screen = ProfileSetupScreen(
       initial: globalProfileData.copy(),
       onSave: (saved) async {
@@ -132,23 +157,82 @@ class _ProfileScreenState extends State<ProfileScreen>
         });
         await ProfileStorage.saveProfile(saved);
 
-        // Sync s backendom
-        if (AuthState.instance.isLoggedIn) {
-          try {
-            await http.put(
-              Uri.parse('http://localhost:8080/api/users/me'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ${AuthState.instance.accessToken}',
-              },
-              body: jsonEncode({
-                if (saved.iceBreaker.isNotEmpty) 'iceBreaker': saved.iceBreaker,
-                if (saved.seekingGender != null) 'seekingGender': saved.seekingGender,
-                if (saved.prefAgeFrom != null)   'prefAgeFrom': saved.prefAgeFrom,
-                if (saved.prefAgeTo != null)     'prefAgeTo': saved.prefAgeTo,
-              }),
+        if (!AuthState.instance.isLoggedIn) return;
+        final token = AuthState.instance.accessToken!;
+
+        // 1. Ažuriraj sve podatke profila na backendu
+        try {
+          await http.put(
+            Uri.parse('http://localhost:8080/api/users/me'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              if (saved.birthDay != null)      'birthDay':     saved.birthDay,
+              if (saved.birthMonth != null)    'birthMonth':   saved.birthMonth,
+              if (saved.birthYear != null)     'birthYear':    saved.birthYear,
+              if (saved.iceBreaker.isNotEmpty) 'iceBreaker':   saved.iceBreaker,
+              if (saved.seekingGender != null) 'seekingGender': saved.seekingGender,
+              if (saved.prefAgeFrom != null)   'prefAgeFrom':  saved.prefAgeFrom,
+              if (saved.prefAgeTo != null)     'prefAgeTo':    saved.prefAgeTo,
+              if (saved.height != null)        'heightCm':     int.tryParse(saved.height ?? ''),
+              if (saved.hairColor != null)     'hairColor':    saved.hairColor,
+              if (saved.eyeColor != null)      'eyeColor':     saved.eyeColor,
+              if (saved.gender != null)        'gender':       saved.gender,
+              'hasPiercing': saved.piercing == 'da',
+              'hasTattoo':   saved.tattoo   == 'da',
+              if (saved.interests.isNotEmpty)
+                'interestIds': _mapInterestIds(saved.interests),
+            }),
+          );
+        } catch (e) {
+          debugPrint('Greška pri ažuriranju profila: $e');
+        }
+
+        // 2. Upload novih slika (samo lokalne putanje, ne http URL-ovi)
+        try {
+          final bool hasNewPhotos = saved.photoPaths.any(
+                (p) => !p.startsWith('http') && !p.startsWith('assets/'),
+          );
+
+          if (hasNewPhotos) {
+            // Obriši stare slike s backenda
+            await http.delete(
+              Uri.parse('http://localhost:8080/api/users/me/photos'),
+              headers: {'Authorization': 'Bearer $token'},
             );
-          } catch (_) {}
+
+            // Uploadaj sve slike
+            final newPhotos = <String>[];
+            for (int i = 0; i < saved.photoPaths.length; i++) {
+              final path = saved.photoPaths[i];
+              if (path.startsWith('http')) {
+                newPhotos.add(path);
+              } else if (!path.startsWith('assets/')) {
+                try {
+                  final url = await CloudinaryService.uploadProfilePhoto(
+                    filePath: path,
+                    token: token,
+                    isPrimary: i == 0,
+                  );
+                  newPhotos.add(url);
+                } catch (e) {
+                  debugPrint('Upload slike $i nije uspio: $e');
+                }
+              }
+            }
+
+            // Ažuriraj lokalno s novim URL-ovima
+            saved.photoPaths
+              ..clear()
+              ..addAll(newPhotos);
+            globalProfileData = saved;
+            await ProfileStorage.saveProfile(saved);
+            if (mounted) setState(() {});
+          }
+        } catch (e) {
+          debugPrint('Greška pri uploadu slika: $e');
         }
       },
     );
@@ -170,10 +254,39 @@ class _ProfileScreenState extends State<ProfileScreen>
         ? RegistrationState.instance.username
         : 'Profil';
     if (globalProfileData.birthYear != null) {
-      final age = DateTime.now().year - globalProfileData.birthYear!;
+      final data  = globalProfileData;
+      final today = DateTime.now();
+      final birthDay   = data.birthDay   ?? 1;
+      final birthMonth = data.birthMonth ?? 1;
+      int age = today.year - data.birthYear!;
+      if (today.month < birthMonth ||
+          (today.month == birthMonth && today.day < birthDay)) {
+        age--;
+      }
       return '$name, $age';
     }
     return name;
+  }
+
+  // Prikazuje sliku — podržava http URL, asset i lokalni file
+  Widget _buildPhoto(String path, double height) {
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        height: height,
+        width: double.infinity,
+        loadingBuilder: (_, child, progress) =>
+        progress == null ? child : _fallbackPhoto(),
+        errorBuilder: (_, __, ___) => _fallbackPhoto(),
+      );
+    } else if (_isAsset(path)) {
+      return Image.asset(path, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackPhoto());
+    } else {
+      return Image.file(dart_io.File(path), fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackPhoto());
+    }
   }
 
   @override
@@ -189,6 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Stack(children: [
+          // ── Slike ─────────────────────────────────────────────────────────
           Positioned(
             top: 0, left: 0, right: 0, height: sheetTop + 2,
             child: FadeTransition(
@@ -198,26 +312,27 @@ class _ProfileScreenState extends State<ProfileScreen>
                 physics: const ClampingScrollPhysics(),
                 itemCount: photos.length,
                 onPageChanged: (i) => setState(() => _photoIndex = i),
-                itemBuilder: (_, i) {
-                  final path = photos[i];
-                  return _isAsset(path)
-                      ? Image.asset(path, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallbackPhoto())
-                      : Image.file(dart_io.File(path), fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallbackPhoto());
-                },
+                itemBuilder: (_, i) => _buildPhoto(photos[i], sheetTop + 2),
               ),
             ),
           ),
+
+          // ── Gradijent ispod slike ──────────────────────────────────────────
           Positioned(
             left: 0, right: 0, top: sheetTop - 180, height: 210,
             child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                colors: [Colors.transparent, kPrimaryDark.withOpacity(0.22), kPrimaryDark.withOpacity(0.52)],
+                colors: [
+                  Colors.transparent,
+                  kPrimaryDark.withOpacity(0.22),
+                  kPrimaryDark.withOpacity(0.52),
+                ],
               ),
             ))),
           ),
+
+          // ── Indikatori stranica ────────────────────────────────────────────
           Positioned(
             left: 0, right: 0, bottom: screenH - sheetTop + 52,
             child: IgnorePointer(child: Row(
@@ -236,6 +351,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               }),
             )),
           ),
+
+          // ── Ime i dob ──────────────────────────────────────────────────────
           Positioned(
             left: 0, right: 0, bottom: screenH - sheetTop + 14,
             child: IgnorePointer(child: Text(
@@ -244,10 +361,16 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: TextStyle(
                 color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
-                shadows: [Shadow(color: Colors.black.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 2))],
+                shadows: [Shadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 2),
+                )],
               ),
             )),
           ),
+
+          // ── Bottom sheet ───────────────────────────────────────────────────
           Positioned(
             top: sheetTop, left: 0, right: 0, bottom: 0,
             child: FadeTransition(
@@ -263,7 +386,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                      boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 18, offset: Offset(0, -3))],
+                      boxShadow: [BoxShadow(
+                        color: Color(0x18000000), blurRadius: 18, offset: Offset(0, -3),
+                      )],
                     ),
                     child: Stack(children: [
                       Column(children: [
@@ -279,7 +404,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                         Expanded(
                           child: SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(20, 14, 20, mq.padding.bottom + 80),
+                            padding: EdgeInsets.fromLTRB(
+                                20, 14, 20, mq.padding.bottom + 80),
                             child: _CardBody(
                               chipFade: _chipFade,
                               interests: interests,
@@ -298,6 +424,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
+
+          // ── Back button ────────────────────────────────────────────────────
           Positioned(
             top: mq.padding.top + 15, left: 14,
             child: FadeTransition(
@@ -327,7 +455,11 @@ class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
   final List<String> interests;
   final ProfileSetupData data;
-  const _CardBody({required this.chipFade, required this.interests, required this.data});
+  const _CardBody({
+    required this.chipFade,
+    required this.interests,
+    required this.data,
+  });
 
   static const _emojiMap = {
     'Crtanje': '🎨', 'Fotografija': '📸', 'Pisanje': '✍️', 'Film': '🎬',
@@ -342,21 +474,31 @@ class _CardBody extends StatelessWidget {
     final hasIce = data.iceBreaker.trim().isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Želim da mi priđeš...',
-          style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
+          style: TextStyle(
+              color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 5),
       Text(
-          hasIce ? data.iceBreaker : '(Nisi dodao/la icebreaker — uredi profil)',
-          style: TextStyle(
-            color: hasIce ? const Color(0xFF1C1C1E) : kPrimaryDark.withOpacity(0.35),
-            fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.3,
-            fontStyle: hasIce ? FontStyle.normal : FontStyle.italic,
-          )),
+        hasIce ? data.iceBreaker : '(Nisi dodao/la icebreaker — uredi profil)',
+        style: TextStyle(
+          color: hasIce ? const Color(0xFF1C1C1E) : kPrimaryDark.withOpacity(0.35),
+          fontSize: 15.5, fontWeight: FontWeight.w700, height: 1.3,
+          fontStyle: hasIce ? FontStyle.normal : FontStyle.italic,
+        ),
+      ),
       const SizedBox(height: 22),
       Divider(color: kPrimaryDark.withOpacity(0.10), thickness: 0.8, height: 1),
       const SizedBox(height: 18),
-      Text('Interesi', style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
+      Text('Interesi',
+          style: TextStyle(
+              color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 11),
-      Wrap(
+      interests.isEmpty
+          ? Text('Nema interesa — uredi profil',
+          style: TextStyle(
+              color: kPrimaryDark.withOpacity(0.35),
+              fontSize: 13,
+              fontStyle: FontStyle.italic))
+          : Wrap(
         spacing: 7, runSpacing: 7,
         children: List.generate(interests.length, (i) {
           final anim = i < chipFade.length ? chipFade[i] : chipFade.last;
@@ -364,9 +506,16 @@ class _CardBody extends StatelessWidget {
             animation: anim,
             builder: (_, __) {
               final t = anim.value.clamp(0.0, 1.0);
-              return Opacity(opacity: t,
-                  child: Transform.scale(scale: 0.6 + 0.4 * t,
-                      child: _Chip(label: interests[i], emoji: _emojiMap[interests[i]] ?? '✨')));
+              return Opacity(
+                opacity: t,
+                child: Transform.scale(
+                  scale: 0.6 + 0.4 * t,
+                  child: _Chip(
+                    label: interests[i],
+                    emoji: _emojiMap[interests[i]] ?? '✨',
+                  ),
+                ),
+              );
             },
           );
         }),
@@ -374,17 +523,39 @@ class _CardBody extends StatelessWidget {
       const SizedBox(height: 24),
       Divider(color: kPrimaryDark.withOpacity(0.10), thickness: 0.8, height: 1),
       const SizedBox(height: 18),
-      Text('Osobni podaci', style: TextStyle(color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
+      Text('Osobni podaci',
+          style: TextStyle(
+              color: kPrimaryDark, fontSize: 12.5, fontWeight: FontWeight.w500)),
       const SizedBox(height: 12),
+      // Dob
       if (data.birthYear != null)
         _DataRow(icon: Icons.cake_outlined, label: 'Godine',
-            value: '${DateTime.now().year - data.birthYear!}')
+            value: _calculateAge(data))
       else
         _DataRow(icon: Icons.cake_outlined, label: 'Godine', value: '—'),
       Divider(color: kPrimaryDark.withOpacity(0.08), thickness: 0.5, height: 1, indent: 28),
-      _DataRow(icon: Icons.height_rounded, label: 'Visina',
-          value: data.height != null ? '${data.height} cm' : '—'),
+      // Visina
+      _DataRow(
+        icon: Icons.height_rounded,
+        label: 'Visina',
+        value: data.height != null ? '${data.height} cm' : '—',
+      ),
+      Divider(color: kPrimaryDark.withOpacity(0.08), thickness: 0.5, height: 1, indent: 28),
     ]);
+  }
+
+  String _genderLabel(String? g) {
+    switch (g) {
+      case 'zensko': return 'Žensko';
+      case 'musko':  return 'Muško';
+      case 'ostalo': return 'Ostalo';
+      default:       return '—';
+    }
+  }
+
+  String? _capitalize(String? s) {
+    if (s == null || s.isEmpty) return null;
+    return s[0].toUpperCase() + s.substring(1);
   }
 }
 
@@ -421,7 +592,10 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
             border: Border.all(color: const Color(0xFFD5C0C4), width: 1.1),
           ),
           child: Text('${widget.label} ${widget.emoji}',
-              style: const TextStyle(color: Color(0xFF1C1C1E), fontSize: 13, fontWeight: FontWeight.w400)),
+              style: const TextStyle(
+                  color: Color(0xFF1C1C1E),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400)),
         ),
       ),
     );
@@ -445,7 +619,9 @@ class _DataRow extends StatelessWidget {
             color: Color(0xFF1C1C1E), fontSize: 14, fontWeight: FontWeight.w700)),
         const Spacer(),
         Text(value, style: TextStyle(
-            color: kPrimaryDark.withOpacity(0.55), fontSize: 14, fontWeight: FontWeight.w500)),
+            color: kPrimaryDark.withOpacity(0.55),
+            fontSize: 14,
+            fontWeight: FontWeight.w500)),
       ]),
     );
   }
@@ -487,7 +663,8 @@ class _BackBtnState extends State<_BackBtn> with SingleTickerProviderStateMixin 
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white.withOpacity(0.38), width: 1),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 15),
+              child: const Icon(
+                  Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 15),
             ),
           ),
         ),
@@ -509,15 +686,22 @@ class _EditBtnState extends State<_EditBtn> with SingleTickerProviderStateMixin 
   bool _pressed = false;
   @override void initState() {
     super.initState();
-    _shim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
+    _shim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1800))
       ..repeat();
   }
   @override void dispose() { _shim.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) { setState(() => _pressed = true); HapticFeedback.lightImpact(); },
-      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapDown: (_) {
+        setState(() => _pressed = true);
+        HapticFeedback.lightImpact();
+      },
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.94 : 1.0,

@@ -1,11 +1,17 @@
 package com.meetcute.backend.controller;
 
 import com.meetcute.backend.dto.*;
+import com.meetcute.backend.entity.Company;
+import com.meetcute.backend.repository.CompanyRepository;
 import com.meetcute.backend.service.CompanyAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/company/auth")
@@ -13,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class CompanyAuthController {
 
     private final CompanyAuthService companyAuthService;
+    private final CompanyRepository companyRepository;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<CompanyAuthResponse>> register(
@@ -40,5 +47,28 @@ public class CompanyAuthController {
             @Valid @RequestBody RefreshRequest req) {
         companyAuthService.logout(req.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.ok("Odjava uspješna!", null));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<CompanyResponse>> updateProfile(
+            @RequestBody Map<String, String> req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String companyId = userDetails.getUsername();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
+
+        if (req.containsKey("logoUrl")) {
+            company.setLogoUrl(req.get("logoUrl"));
+        }
+        companyRepository.save(company);
+
+        CompanyResponse response = CompanyResponse.builder()
+                .id(company.getId())
+                .username(company.getUsername())
+                .orgName(company.getOrgName())
+                .email(company.getEmail())
+                .logoUrl(company.getLogoUrl())
+                .build();
+        return ResponseEntity.ok(ApiResponse.ok("Profil ažuriran.", response));
     }
 }

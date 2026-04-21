@@ -29,9 +29,6 @@ public class Company {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "logo_url", length = 512)
-    private String logoUrl;
-
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
@@ -51,6 +48,12 @@ public class Company {
 
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
+
+    @Column(name = "logo_url", length = 512)
+    private String logoUrl;
+
+    @Column(name = "cloudinary_public_id", length = 200)
+    private String cloudinaryPublicId;
 
     @PrePersist
     protected void onCreate() {

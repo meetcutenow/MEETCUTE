@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../services/cloudinary_service.dart';
 import 'company_auth_state.dart';
 import 'company_event_model.dart';
 import '../screens/events_nearby.dart' show AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
@@ -263,6 +264,21 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     await _btnCtrl.forward(); await _btnCtrl.reverse();
     setState(() { _submitting = true; _isGeocoding = true; });
 
+    String? coverPhotoUrl;
+    if (_coverImagePath != null) {
+      try {
+        final token = CompanyAuthState.instance.accessToken!;
+        final result = await CloudinaryService.uploadImage(
+          filePath: _coverImagePath!,
+          token: token,
+          folder: 'meetcute/events',
+        );
+        coverPhotoUrl = result.url;
+      } catch (e) {
+        debugPrint('Upload cover slike nije uspio: $e');
+      }
+    }
+
     _LatLng? coords;
     final loc = _locationCtrl.text.trim();
     if (loc.isNotEmpty) coords = await _geocode('$loc, $_selectedCity, Croatia');
@@ -288,6 +304,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       'maxAttendees':     int.tryParse(_maxPeopleCtrl.text.trim()),
       'latitude':         coords?.lat,
       'longitude':        coords?.lng,
+      if (coverPhotoUrl != null) 'coverPhotoUrl': coverPhotoUrl,
     };
 
     if (!_isEditMode) body['cardColorHex'] = _randomCardColor();
@@ -361,7 +378,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 )),
             const SizedBox(height: 18),
             Text(
-              _isEditMode ? 'Događaj ažuriran!' : 'Događaj kreiran! 🎉',
+              _isEditMode ? 'Događanje ažurirano!' : 'Događanje kreirano!',
               style: const TextStyle(color: _bordo,
                   fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4),
             ),
@@ -438,7 +455,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 Text(
                   _isEditMode
                       ? 'Izmijeni detalje — sudionici će biti obaviješteni'
-                      : 'Kreirajte događaj za svoju zajednicu',
+                      : 'Kreirajte događanje za svoju zajednicu',
                   style: const TextStyle(color: _bordo, fontSize: 13, fontWeight: FontWeight.w400),
                 ),
               ])),

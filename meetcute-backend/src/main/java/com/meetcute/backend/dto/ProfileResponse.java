@@ -4,6 +4,8 @@ import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProfileResponse {
+    private Integer birthDay;
+    private Integer birthMonth;
     private Integer birthYear;
     private Integer age;
     private String gender;

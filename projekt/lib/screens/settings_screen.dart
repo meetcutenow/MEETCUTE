@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems,
 kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
 import 'theme_state.dart';
-import 'notifications_screen.dart' show NotificationState, NotificationsScreen;
+import 'notifications_screen.dart' show NotificationState, NotificationsScreen, NotificationPollingService;
 import 'chat_screen.dart' show ChatState, ChatScreen;
 import 'profile_screen.dart';
 import 'auth_state.dart';
@@ -141,6 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     // NE brišemo: AppReadState (pročitano ostaje pročitano)
 
                     HapticFeedback.mediumImpact();
+                    NotificationPollingService.stop();
 
                     if (!mounted) return;
                     Navigator.of(context).pushAndRemoveUntil(

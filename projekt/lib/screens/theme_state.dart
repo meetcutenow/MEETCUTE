@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 
 
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 class ThemeState extends ChangeNotifier {
   static final ThemeState instance = ThemeState._();
   ThemeState._();
 
+  static const _kDark = 'theme_is_dark';
+
   bool _isDark = false;
   bool get isDark => _isDark;
 
-  void toggle() {
+  // Pozovi iz main() prije runApp
+  static Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    instance._isDark = prefs.getBool(_kDark) ?? false;
+  }
+
+  void toggle() async {
     _isDark = !_isDark;
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDark, _isDark);
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/cloudinary_service.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'events_nearby.dart' show EventData, AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
 import 'theme_state.dart';
@@ -320,6 +321,20 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
       String? timeStart, String? timeEnd) async {
 
     setState(() => _isGeocoding = true);
+    String? coverPhotoUrl;
+    if (_imagePath != null) {
+      try {
+        final result = await CloudinaryService.uploadImage(
+          filePath: _imagePath!,
+          token: token,
+          folder: 'meetcute/events',
+        );
+        coverPhotoUrl = result.url;
+      } catch (e) {
+        debugPrint('Upload slike nije uspio: $e');
+      }
+    }
+
 
     LatLng? coords;
     if (specificLoc.isNotEmpty) {
@@ -348,6 +363,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
       'cardColorHex':    '#${cardColor.value.toRadixString(16).substring(2).toUpperCase()}',
       'latitude':        coords?.latitude,
       'longitude':       coords?.longitude,
+      if (coverPhotoUrl != null) 'coverPhotoUrl': coverPhotoUrl,
     };
 
     try {
@@ -376,6 +392,7 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
   Future<void> _updateEvent(String token, String eventDateStr, String specificLoc,
       String? timeStart, String? timeEnd) async {
 
+
     final body = <String, dynamic>{
       'title':           _titleCtrl.text.trim(),
       'description':     _descCtrl.text.trim(),
@@ -389,6 +406,19 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
       'genderGroup':     _selectedGender.name,
       'maxAttendees':    int.tryParse(_maxPeopleCtrl.text.trim()),
     };
+
+    if (_imagePath != null && !_imagePath!.startsWith('http')) {
+      try {
+        final result = await CloudinaryService.uploadImage(
+          filePath: _imagePath!,
+          token: token,
+          folder: 'meetcute/events',
+        );
+        body['coverPhotoUrl'] = result.url;
+      } catch (e) {
+        debugPrint('Upload slike nije uspio: $e');
+      }
+    }
 
     try {
       final resp = await http.put(
@@ -465,12 +495,12 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
                   ),
                   child: const Icon(Icons.check_rounded, color: kPrimaryDark, size: 34)),
               const SizedBox(height: 18),
-              Text(isEdit ? 'Event ažuriran! ✨' : 'Događaj kreiran! 🎉',
+              Text(isEdit ? 'Događanje ažurirano! ' : 'Događanje kreirano! ',
                   style: const TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4)),
               const SizedBox(height: 10),
               Text(isEdit
                   ? 'Promjene su uspješno spremljene.'
-                  : 'Tvoj događaj je dodan. Sretno! ✨',
+                  : 'Tvoj događaj je dodan. Sretno! ',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, height: 1.55)),
               const SizedBox(height: 24),

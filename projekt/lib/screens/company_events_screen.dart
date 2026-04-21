@@ -125,9 +125,7 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
           return _Attendee(
             userId:      a['userId'] ?? '',
             displayName: a['displayName'] ?? '',
-            photoUrl: a['photoUrl'] != null
-                ? 'http://10.0.2.2:8080${a['photoUrl']}'
-                : null,
+            photoUrl: a['photoUrl'] as String?,
             gender:      a['gender'],
             birthYear:   a['birthYear'],
           );
@@ -717,9 +715,16 @@ class _AttendeeRow extends StatelessWidget {
             color: primary.withOpacity(0.12),
             border: Border.all(color: primary.withOpacity(0.25), width: 1.5),
           ),
-          child: attendee.photoUrl != null
-              ? ClipOval(child: Image.network(attendee.photoUrl!, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _initial()))
+          child: attendee.photoUrl != null && attendee.photoUrl!.startsWith('http')
+              ? ClipOval(child: Image.network(
+            attendee.photoUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (_, child, progress) => progress == null
+                ? child
+                : Center(child: CircularProgressIndicator(
+                strokeWidth: 1.5, color: primary)),
+            errorBuilder: (_, __, ___) => _initial(),
+          ))
               : _initial(),
         ),
         const SizedBox(width: 10),

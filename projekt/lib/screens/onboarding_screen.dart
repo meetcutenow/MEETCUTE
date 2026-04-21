@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import '../services/cloudinary_service.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, HomeScreen;
 import 'login_screen.dart' show LoginScreen;
 import 'auth_state.dart';
@@ -774,23 +775,94 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
       'prefAgeTo':        _data.prefAgeTo ?? 99,
     };
     try {
-      final resp = await http.post(Uri.parse('$_base/auth/register'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)).timeout(const Duration(seconds: 15));
+      final resp = await http.post(
+        Uri.parse('$_base/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
       final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+
       if (resp.statusCode == 200 && decoded['success'] == true) {
         await AuthState.instance.saveFromResponse(decoded['data']);
+
+        // ── Upload profilnih slika ──────────────────────────────
+        final token = AuthState.instance.accessToken!;
+        for (int i = 0; i < _data.photoPaths.length; i++) {
+          final path = _data.photoPaths[i];
+          if (path.startsWith('assets/') || path.startsWith('http')) continue;
+          try {
+            final url = await CloudinaryService.uploadProfilePhoto(
+              filePath: path,
+              token: token,
+              isPrimary: i == 0,
+            );
+            _data.photoPaths[i] = url;
+          } catch (e) {
+            debugPrint('Upload slike $i nije uspio: $e');
+          }
+        }
+        // ────────────────────────────────────────────────────────
+
         globalProfileData = _data;
         RegistrationState.instance.isRegistered = true;
-        ProfileStorage.saveProfile(_data);
-        ProfileStorage.saveRegistration(regState.username, regState.displayName);
-        final name = regState.displayName.isNotEmpty ? regState.displayName : regState.username;
-        NotificationState.instance.push(AppNotification(id: 'welcome_${DateTime.now().millisecondsSinceEpoch}', type: NotifType.general, title: 'Dobrodošao/la na MeetCute, $name!', body: 'Tvoj profil je spreman.', accentColor: _bordo, timestamp: DateTime.now(), isRead: false));
+        await ProfileStorage.saveProfile(_data);
+        await ProfileStorage.saveRegistration(
+            regState.username, regState.displayName);
+
+        final name = regState.displayName.isNotEmpty
+            ? regState.displayName
+            : regState.username;
+
+        NotificationState.instance.push(AppNotification(
+          id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
+          type: NotifType.general,
+          title: 'Dobrodošao/la na MeetCute, $name!',
+          body: 'Tvoj profil je spreman.',
+          accentColor: _bordo,
+          timestamp: DateTime.now(),
+          isRead: false,
+        ));
+
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(PageRouteBuilder(pageBuilder: (ctx, a, __) => _WelcomeWrapper(username: name), transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: child), transitionDuration: const Duration(milliseconds: 600)), (r) => false);
+        Navigator.of(context).pushAndRemoveUntil(
+          PageRouteBuilder(
+            pageBuilder: (ctx, a, __) => _WelcomeWrapper(username: name),
+            transitionsBuilder: (_, a, __, child) => FadeTransition(
+              opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
+              child: child,
+            ),
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
+              (r) => false,
+        );
       } else {
-        if (mounted) { setState(() => _sending = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(decoded['message'] ?? 'Greška.', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), margin: const EdgeInsets.all(16))); }
+        if (mounted) {
+          setState(() => _sending = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+              decoded['message'] ?? 'Greška.',
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            margin: const EdgeInsets.all(16),
+          ));
+        }
       }
     } catch (e) {
-      if (mounted) { setState(() => _sending = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ne mogu se spojiti: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), margin: const EdgeInsets.all(16))); }
+      if (mounted) {
+        setState(() => _sending = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ne mogu se spojiti: $e',
+              style: const TextStyle(color: Colors.white)),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          margin: const EdgeInsets.all(16),
+        ));
+      }
     }
   }
 

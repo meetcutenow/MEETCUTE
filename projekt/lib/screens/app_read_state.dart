@@ -9,9 +9,17 @@ class AppReadState {
   static final Set<String> _readNotifIds = {};
   static final Set<String> _readConvIds  = {};
 
+  static SharedPreferences? _prefs;
+
+  // Javna metoda za dohvat SharedPreferences instance
+  static Future<SharedPreferences> getPrefsInstance() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
+
   // ── Učitaj pri pokretanju ──────────────────────────────────────────────────
   static Future<void> loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await getPrefsInstance();
     final notifList = prefs.getStringList(_kReadNotifIds) ?? [];
     _readNotifIds.addAll(notifList);
     final convList = prefs.getStringList(_kReadConvIds) ?? [];
@@ -33,7 +41,7 @@ class AppReadState {
   }
 
   static Future<void> _saveNotifs() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await getPrefsInstance();
     await prefs.setStringList(_kReadNotifIds, _readNotifIds.toList());
   }
 
@@ -47,7 +55,7 @@ class AppReadState {
   }
 
   static Future<void> _saveConvs() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await getPrefsInstance();
     await prefs.setStringList(_kReadConvIds, _readConvIds.toList());
   }
 
@@ -55,7 +63,7 @@ class AppReadState {
   static Future<void> clearAll() async {
     _readNotifIds.clear();
     _readConvIds.clear();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await getPrefsInstance();
     await prefs.remove(_kReadNotifIds);
     await prefs.remove(_kReadConvIds);
   }

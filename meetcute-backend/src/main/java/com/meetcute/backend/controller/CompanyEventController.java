@@ -33,7 +33,8 @@ public class CompanyEventController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<EventResponse>>> getMyEvents(
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<EventResponse> events = companyEventService.getCompanyEvents(userDetails.getUsername());
+        List<EventResponse> events = companyEventService.getCompanyEvents(
+                userDetails.getUsername(), userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.ok(events));
     }
 
