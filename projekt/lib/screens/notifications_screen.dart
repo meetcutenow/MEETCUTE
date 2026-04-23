@@ -356,7 +356,13 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
-    if (index == 0) { Navigator.pop(context); return; }
+    if (index == 0) {
+      for (int i = 0; i < _navTapCtrls.length; i++) {
+        _navTapCtrls[i].value = 0.0;
+      }
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
 
     Widget? screen;
     switch (index) {

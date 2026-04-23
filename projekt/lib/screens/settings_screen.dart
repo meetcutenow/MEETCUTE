@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'change_password_dialog.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface, kNavItems,
 kNavIconSize, kNavPadH, kNavPadV, kNavDotSize, NavBadge;
 import 'theme_state.dart';
@@ -209,11 +210,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     HapticFeedback.selectionClick();
 
     if (index == 0) {
-      // Vrati se na Home — reset svih controllera prije popa
       for (int i = 0; i < _navTapCtrls.length; i++) {
         _navTapCtrls[i].value = 0.0;
       }
-      Navigator.pop(context);
+      Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     }
 
@@ -312,9 +312,17 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 10),
         _buildTapRow(
           ctrl: _rowCtrls[3],
+          icon: Icons.lock_rounded,
+          label: 'Promjena lozinke',
+          subtitle: 'Ažuriraj svoju lozinku',
+          onTap: () => ChangePasswordDialog.show(context, isCompany: false),
+        ),
+        const SizedBox(height: 8),
+        _buildTapRow(
+          ctrl: _rowCtrls[3],
           icon: Icons.logout_rounded,
           label: 'Odjava',
-          subtitle: 'Vidimo se uskoro 👋',
+          subtitle: 'Vidimo se uskoro!',
           danger: true,
           onTap: _logout,
         ),

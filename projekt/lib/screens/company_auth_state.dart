@@ -1,6 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Auth state za tvrtke — odvojeno od korisničkog AuthState
 class CompanyAuthState {
   static final CompanyAuthState instance = CompanyAuthState._();
   CompanyAuthState._();
@@ -62,6 +61,22 @@ class CompanyAuthState {
     await prefs.setString(_kOrgName,  _orgName      ?? '');
     await prefs.setString(_kEmail,    _email        ?? '');
     if (_logoUrl != null) await prefs.setString(_kLogoUrl, _logoUrl!);
+  }
+
+  /// Ažurira samo profil podatke (bez tokena) — trajno u SharedPreferences
+  Future<void> updateProfile({
+    String? orgName,
+    String? email,
+    String? logoUrl,
+  }) async {
+    if (orgName != null) _orgName = orgName;
+    if (email != null)   _email   = email;
+    if (logoUrl != null) _logoUrl = logoUrl;
+
+    final prefs = await SharedPreferences.getInstance();
+    if (orgName != null) await prefs.setString(_kOrgName, orgName);
+    if (email != null)   await prefs.setString(_kEmail,   email);
+    if (logoUrl != null) await prefs.setString(_kLogoUrl, logoUrl);
   }
 
   Future<void> clear() async {

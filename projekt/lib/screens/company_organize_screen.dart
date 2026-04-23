@@ -10,7 +10,9 @@ import '../services/cloudinary_service.dart';
 import 'company_auth_state.dart';
 import 'company_event_model.dart';
 import '../screens/events_nearby.dart' show AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
+import 'theme_state.dart';
 
+// Svjetlosne boje (bordo paleta) — koriste se kao fallback i za light mode
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const String _base = 'http://localhost:8080/api';
@@ -71,6 +73,23 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   bool get _isEditMode => widget.editEvent != null;
 
+  // ── Tema helperi ────────────────────────────────────────────────────────────
+  bool get _isDark => ThemeState.instance.isDark;
+
+  /// Primarna boja: bordo u light, ružičasta u dark
+  Color get _primary => _isDark ? const Color(0xFFBF8997) : _bordo;
+
+  /// Pozadina kartice / fielda
+  Color get _cardBg => _isDark ? const Color(0xFF393737) : Colors.white;
+
+  /// Lagana pozadina (bordoLight ekvivalent)
+  Color get _cardEl => _isDark ? const Color(0xFF5A5A61) : _bordoLight;
+
+  /// Pozadina screena
+  Color get _screenBg => _isDark ? const Color(0xFF000000) : Colors.white;
+
+  // ───────────────────────────────────────────────────────────────────────────
+
   String _randomCardColor() {
     final r = math.Random();
     return _autoColors[r.nextInt(_autoColors.length)];
@@ -79,6 +98,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   @override
   void initState() {
     super.initState();
+    ThemeState.instance.addListener(_onTheme);
+
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
@@ -93,6 +114,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
     if (_isEditMode) _populateFromEvent(widget.editEvent!);
   }
+
+  void _onTheme() { if (mounted) setState(() {}); }
 
   void _populateFromEvent(CompanyEvent ev) {
     _titleCtrl.text = ev.title;
@@ -139,10 +162,15 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       _ticketPriceCtrl.text = ev.ticketPrice!.toStringAsFixed(2);
       _selectedCurrency = ev.ticketCurrency ?? 'EUR';
     }
+
+    if (ev.coverPhotoUrl != null && ev.coverPhotoUrl!.isNotEmpty) {
+      _coverImagePath = ev.coverPhotoUrl;
+    }
   }
 
   @override
   void dispose() {
+    ThemeState.instance.removeListener(_onTheme);
     _addrDebounce?.cancel();
     _entryCtrl.dispose(); _btnCtrl.dispose();
     _titleCtrl.dispose(); _descCtrl.dispose(); _maxPeopleCtrl.dispose();
@@ -234,6 +262,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   Future<void> _pickDate() async {
     final now    = DateTime.now();
+    final p = _primary;
     final picked = await showDatePicker(
       context: context,
       initialDate: _pickedDate ?? now.add(const Duration(days: 1)),
@@ -241,9 +270,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       lastDate: now.add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: _bordo, onPrimary: Colors.white,
-            surface: Colors.white, onSurface: _bordo,
+          colorScheme: ColorScheme.light(
+            primary: p, onPrimary: Colors.white,
+            surface: _cardBg, onSurface: p,
           ),
         ),
         child: child!,
@@ -265,7 +294,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     setState(() { _submitting = true; _isGeocoding = true; });
 
     String? coverPhotoUrl;
-    if (_coverImagePath != null) {
+    if (_coverImagePath != null && !_coverImagePath!.startsWith('http')) {
       try {
         final token = CompanyAuthState.instance.accessToken!;
         final result = await CloudinaryService.uploadImage(
@@ -277,6 +306,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       } catch (e) {
         debugPrint('Upload cover slike nije uspio: $e');
       }
+    } else if (_coverImagePath != null && _coverImagePath!.startsWith('http')) {
+      coverPhotoUrl = _coverImagePath;
     }
 
     _LatLng? coords;
@@ -355,58 +386,63 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   void _showSuccess() => showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => Dialog(
-      backgroundColor: Colors.transparent,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.8, end: 1.0),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutBack,
-        builder: (_, v, child) => Transform.scale(scale: v, child: child),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(28),
-            boxShadow: [BoxShadow(
-                color: _bordo.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
+    builder: (_) {
+      final p  = _primary;
+      final el = _cardEl;
+      final bg = _cardBg;
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutBack,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: bg, borderRadius: BorderRadius.circular(28),
+              boxShadow: [BoxShadow(
+                  color: p.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 68, height: 68,
+                  decoration: BoxDecoration(color: el, shape: BoxShape.circle),
+                  child: Icon(
+                    _isEditMode ? Icons.check_circle_outline_rounded : Icons.check_rounded,
+                    color: p, size: 34,
+                  )),
+              const SizedBox(height: 18),
+              Text(
+                _isEditMode ? 'Događanje ažurirano!' : 'Događanje kreirano!',
+                style: TextStyle(color: p,
+                    fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _isEditMode
+                    ? 'Svi prijavljeni korisnici su obaviješteni o izmjenama.'
+                    : 'Vaš događaj je objavljen i vidljiv korisnicima MeetCute-a.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: p.withOpacity(0.55), fontSize: 14, height: 1.55),
+              ),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
+                },
+                child: Container(height: 50,
+                    decoration: BoxDecoration(color: p, borderRadius: BorderRadius.circular(25),
+                        boxShadow: [BoxShadow(color: p.withOpacity(0.30),
+                            blurRadius: 16, offset: const Offset(0, 6))]),
+                    child: const Center(child: Text('U redu', style: TextStyle(
+                        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)))),
+              ),
+            ]),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 68, height: 68,
-                decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
-                child: Icon(
-                  _isEditMode ? Icons.check_circle_outline_rounded : Icons.check_rounded,
-                  color: _bordo, size: 34,
-                )),
-            const SizedBox(height: 18),
-            Text(
-              _isEditMode ? 'Događanje ažurirano!' : 'Događanje kreirano!',
-              style: const TextStyle(color: _bordo,
-                  fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _isEditMode
-                  ? 'Svi prijavljeni korisnici su obaviješteni o izmjenama.'
-                  : 'Vaš događaj je objavljen i vidljiv korisnicima MeetCute-a.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _bordo.withOpacity(0.55), fontSize: 14, height: 1.55),
-            ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(true);
-              },
-              child: Container(height: 50,
-                  decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(25),
-                      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30),
-                          blurRadius: 16, offset: const Offset(0, 6))]),
-                  child: const Center(child: Text('U redu', style: TextStyle(
-                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)))),
-            ),
-          ]),
         ),
-      ),
-    ),
+      );
+    },
   );
 
   void _showSnack(String msg) {
@@ -430,179 +466,185 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: FadeTransition(
-        opacity: _entryFade,
-        child: Column(children: [
-          // ── Header ────────────────────────────────────────────────────────
-          Container(
-            color: Colors.white,
-            padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 18, bottom: 18),
-            child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _bordo, size: 20),
-                onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
-              ),
-              const SizedBox(width: 4),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  _isEditMode ? 'Uredi događaj' : 'Organiziraj događaj',
-                  style: const TextStyle(color: _bordo, fontSize: 22,
-                      fontWeight: FontWeight.w900, letterSpacing: -0.5),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      color: _screenBg,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: FadeTransition(
+          opacity: _entryFade,
+          child: Column(children: [
+            // ── Header ──────────────────────────────────────────────────────
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 380),
+              color: _cardBg,
+              padding: EdgeInsets.only(top: mq.padding.top + 10, left: 6, right: 18, bottom: 18),
+              child: Row(children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
                 ),
-                Text(
-                  _isEditMode
-                      ? 'Izmijeni detalje — sudionici će biti obaviješteni'
-                      : 'Kreirajte događanje za svoju zajednicu',
-                  style: const TextStyle(color: _bordo, fontSize: 13, fontWeight: FontWeight.w400),
-                ),
-              ])),
-              if (_isEditMode)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: _bordoLight, borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _bordo.withOpacity(0.25)),
+                const SizedBox(width: 4),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    _isEditMode ? 'Uredi događaj' : 'Organiziraj događaj',
+                    style: TextStyle(color: _primary, fontSize: 22,
+                        fontWeight: FontWeight.w900, letterSpacing: -0.5),
                   ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.edit_rounded, color: _bordo, size: 13),
-                    SizedBox(width: 5),
-                    Text('Uređivanje', style: TextStyle(
-                        color: _bordo, fontSize: 12, fontWeight: FontWeight.w700)),
-                  ]),
-                ),
-            ]),
-          ),
-
-          Expanded(child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(20, 4, 20, mq.padding.bottom + 24),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-              _label('Naslovna slika (opcionalno)'),
-              const SizedBox(height: 8),
-              _buildCoverPhoto(),
-              const SizedBox(height: 18),
-
-              _label('Naziv događaja *'),
-              const SizedBox(height: 8),
-              _field(_titleCtrl, 'npr. Sportsko okupljanje', Icons.edit_rounded),
-              const SizedBox(height: 18),
-
-              _label('Grad *'),
-              const SizedBox(height: 8),
-              _cityDrop(),
-              const SizedBox(height: 18),
-
-              _label('Specifična lokacija'),
-              const SizedBox(height: 8),
-              _field(_locationCtrl, 'npr. Dom sportova, Zagreb', Icons.place_rounded),
-              if (_locationCtrl.text.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _addrStatusWidget(),
-              ],
-              const SizedBox(height: 18),
-
-              _label('Kategorija *'),
-              const SizedBox(height: 10),
-              _catChips(),
-              const SizedBox(height: 18),
-
-              _label('Dobna skupina'),
-              const SizedBox(height: 10),
-              _ageChips(),
-              const SizedBox(height: 18),
-
-              _label('Za koga je događaj?'),
-              const SizedBox(height: 10),
-              _genderChips(),
-              const SizedBox(height: 18),
-
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _label('Datum *'),
-                  const SizedBox(height: 8),
-                  _datePicker(),
+                  Text(
+                    _isEditMode
+                        ? 'Izmijeni detalje — sudionici će biti obaviješteni'
+                        : 'Kreirajte događanje za svoju zajednicu',
+                    style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 13, fontWeight: FontWeight.w400),
+                  ),
                 ])),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _label('Vrijeme *'),
-                  const SizedBox(height: 8),
-                  _field(_timeCtrl, '10:00 – 12:00', Icons.access_time_rounded,
-                      keyboard: TextInputType.text),
-                  if (_timeError != null) ...[
-                    const SizedBox(height: 5),
-                    Row(children: [
-                      const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 13),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(_timeError!,
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 11.5))),
-                    ]),
-                  ],
-                ])),
-              ]),
-              const SizedBox(height: 18),
-
-              _label('Maks. broj sudionika'),
-              const SizedBox(height: 8),
-              _field(_maxPeopleCtrl, '100', Icons.people_rounded, keyboard: TextInputType.number),
-              const SizedBox(height: 24),
-
-              _ticketBox(),
-              const SizedBox(height: 18),
-
-              _label('Opis'),
-              const SizedBox(height: 8),
-              _descField(),
-              const SizedBox(height: 32),
-
-              // ── Submit gumb ──────────────────────────────────────────────
-              ScaleTransition(
-                scale: _btnScale,
-                child: GestureDetector(
-                  onTapDown: (_) { if (_isValid && !_submitting) _btnCtrl.forward(); },
-                  onTapUp: (_) { _btnCtrl.reverse(); _submit(); },
-                  onTapCancel: () => _btnCtrl.reverse(),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260), height: 54,
+                if (_isEditMode)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: (_isValid && !_submitting) ? _bordo : _bordo.withOpacity(0.28),
-                      borderRadius: BorderRadius.circular(27),
-                      boxShadow: (_isValid && !_submitting) ? [BoxShadow(
-                          color: _bordo.withOpacity(0.32), blurRadius: 18,
-                          offset: const Offset(0, 7))] : [],
+                      color: _cardEl, borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _primary.withOpacity(0.25)),
                     ),
-                    child: Center(child: (_submitting || _isGeocoding)
-                        ? const SizedBox(width: 22, height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(
-                        _isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
-                        color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                        size: 20,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.edit_rounded, color: _primary, size: 13),
+                      const SizedBox(width: 5),
+                      Text('Uređivanje', style: TextStyle(
+                          color: _primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+              ]),
+            ),
+
+            Expanded(child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(20, 4, 20, mq.padding.bottom + 24),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+                _label('Naslovna slika (opcionalno)'),
+                const SizedBox(height: 8),
+                _buildCoverPhoto(),
+                const SizedBox(height: 18),
+
+                _label('Naziv događaja *'),
+                const SizedBox(height: 8),
+                _field(_titleCtrl, 'npr. Sportsko okupljanje', Icons.edit_rounded),
+                const SizedBox(height: 18),
+
+                _label('Grad *'),
+                const SizedBox(height: 8),
+                _cityDrop(),
+                const SizedBox(height: 18),
+
+                _label('Specifična lokacija'),
+                const SizedBox(height: 8),
+                _field(_locationCtrl, 'npr. Dom sportova, Zagreb', Icons.place_rounded),
+                if (_locationCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _addrStatusWidget(),
+                ],
+                const SizedBox(height: 18),
+
+                _label('Kategorija *'),
+                const SizedBox(height: 10),
+                _catChips(),
+                const SizedBox(height: 18),
+
+                _label('Dobna skupina'),
+                const SizedBox(height: 10),
+                _ageChips(),
+                const SizedBox(height: 18),
+
+                _label('Za koga je događaj?'),
+                const SizedBox(height: 10),
+                _genderChips(),
+                const SizedBox(height: 18),
+
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _label('Datum *'),
+                    const SizedBox(height: 8),
+                    _datePicker(),
+                  ])),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _label('Vrijeme *'),
+                    const SizedBox(height: 8),
+                    _field(_timeCtrl, '10:00 – 12:00', Icons.access_time_rounded,
+                        keyboard: TextInputType.text),
+                    if (_timeError != null) ...[
+                      const SizedBox(height: 5),
+                      Row(children: [
+                        const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 13),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(_timeError!,
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 11.5))),
+                      ]),
+                    ],
+                  ])),
+                ]),
+                const SizedBox(height: 18),
+
+                _label('Maks. broj sudionika'),
+                const SizedBox(height: 8),
+                _field(_maxPeopleCtrl, '100', Icons.people_rounded, keyboard: TextInputType.number),
+                const SizedBox(height: 24),
+
+                _ticketBox(),
+                const SizedBox(height: 18),
+
+                _label('Opis'),
+                const SizedBox(height: 8),
+                _descField(),
+                const SizedBox(height: 32),
+
+                // ── Submit gumb ────────────────────────────────────────────
+                ScaleTransition(
+                  scale: _btnScale,
+                  child: GestureDetector(
+                    onTapDown: (_) { if (_isValid && !_submitting) _btnCtrl.forward(); },
+                    onTapUp: (_) { _btnCtrl.reverse(); _submit(); },
+                    onTapCancel: () => _btnCtrl.reverse(),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 260), height: 54,
+                      decoration: BoxDecoration(
+                        color: (_isValid && !_submitting) ? _primary : _primary.withOpacity(0.28),
+                        borderRadius: BorderRadius.circular(27),
+                        boxShadow: (_isValid && !_submitting) ? [BoxShadow(
+                            color: _primary.withOpacity(0.32), blurRadius: 18,
+                            offset: const Offset(0, 7))] : [],
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        _isEditMode ? 'Spremi izmjene' : 'Objavi događaj',
-                        style: TextStyle(
+                      child: Center(child: (_submitting || _isGeocoding)
+                          ? const SizedBox(width: 22, height: 22,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(
+                          _isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
                           color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                          fontSize: 16, fontWeight: FontWeight.w800,
+                          size: 20,
                         ),
-                      ),
-                    ])),
+                        const SizedBox(width: 10),
+                        Text(
+                          _isEditMode ? 'Spremi izmjene' : 'Objavi događaj',
+                          style: TextStyle(
+                            color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
+                            fontSize: 16, fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ])),
+                    ),
                   ),
                 ),
-              ),
-            ]),
-          )),
-        ]),
+              ]),
+            )),
+          ]),
+        ),
       ),
     );
   }
 
-  // ── Cover photo — CENTERED ────────────────────────────────────────────────
+  // ── Cover photo ─────────────────────────────────────────────────────────────
   Widget _buildCoverPhoto() {
     return GestureDetector(
       onTap: _coverImagePath == null ? _pickCoverPhoto : null,
@@ -611,20 +653,21 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         height: 130,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _cardBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _coverImagePath != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
+            color: _coverImagePath != null ? _primary.withOpacity(0.40) : _primary.withOpacity(0.15),
             width: _coverImagePath != null ? 1.5 : 1.2,
           ),
-          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+          boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: _coverImagePath != null
             ? Stack(children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
-            child: Image.file(File(_coverImagePath!),
-                width: double.infinity, height: 130, fit: BoxFit.cover),
+            child: _coverImagePath!.startsWith('http')
+                ? Image.network(_coverImagePath!, width: double.infinity, height: 130, fit: BoxFit.cover)
+                : Image.file(File(_coverImagePath!), width: double.infinity, height: 130, fit: BoxFit.cover),
           ),
           Positioned(bottom: 10, left: 10,
               child: GestureDetector(
@@ -654,21 +697,20 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 ),
               )),
         ])
-        // ── Empty state — sve centrirano ────────────────────────────────
             : Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(width: 48, height: 48,
-                  decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(14)),
-                  child: const Icon(Icons.add_photo_alternate_rounded, color: _bordo, size: 24)),
+                  decoration: BoxDecoration(color: _cardEl, borderRadius: BorderRadius.circular(14)),
+                  child: Icon(Icons.add_photo_alternate_rounded, color: _primary, size: 24)),
               const SizedBox(height: 10),
-              const Text('Dodaj naslovnu sliku', style: TextStyle(
-                  color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
+              Text('Dodaj naslovnu sliku', style: TextStyle(
+                  color: _primary, fontSize: 14, fontWeight: FontWeight.w700)),
               const SizedBox(height: 3),
               Text('PNG, JPG · opcionalno', style: TextStyle(
-                  color: _bordo.withOpacity(0.45), fontSize: 12)),
+                  color: _primary.withOpacity(0.45), fontSize: 12)),
             ],
           ),
         ),
@@ -679,9 +721,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   Widget _addrStatusWidget() {
     if (_addrChecking) return Row(children: [
       SizedBox(width: 13, height: 13,
-          child: CircularProgressIndicator(strokeWidth: 1.8, color: _bordo.withOpacity(0.50))),
+          child: CircularProgressIndicator(strokeWidth: 1.8, color: _primary.withOpacity(0.50))),
       const SizedBox(width: 7),
-      Text('Provjera adrese...', style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 11.5)),
+      Text('Provjera adrese...', style: TextStyle(color: _primary.withOpacity(0.50), fontSize: 11.5)),
     ]);
     if (_addrValid == true) return Row(children: [
       Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 14),
@@ -698,35 +740,39 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     return const SizedBox.shrink();
   }
 
-  Widget _ticketBox() => Container(
+  Widget _ticketBox() => AnimatedContainer(
+    duration: const Duration(milliseconds: 300),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: _hasTickets ? _bordoLight : const Color(0xFFF5F5F5),
+      color: _hasTickets ? _cardEl : (_isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5)),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: _hasTickets ? _bordo.withOpacity(0.25) : Colors.grey.withOpacity(0.15)),
+      border: Border.all(
+          color: _hasTickets ? _primary.withOpacity(0.25) : (_isDark ? Colors.white10 : Colors.grey.withOpacity(0.15))),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Container(width: 40, height: 40,
+        AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 40, height: 40,
             decoration: BoxDecoration(
-                color: _hasTickets ? _bordo : Colors.grey.withOpacity(0.15),
+                color: _hasTickets ? _primary : (_isDark ? Colors.white12 : Colors.grey.withOpacity(0.15)),
                 borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.confirmation_number_rounded,
-                color: _hasTickets ? Colors.white : Colors.grey, size: 20)),
+                color: _hasTickets ? Colors.white : (_isDark ? Colors.white38 : Colors.grey), size: 20)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Naplaćivanje ulaznica', style: TextStyle(
-              color: _hasTickets ? _bordo : Colors.grey.shade700,
+              color: _hasTickets ? _primary : (_isDark ? Colors.white54 : Colors.grey.shade700),
               fontSize: 14.5, fontWeight: FontWeight.w700)),
           Text('Postavi cijenu ulaznice za događaj',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+              style: TextStyle(color: _isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12)),
         ])),
-        Switch(value: _hasTickets, activeColor: _bordo,
+        Switch(value: _hasTickets, activeColor: _primary,
             onChanged: (v) => setState(() => _hasTickets = v)),
       ]),
       if (_hasTickets) ...[
         const SizedBox(height: 16),
-        Divider(height: 1, color: _bordo.withOpacity(0.12)),
+        Divider(height: 1, color: _primary.withOpacity(0.12)),
         const SizedBox(height: 16),
         Row(children: [
           Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -739,34 +785,37 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _label('Valuta'),
             const SizedBox(height: 8),
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               height: 52,
               decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-                boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+                color: _cardBg, borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _primary.withOpacity(0.15), width: 1.2),
+                boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
               ),
-              child: const Center(
-                child: Text('EUR', style: TextStyle(color: _bordo, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+              child: Center(
+                child: Text('EUR', style: TextStyle(
+                    color: _primary, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
               ),
             ),
           ])),
         ]),
         if (_ticketPriceCtrl.text.isNotEmpty && _maxPeopleCtrl.text.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _bordo.withOpacity(0.15))),
+                color: _cardBg, borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _primary.withOpacity(0.15))),
             child: Row(children: [
-              Icon(Icons.bar_chart_rounded, color: _bordo.withOpacity(0.60), size: 16),
+              Icon(Icons.bar_chart_rounded, color: _primary.withOpacity(0.60), size: 16),
               const SizedBox(width: 8),
               Text(() {
                 final price = double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.')) ?? 0;
                 final max   = int.tryParse(_maxPeopleCtrl.text) ?? 0;
                 return 'Max. prihod: ${(price * max).toStringAsFixed(2)} $_selectedCurrency';
-              }(), style: TextStyle(color: _bordo, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              }(), style: TextStyle(color: _primary, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ]),
           ),
         ],
@@ -774,27 +823,28 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     ]),
   );
 
-  Widget _label(String t) => Text(t, style: const TextStyle(
-      color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700));
+  Widget _label(String t) => Text(t, style: TextStyle(
+      color: _primary, fontSize: 13.5, fontWeight: FontWeight.w700));
 
   Widget _field(TextEditingController ctrl, String hint, IconData icon,
       {TextInputType? keyboard}) =>
-      Container(
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         height: 52,
         decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+          color: _cardBg, borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _primary.withOpacity(0.15), width: 1.2),
+          boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Row(children: [
           const SizedBox(width: 14),
-          Icon(icon, color: _bordo.withOpacity(0.45), size: 18),
+          Icon(icon, color: _primary.withOpacity(0.45), size: 18),
           const SizedBox(width: 10),
           Expanded(child: TextField(
             controller: ctrl, keyboardType: keyboard, onChanged: (_) => setState(() {}),
-            style: const TextStyle(color: _bordo, fontSize: 14.5, fontWeight: FontWeight.w500),
+            style: TextStyle(color: _primary, fontSize: 14.5, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
-              hintText: hint, hintStyle: TextStyle(color: _bordo.withOpacity(0.30), fontSize: 14.5),
+              hintText: hint, hintStyle: TextStyle(color: _primary.withOpacity(0.30), fontSize: 14.5),
               border: InputBorder.none, isDense: true,
             ),
           )),
@@ -802,57 +852,56 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         ]),
       );
 
-  Widget _cityDrop() => Container(
+  Widget _cityDrop() => AnimatedContainer(
+    duration: const Duration(milliseconds: 300),
     height: 52,
     decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+      color: _cardBg, borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _primary.withOpacity(0.15), width: 1.2),
+      boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
     ),
     padding: const EdgeInsets.symmetric(horizontal: 14),
     child: DropdownButtonHideUnderline(child: DropdownButton<String>(
       value: _selectedCity,
       hint: Row(children: [
-        Icon(Icons.location_on_rounded, color: _bordo.withOpacity(0.45), size: 18),
+        Icon(Icons.location_on_rounded, color: _primary.withOpacity(0.45), size: 18),
         const SizedBox(width: 10),
-        Text('Odaberi grad', style: TextStyle(color: _bordo.withOpacity(0.30), fontSize: 14.5)),
+        Text('Odaberi grad', style: TextStyle(color: _primary.withOpacity(0.30), fontSize: 14.5)),
       ]),
       isExpanded: true,
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _bordo.withOpacity(0.45)),
-      style: const TextStyle(color: _bordo, fontSize: 14.5, fontWeight: FontWeight.w500),
-      dropdownColor: Colors.white, borderRadius: BorderRadius.circular(14),
+      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _primary.withOpacity(0.45)),
+      style: TextStyle(color: _primary, fontSize: 14.5, fontWeight: FontWeight.w500),
+      dropdownColor: _cardBg, borderRadius: BorderRadius.circular(14),
       onChanged: (v) {
         setState(() => _selectedCity = v);
         if (_locationCtrl.text.trim().isNotEmpty) _onAddrChanged();
       },
       items: _cities.map((c) => DropdownMenuItem(value: c,
           child: Row(children: [
-            Icon(Icons.location_on_rounded, color: _bordo.withOpacity(0.55), size: 16),
+            Icon(Icons.location_on_rounded, color: _primary.withOpacity(0.55), size: 16),
             const SizedBox(width: 8), Text(c),
           ]))).toList(),
     )),
   );
-
-
 
   Widget _datePicker() => GestureDetector(
     onTap: _pickDate,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 220), height: 52,
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
+        color: _cardBg, borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: _selectedDate != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
+            color: _selectedDate != null ? _primary.withOpacity(0.40) : _primary.withOpacity(0.15),
             width: 1.2),
-        boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Row(children: [
         const SizedBox(width: 14),
         Icon(Icons.calendar_today_rounded,
-            color: _selectedDate != null ? _bordo : _bordo.withOpacity(0.45), size: 18),
+            color: _selectedDate != null ? _primary : _primary.withOpacity(0.45), size: 18),
         const SizedBox(width: 10),
         Text(_selectedDate ?? 'Odaberi datum', style: TextStyle(
-          color: _selectedDate != null ? _bordo : _bordo.withOpacity(0.30),
+          color: _selectedDate != null ? _primary : _primary.withOpacity(0.30),
           fontSize: 14.5, fontWeight: FontWeight.w500,
         )),
       ]),
@@ -867,14 +916,14 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: sel ? _bordo : Colors.white, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: sel ? _bordo : _bordo.withOpacity(0.18), width: 1.2),
-          boxShadow: sel ? [BoxShadow(color: _bordo.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 3))] : [],
+          color: sel ? _primary : _cardBg, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: sel ? _primary : _primary.withOpacity(0.18), width: 1.2),
+          boxShadow: sel ? [BoxShadow(color: _primary.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 3))] : [],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(cat.$2, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 6),
-          Text(cat.$1, style: TextStyle(color: sel ? Colors.white : _bordo,
+          Text(cat.$1, style: TextStyle(color: sel ? Colors.white : _primary,
               fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       ),
@@ -889,11 +938,11 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: sel ? _bordo : Colors.white, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: sel ? _bordo : _bordo.withOpacity(0.18), width: 1.2),
+          color: sel ? _primary : _cardBg, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: sel ? _primary : _primary.withOpacity(0.18), width: 1.2),
         ),
         child: Text(g.label, style: TextStyle(
-            color: sel ? Colors.white : _bordo, fontSize: 13, fontWeight: FontWeight.w600)),
+            color: sel ? Colors.white : _primary, fontSize: 13, fontWeight: FontWeight.w600)),
       ),
     );
   }).toList());
@@ -906,31 +955,32 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: sel ? _bordo : Colors.white, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: sel ? _bordo : _bordo.withOpacity(0.18), width: 1.2),
+          color: sel ? _primary : _cardBg, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: sel ? _primary : _primary.withOpacity(0.18), width: 1.2),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(g.emoji, style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 5),
-          Text(g.label, style: TextStyle(color: sel ? Colors.white : _bordo,
+          Text(g.label, style: TextStyle(color: sel ? Colors.white : _primary,
               fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
   }).toList());
 
-  Widget _descField() => Container(
+  Widget _descField() => AnimatedContainer(
+    duration: const Duration(milliseconds: 300),
     decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: _bordo.withOpacity(0.15), width: 1.2),
-      boxShadow: [BoxShadow(color: _bordo.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
+      color: _cardBg, borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _primary.withOpacity(0.15), width: 1.2),
+      boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
     ),
     child: TextField(
       controller: _descCtrl, maxLines: 4, onChanged: (_) => setState(() {}),
-      style: const TextStyle(color: _bordo, fontSize: 14.5, height: 1.5),
+      style: TextStyle(color: _primary, fontSize: 14.5, height: 1.5),
       decoration: InputDecoration(
         hintText: 'Opišite vaš događaj, program, što posjetitelji mogu očekivati...',
-        hintStyle: TextStyle(color: _bordo.withOpacity(0.30), fontSize: 14.5),
+        hintStyle: TextStyle(color: _primary.withOpacity(0.30), fontSize: 14.5),
         border: InputBorder.none, contentPadding: const EdgeInsets.all(14),
       ),
     ),

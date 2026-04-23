@@ -18,6 +18,7 @@ class CompanyEvent {
   final String? ticketCurrency;
   final String? cardColorHex;
   final String? description;
+  final String? coverPhotoUrl;
 
   const CompanyEvent({
     required this.id,
@@ -37,6 +38,7 @@ class CompanyEvent {
     this.ticketCurrency,
     this.cardColorHex,
     this.description,
+    this.coverPhotoUrl,
   });
 
   factory CompanyEvent.fromJson(Map<String, dynamic> j) => CompanyEvent(

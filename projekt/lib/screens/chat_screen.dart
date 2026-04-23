@@ -206,7 +206,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void _onNavTap(int index) {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
-    if (index == 0) { Navigator.pop(context); return; }
+    if (index == 0) {
+      for (int i = 0; i < _navTapCtrls.length; i++) {
+        _navTapCtrls[i].value = 0.0;
+      }
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
     _navTapCtrls[_selectedNavIndex].reverse();
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);

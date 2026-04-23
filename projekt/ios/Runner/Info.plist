@@ -3,6 +3,8 @@
 <plist version="1.0">
 
 <dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MeetCute needs your microphone for your profile registration.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>MeetCute needs your location to show you nearby events and matches.</string>
     <key>NSLocationAlwaysUsageDescription</key>

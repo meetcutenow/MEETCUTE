@@ -40,7 +40,6 @@ public class CompanyEventService {
         LocalTime timeStart = req.getTimeStart() != null ? LocalTime.parse(req.getTimeStart()) : null;
         LocalTime timeEnd   = req.getTimeEnd()   != null ? LocalTime.parse(req.getTimeEnd())   : null;
 
-        // Postojeći INSERT — zamijeni s ovim:
         jdbcTemplate.update(
                 "INSERT INTO events (id, company_id, title, description, city, specific_location, " +
                         "latitude, longitude, event_date, time_start, time_end, category, age_group, " +
@@ -57,7 +56,7 @@ public class CompanyEventService {
                 req.getAgeGroup()    != null ? req.getAgeGroup()    : "all",
                 req.getGenderGroup() != null ? req.getGenderGroup() : "all",
                 req.getMaxAttendees(), req.getTicketPrice(), currency, cardColor,
-                req.getCoverPhotoUrl()  // NOVO
+                req.getCoverPhotoUrl()
         );
 
         Event event = eventRepository.findById(eventId)
@@ -72,19 +71,23 @@ public class CompanyEventService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Organizacija nije pronađena."));
 
-        List<Event> events = eventRepository.findByCompanyIdAndIsActiveTrueOrderByEventDateAsc(companyId);
+        List<Event> events = eventRepository
+                .findByCompanyIdAndIsActiveTrueOrderByEventDateAsc(companyId);
 
         return events.stream().map(event -> {
             Double price = event.getTicketPrice();
-            String curr  = event.getTicketCurrency() != null ? event.getTicketCurrency() : "EUR";
+            String curr  = event.getTicketCurrency() != null
+                    ? event.getTicketCurrency() : "EUR";
             return toResponse(event, companyId, price, curr,
-                    company.getOrgName(), company.getLogoUrl(), company.getEmail(), userId);
+                    company.getOrgName(), company.getLogoUrl(),
+                    company.getEmail(), userId);
         }).collect(Collectors.toList());
     }
 
-    // ── Uredi event + obavijesti prijavljene ──────────────────────────────────
+    // ── Uredi event ───────────────────────────────────────────────────────────
     @Transactional
-    public EventResponse updateCompanyEvent(String eventId, String companyId, UpdateEventRequest req) {
+    public EventResponse updateCompanyEvent(String eventId, String companyId,
+                                            UpdateEventRequest req) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Događaj nije pronađen."));
 
@@ -109,6 +112,7 @@ public class CompanyEventService {
         if (req.getCardColorHex() != null)     event.setCardColorHex(req.getCardColorHex());
         if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
         if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
+        // FIX: spremi cover photo URL pri uređivanju
         if (req.getCoverPhotoUrl() != null)    event.setCoverPhotoUrl(req.getCoverPhotoUrl());
 
         eventRepository.save(event);
@@ -119,11 +123,12 @@ public class CompanyEventService {
                         + company.getOrgName() + ". Provjeri nove detalje.",
                 "#FFD166");
 
-        return toResponse(event, companyId, event.getTicketPrice(), event.getTicketCurrency(),
-                company.getOrgName(), company.getLogoUrl(), company.getEmail(), null);
+        return toResponse(event, companyId, event.getTicketPrice(),
+                event.getTicketCurrency(), company.getOrgName(),
+                company.getLogoUrl(), company.getEmail(), null);
     }
 
-    // ── Obriši event + obavijesti prijavljene ─────────────────────────────────
+    // ── Obriši event ──────────────────────────────────────────────────────────
     @Transactional
     public void deleteCompanyEvent(String eventId, String companyId) {
         Event event = eventRepository.findById(eventId)
@@ -175,13 +180,12 @@ public class CompanyEventService {
         }, companyId);
     }
 
-
-    private void notifyAttendeesSql(String eventId, String title, String body, String accentColor) {
+    private void notifyAttendeesSql(String eventId, String title,
+                                    String body, String accentColor) {
         try {
             List<String> userIds = jdbcTemplate.queryForList(
                     "SELECT user_id FROM event_attendees WHERE event_id = ? AND status = 'joined'",
                     String.class, eventId);
-
             for (String userId : userIds) {
                 try {
                     jdbcTemplate.update(
@@ -194,15 +198,17 @@ public class CompanyEventService {
         } catch (Exception ignored) {}
     }
 
-    // ── Mapper ────────────────────────────────────────────────────────────────
-    private EventResponse toResponse(Event e, String companyId, Double ticketPrice,
-                                     String currency, String orgName,
-                                     String logoUrl, String email, String userId) {
+    // ── Mapper — FIX: coverPhotoUrl uključen ─────────────────────────────────
+    private EventResponse toResponse(Event e, String companyId,
+                                     Double ticketPrice, String currency,
+                                     String orgName, String logoUrl,
+                                     String email, String userId) {
         int count = attendeeRepository.countByEventIdAndStatus(e.getId(), "joined");
         boolean attending = userId != null &&
                 attendeeRepository.findByEventIdAndUserId(e.getId(), userId)
                         .map(a -> "joined".equals(a.getStatus()))
                         .orElse(false);
+
         return EventResponse.builder()
                 .id(e.getId())
                 .creatorId(companyId)
@@ -219,6 +225,7 @@ public class CompanyEventService {
                 .maxAttendees(e.getMaxAttendees())
                 .attendeeCount(count)
                 .isFull(e.getMaxAttendees() != null && count >= e.getMaxAttendees())
+                .coverPhotoUrl(e.getCoverPhotoUrl())   // ← FIX: bio je null
                 .cardColorHex(e.getCardColorHex())
                 .isUserEvent(false)
                 .isCompanyEvent(true)

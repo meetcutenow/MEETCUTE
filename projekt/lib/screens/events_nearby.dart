@@ -364,7 +364,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
           for (final v in GenderGroup.values) {
             if (v.name == gg) { genderGroup = v; break; }
           }
-
+          final String? coverPhotoUrl = e['coverPhotoUrl'] as String?;
           final event = EventData(
             id:               e['id'] as String? ?? '',
             creatorId:        e['creatorId'] as String?,
@@ -380,6 +380,9 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
               (e['latitude']  as num?)?.toDouble() ?? 45.8150,
               (e['longitude'] as num?)?.toDouble() ?? 15.9819,
             ),
+            userImagePath:    (coverPhotoUrl != null && coverPhotoUrl.isNotEmpty)   // ← DODAJ OVO
+                ? coverPhotoUrl
+                : null,
             categories:       [e['category'] as String? ?? ''],
             cardColor:        cardColor,
             isUserEvent:      isUserEvent,
