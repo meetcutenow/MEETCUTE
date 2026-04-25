@@ -27,5 +27,6 @@ cloudinary.cloud-name=TVOJ_CLOUD_NAME
 cloudinary.api-key=TVOJ_API_KEY
 cloudinary.api-secret=TVOJ_API_SECRET
 
-
+#Groq
+groq.api-key=TVOJ_API_KEY
 

@@ -23,6 +23,7 @@ public class EventService {
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
     private final UserPhotoRepository photoRepository;
+    private final NotificationRepository notificationRepository;
 
 
     public List<EventResponse> getAllEvents(String userId) {
@@ -102,6 +103,20 @@ public class EventService {
         if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
         if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
 
+        List<EventAttendee> attendees = attendeeRepository.findActiveByEventId(eventId);
+        for (EventAttendee ea : attendees) {
+            if (!ea.getUser().getId().equals(userId)) {
+                sendNotification(
+                        ea.getUser().getId(),
+                        "new_event",
+                        "Događaj izmijenjen",
+                        "\"" + event.getTitle() + "\" je ažuriran. Provjeri nove detalje.",
+                        eventId,
+                        "#FFD166"
+                );
+            }
+        }
+
         eventRepository.save(event);
         return toResponse(event, userId);
     }
@@ -129,16 +144,46 @@ public class EventService {
         if (existing.isPresent()) {
             EventAttendee attendee = existing.get();
             if ("joined".equals(attendee.getStatus())) {
+                // Odjava
                 attendee.setStatus("cancelled");
+                attendeeRepository.save(attendee);
+
+                if (event.getCreator() != null && !event.getCreator().getId().equals(userId)) {
+                    User leavingUser = userRepository.findById(userId).orElse(null);
+                    String leaverName = leavingUser != null ? leavingUser.getDisplayName() : "Netko";
+                    sendNotification(
+                            event.getCreator().getId(),
+                            "new_event",
+                            "Otkazana prijava 😔",
+                            leaverName + " je otkazao/la prijavu na tvoj event \"" + event.getTitle() + "\".",
+                            eventId,
+                            "#FFB3C6"
+                    );
+                }
             } else {
+                // Ponovna prijava
                 int count = attendeeRepository.countByEventIdAndStatus(eventId, "joined");
                 if (event.getMaxAttendees() != null && count >= event.getMaxAttendees()) {
                     throw new RuntimeException("Event je popunjen.");
                 }
                 attendee.setStatus("joined");
+                attendeeRepository.save(attendee);
+
+                if (event.getCreator() != null && !event.getCreator().getId().equals(userId)) {
+                    User joiningUser = userRepository.findById(userId).orElse(null);
+                    String joinerName = joiningUser != null ? joiningUser.getDisplayName() : "Netko";
+                    sendNotification(
+                            event.getCreator().getId(),
+                            "new_event",
+                            "Nova prijava! 🎉",
+                            joinerName + " se prijavio/la na tvoj event \"" + event.getTitle() + "\".",
+                            eventId,
+                            "#95D5B2"
+                    );
+                }
             }
-            attendeeRepository.save(attendee);
         } else {
+            // Prva prijava
             int count = attendeeRepository.countByEventIdAndStatus(eventId, "joined");
             if (event.getMaxAttendees() != null && count >= event.getMaxAttendees()) {
                 throw new RuntimeException("Event je popunjen.");
@@ -151,9 +196,22 @@ public class EventService {
                     .status("joined")
                     .build();
             attendeeRepository.save(attendee);
-        }
 
+            if (event.getCreator() != null && !event.getCreator().getId().equals(userId)) {
+                User joiningUser = userRepository.findById(userId).orElse(null);
+                String joinerName = joiningUser != null ? joiningUser.getDisplayName() : "Netko";
+                sendNotification(
+                        event.getCreator().getId(),
+                        "new_event",
+                        "Nova prijava! 🎉",
+                        joinerName + " se prijavio/la na tvoj event \"" + event.getTitle() + "\".",
+                        eventId,
+                        "#95D5B2"
+                );
+            }
+        }
         return toResponse(event, userId);
+
     }
 
     public List<AttendeeResponse> getEventAttendees(String eventId, String requestingUserId) {
@@ -244,5 +302,23 @@ public class EventService {
                 .companyLogoUrl(companyLogoUrl)
                 .companyEmail(companyEmail)
                 .build();
+    }
+
+    private void sendNotification(String userId, String type, String title,
+                                  String body, String eventId, String color) {
+        try {
+            User user = userRepository.getReferenceById(userId);
+            Notification n = Notification.builder()
+                    .user(user)
+                    .type(type)
+                    .title(title)
+                    .body(body)
+                    .eventId(eventId)
+                    .accentColor(color)
+                    .build();
+            notificationRepository.save(n);
+        } catch (Exception e) {
+            // Ignoriraj grešku notifikacije
+        }
     }
 }

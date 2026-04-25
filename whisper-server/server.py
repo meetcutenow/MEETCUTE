@@ -10,7 +10,7 @@ CORS(app)  # Dopušta Flutter app na localhostu
 # Whisper model — "base" je brz i točan za HR/EN
 # Za bolji HR/EN: promijenite u "small" ili "medium"
 # Za najveću točnost: "large-v3" (sporiji, treba više RAM-a)
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "medium")
 
 
 

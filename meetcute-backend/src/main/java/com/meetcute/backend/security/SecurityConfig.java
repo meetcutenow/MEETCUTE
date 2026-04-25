@@ -92,10 +92,12 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ai/parse-profile").permitAll()
                         // Company auth
                         .requestMatchers(HttpMethod.POST, "/api/company/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/company/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/company/auth/refresh").permitAll()
+
                         // Public read
                         .requestMatchers(HttpMethod.GET,  "/api/events/**").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/questions").permitAll()

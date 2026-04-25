@@ -240,26 +240,32 @@ class _AiProfileScreenState extends State<AiProfileScreen>
 
   // ── PRIMIJENI PODATKE NA PROFIL ──────────────────────────────────────────────
   void _applyToProfile() {
-    if (_parsedData == null) return;
-    HapticFeedback.mediumImpact();
+      if (_parsedData == null) return;
+      HapticFeedback.mediumImpact();
 
-    final d = _parsedData!;
-    final updated = widget.currentData.copy();
+      final d = _parsedData!;
+      final updated = widget.currentData.copy();
 
-    // Primijeni samo ne-null vrijednosti
-    if (d['birthYear']    != null) updated.birthYear    = d['birthYear'] as int?;
-    if (d['birthMonth']   != null) updated.birthMonth   = d['birthMonth'] as int?;
-    if (d['birthDay']     != null) updated.birthDay     = d['birthDay'] as int?;
-    if (d['height']       != null) updated.height       = d['height'].toString();
-    if (d['gender']       != null) updated.gender       = d['gender'] as String?;
-    if (d['hairColor']    != null) updated.hairColor    = d['hairColor'] as String?;
-    if (d['eyeColor']     != null) updated.eyeColor     = d['eyeColor'] as String?;
-    if (d['piercing']     != null) updated.piercing     = d['piercing'] as String?;
-    if (d['tattoo']       != null) updated.tattoo       = d['tattoo'] as String?;
-    if (d['iceBreaker']   != null) updated.iceBreaker   = d['iceBreaker'] as String;
-    if (d['seekingGender']!= null) updated.seekingGender= d['seekingGender'] as String?;
-    if (d['prefAgeFrom']  != null) updated.prefAgeFrom  = d['prefAgeFrom'] as int?;
-    if (d['prefAgeTo']    != null) updated.prefAgeTo    = d['prefAgeTo'] as int?;
+      print('=== PARSED DATA: $d');
+      print('=== HEIGHT: ${d['height']}');
+      print('=== BIRTH YEAR: ${d['birthYear']}');
+
+    if (d['birthYear'] != null) updated.birthYear = d['birthYear'] as int?;
+    if (d['birthMonth'] != null) updated.birthMonth = d['birthMonth'] as int?;
+    if (d['birthDay'] != null) updated.birthDay = d['birthDay'] as int?;
+    if (d['height'] != null) {
+      final h = d['height'];
+      updated.height = h is int ? h.toString() : h.toString().replaceAll('.0', '');
+    }
+    if (d['gender'] != null) updated.gender = d['gender'] as String?;
+    if (d['hairColor'] != null) updated.hairColor = d['hairColor'] as String?;
+    if (d['eyeColor'] != null) updated.eyeColor = d['eyeColor'] as String?;
+    if (d['piercing'] != null) updated.piercing = d['piercing'] as String?;
+    if (d['tattoo'] != null) updated.tattoo = d['tattoo'] as String?;
+    if (d['iceBreaker'] != null) updated.iceBreaker = d['iceBreaker'].toString();
+    if (d['seekingGender'] != null) updated.seekingGender = d['seekingGender'].toString();
+    if (d['prefAgeFrom'] != null) updated.prefAgeFrom = d['prefAgeFrom'] as int?;
+    if (d['prefAgeTo'] != null) updated.prefAgeTo = d['prefAgeTo'] as int?;
 
     final interests = d['interests'];
     if (interests is List && interests.isNotEmpty) {
@@ -310,24 +316,7 @@ class _AiProfileScreenState extends State<AiProfileScreen>
           Text('AI Asistent', style: TextStyle(
               color: _primary, fontSize: 22,
               fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-          Text('Govori — AI popunjava profil',
-              style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 13)),
         ])),
-        // AI badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: _primary.withOpacity(0.10),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _primary.withOpacity(0.25)),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.auto_awesome_rounded, color: _primary, size: 13),
-            const SizedBox(width: 5),
-            Text('Claude + Whisper',
-                style: TextStyle(color: _primary, fontSize: 11.5, fontWeight: FontWeight.w700)),
-          ]),
-        ),
       ]),
     );
   }
@@ -505,7 +494,7 @@ class _AiProfileScreenState extends State<AiProfileScreen>
   Widget _buildProcessing() {
     final (icon, label, sub) = switch (_state) {
       _ScreenState.transcribing => (Icons.graphic_eq_rounded,
-      'Prepisujem govor...', 'Whisper AI analizira snimku'),
+      'Prepisujem govor...', 'Hvala na strpljenju!'),
       _ScreenState.parsing => (Icons.auto_awesome_rounded,
       'Claude popunjava profil...', 'AI izvlači podatke iz teksta'),
       _ => (Icons.hourglass_empty_rounded, 'Obrađujem...', ''),
@@ -584,7 +573,7 @@ class _AiProfileScreenState extends State<AiProfileScreen>
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Profil popunjen! ✨',
+            Text('Profil popunjen!',
                 style: TextStyle(color: _primary, fontSize: 18, fontWeight: FontWeight.w900)),
             Text('Provjeri i ispravi ako je potrebno',
                 style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 12.5)),
@@ -615,7 +604,10 @@ class _AiProfileScreenState extends State<AiProfileScreen>
 
         // Parsed fields
         _buildResultSection('Osobni podaci', [
-          if (d['birthYear'] != null) _ResultRow('Godina rođenja', '${d['birthYear']}', Icons.cake_outlined),
+          if (d['birthYear'] != null || d['birthMonth'] != null || d['birthDay'] != null)
+            _ResultRow('Datum rođenja',
+                '${d['birthDay'] ?? '?'}.${d['birthMonth'] ?? '?'}.${d['birthYear'] ?? '?'}',
+                Icons.cake_outlined),
           if (d['height'] != null) _ResultRow('Visina', '${d['height']} cm', Icons.height_rounded),
           if (d['gender'] != null) _ResultRow('Spol', _mapLabel(d['gender'], _genderMap), Icons.person_outline_rounded),
           if (d['hairColor'] != null) _ResultRow('Boja kose', _mapLabel(d['hairColor'], _hairMap), Icons.face_rounded),

@@ -16,8 +16,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiController {
 
-    @Value("${gemini.api-key}")
-    private String geminiApiKey;
+    @Value("${groq.api-key}")
+    private String groqApiKey;
 
     private final RestTemplate restTemplate;
 
@@ -53,7 +53,7 @@ public class AiController {
               "prefAgeTo": null
             }
             
-            Ako nešto nije rečeno, stavi null. iceBreaker treba biti kratka, zanimljiva rečenica na ISTOM jeziku kao transkripcija.
+            Ako nešto nije rečeno, stavi null. iceBreaker treba biti kratka, zanimljiva rečenica na ISTOM jeziku kao transkripcija. height mora biti cijeli broj bez teksta (npr. 160, ne "160 cm"). Ako korisnik kaže koliko ima godina (npr. "imam 21 godinu"), izračunaj birthYear = 2025 - taj broj. birthDay i birthMonth postavi na null ako nisu izričito rečeni.
             """;
 
     @PostMapping("/parse-profile")
@@ -66,22 +66,20 @@ public class AiController {
                     .body(ApiResponse.error("Transkript je prazan."));
         }
 
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
+        String url = "https://api.groq.com/openai/v1/chat/completions";
 
         Map<String, Object> body = Map.of(
-                "contents", List.of(
-                        Map.of("parts", List.of(
-                                Map.of("text", SYSTEM_PROMPT + "\n\nTranskripcija korisnika: \"" + transcript + "\"")
-                        ))
-                ),
-                "generationConfig", Map.of(
-                        "temperature", 0.1,
-                        "maxOutputTokens", 1000
+                "model", "llama-3.3-70b-versatile",
+                "max_tokens", 1000,
+                "messages", List.of(
+                        Map.of("role", "user", "content",
+                                SYSTEM_PROMPT + "\n\nTranskripcija korisnika: \"" + transcript + "\"")
                 )
         );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + groqApiKey);
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
@@ -91,12 +89,10 @@ public class AiController {
                     Map.class
             );
 
-            var candidates = (List<?>) response.getBody().get("candidates");
-            var firstCandidate = (Map<?, ?>) candidates.get(0);
-            var content = (Map<?, ?>) firstCandidate.get("content");
-            var parts = (List<?>) content.get("parts");
-            var firstPart = (Map<?, ?>) parts.get(0);
-            String text = firstPart.get("text").toString().trim()
+            var choices = (List<?>) response.getBody().get("choices");
+            var first = (Map<?, ?>) choices.get(0);
+            var message = (Map<?, ?>) first.get("message");
+            String text = message.get("content").toString()
                     .replaceAll("```json|```", "").trim();
 
             ObjectMapper mapper = new ObjectMapper();
@@ -105,8 +101,11 @@ public class AiController {
             return ResponseEntity.ok(ApiResponse.ok(parsed));
 
         } catch (Exception e) {
+            System.err.println("=== GROQ GREŠKA ===");
+            System.err.println("Message: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Greška pri pozivu Gemini AI: " + e.getMessage()));
+                    .body(ApiResponse.error("Greška pri pozivu Groq AI: " + e.getMessage()));
         }
     }
 }

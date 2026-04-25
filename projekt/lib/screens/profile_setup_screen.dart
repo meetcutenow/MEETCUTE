@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'ai_profile_screen.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
+import 'onboarding_screen.dart';
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -115,6 +116,22 @@ class _ProfileStep1State extends State<ProfileStep1> {
     _heightCtrl.dispose(); _dayCtrl.dispose();
     _monthCtrl.dispose();  _yearCtrl.dispose();
     super.dispose();
+  }
+  @override
+  void didUpdateWidget(ProfileStep1 oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data.birthYear != widget.data.birthYear) {
+      _yearCtrl.text = widget.data.birthYear?.toString() ?? '';
+    }
+    if (oldWidget.data.birthMonth != widget.data.birthMonth) {
+      _monthCtrl.text = widget.data.birthMonth?.toString() ?? '';
+    }
+    if (oldWidget.data.birthDay != widget.data.birthDay) {
+      _dayCtrl.text = widget.data.birthDay?.toString() ?? '';
+    }
+    if (oldWidget.data.height != widget.data.height) {
+      _heightCtrl.text = widget.data.height ?? '';
+    }
   }
 
   void _update(ProfileSetupData Function(ProfileSetupData) fn) =>
@@ -1001,37 +1018,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       padding: EdgeInsets.fromLTRB(24, 10, 24, mq.padding.bottom + 14),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // AI gumb
-        if (_step == 0 || _step == 2)
-          GestureDetector(
-            onTap: () => Navigator.push(context, PageRouteBuilder(
-              pageBuilder: (_, a, __) => AiProfileScreen(
-                currentData: _data,
-                onFilled: (filled) => setState(() => _data = filled),
-              ),
-              transitionsBuilder: (_, a, __, child) => SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero)
-                    .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-                child: child,
-              ),
-              transitionDuration: const Duration(milliseconds: 400),
-            )),
-            child: Container(
-              height: 50,
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: kPrimaryDark.withOpacity(0.35), width: 1.5),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.mic_rounded, color: kPrimaryDark, size: 18),
-                const SizedBox(width: 8),
-                const Text('Popuni profil glasom s AI-jem',
-                    style: TextStyle(color: kPrimaryDark,
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-              ]),
-            ),
-          ),
         _SetupNextBtnWidget(label: isLast ? 'Spremi' : 'Nastavi', onTap: _next),
       ]),
     );

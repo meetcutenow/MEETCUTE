@@ -12,7 +12,7 @@ import 'auth_state.dart';
 import 'company_auth_state.dart';
 import 'company_register_screen.dart';
 import 'profile_setup_screen.dart'
-    show ProfileSetupData, ProfileStep1, ProfileStep2, ProfileStep3;
+    show ProfileSetupData, ProfileStep1, ProfileStep2, ProfileStep3, ProfileStep4;
 import 'notifications_screen.dart'
     show NotificationState, AppNotification, NotifType;
 import '../services/profile_storage.dart';
@@ -454,6 +454,24 @@ class _RegistrationScreenState extends State<RegistrationScreen>
 
   void _submit() async {
     FocusScope.of(context).unfocus();
+
+    globalProfileData = ProfileSetupData(
+      photoPaths: [],
+      birthDay: null,
+      birthMonth: null,
+      birthYear: null,
+      height: null,
+      hairColor: null,
+      eyeColor: null,
+      piercing: null,
+      tattoo: null,
+      gender: null,
+      interests: [],
+      iceBreaker: '',
+      seekingGender: null,
+      prefAgeFrom: null,
+      prefAgeTo: null,
+    );
     if (_nameCtrl.text.trim().length < 2) {
       setState(() => _error = 'Ime mora imati najmanje 2 znaka.'); return;
     }
@@ -725,8 +743,24 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
   @override
   void initState() {
     super.initState();
-    _data = globalProfileData.copy();
-    _progressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600), value: 1 / 3);
+    _data = ProfileSetupData(
+      photoPaths: [],
+      birthDay: null,
+      birthMonth: null,
+      birthYear: null,
+      height: null,
+      hairColor: null,
+      eyeColor: null,
+      piercing: null,
+      tattoo: null,
+      gender: null,
+      interests: [],
+      iceBreaker: '',
+      seekingGender: null,
+      prefAgeFrom: null,
+      prefAgeTo: null,
+    );
+    _progressCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600), value: 1 / 4);
     _pageCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
     _pageSlide = Tween<Offset>(begin: const Offset(1.0, 0), end: Offset.zero).animate(CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOutCubic));
     _pageCtrl.value = 1.0;
@@ -741,39 +775,42 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)), backgroundColor: _bordo, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), margin: const EdgeInsets.all(16), duration: const Duration(seconds: 3)));
       return;
     }
-    if (_step == 2) {
+    if (_step == 3) {
       await _registerOnBackend();
       return;
     }
     HapticFeedback.lightImpact();
     _pageCtrl.reset(); _pageCtrl.forward();
     setState(() => _step++);
-    _progressCtrl.animateTo((_step + 1) / 3, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+    _progressCtrl.animateTo((_step + 1) / 4, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
   }
 
   Future<void> _registerOnBackend() async {
     setState(() => _sending = true);
     final regState = RegistrationState.instance;
+
+    final profileData = globalProfileData;
+
     final body = {
       'username':         regState.username.trim().toLowerCase(),
       'displayName':      regState.displayName.trim(),
       'password':         _PasswordHolder.instance.password,
-      'birthDay':         _data.birthDay ?? 1,
-      'birthMonth':       _data.birthMonth ?? 1,
-      'birthYear':        _data.birthYear ?? 2000,
-      'heightCm':         int.tryParse(_data.height ?? '170') ?? 170,
-      'gender':           _mapGender(_data.gender),
-      'hairColor':        _mapHair(_data.hairColor),
-      'eyeColor':         _mapEye(_data.eyeColor),
-      'hasPiercing':      _data.piercing == 'da',
-      'hasTattoo':        _data.tattoo == 'da',
-      'interestIds':      _mapInterestIds(_data.interests).isEmpty ? [1] : _mapInterestIds(_data.interests),
-      'iceBreaker':       _data.iceBreaker.trim().isEmpty ? 'Pozdrav!' : _data.iceBreaker.trim(),
+      'birthDay':         profileData.birthDay ?? _data.birthDay ?? 1,
+      'birthMonth':       profileData.birthMonth ?? _data.birthMonth ?? 1,
+      'birthYear':        profileData.birthYear ?? _data.birthYear ?? 2000,
+      'heightCm':         int.tryParse(profileData.height ?? _data.height ?? '170') ?? 170,
+      'gender':           _mapGender(profileData.gender ?? _data.gender),
+      'hairColor':        _mapHair(profileData.hairColor ?? _data.hairColor),
+      'eyeColor':         _mapEye(profileData.eyeColor ?? _data.eyeColor),
+      'hasPiercing':      (profileData.piercing ?? _data.piercing) == 'da',
+      'hasTattoo':        (profileData.tattoo ?? _data.tattoo) == 'da',
+      'interestIds':      _mapInterestIds(profileData.interests.isNotEmpty ? profileData.interests : _data.interests).isEmpty ? [1] : _mapInterestIds(profileData.interests.isNotEmpty ? profileData.interests : _data.interests),
+      'iceBreaker':       (profileData.iceBreaker.trim().isNotEmpty ? profileData.iceBreaker : _data.iceBreaker).trim().isEmpty ? 'Pozdrav!' : (profileData.iceBreaker.trim().isNotEmpty ? profileData.iceBreaker : _data.iceBreaker).trim(),
       'secretQuestionId': _defaultQuestionId,
       'secretAnswer':     _defaultAnswer,
-      'seekingGender':    _data.seekingGender ?? 'sve',
-      'prefAgeFrom':      _data.prefAgeFrom ?? 18,
-      'prefAgeTo':        _data.prefAgeTo ?? 99,
+      'seekingGender':    profileData.seekingGender ?? _data.seekingGender ?? 'sve',
+      'prefAgeFrom':      profileData.prefAgeFrom ?? _data.prefAgeFrom ?? 18,
+      'prefAgeTo':        profileData.prefAgeTo ?? _data.prefAgeTo ?? 99,
     };
     try {
       final resp = await http.post(
@@ -890,6 +927,16 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
     }
     if (_step == 1 && _data.interests.isEmpty) return 'Odaberi najmanje jedan interes.';
     if (_step == 2 && _data.iceBreaker.trim().isEmpty) return 'Icebreaker rečenica je obavezna.';
+    if (_step == 3) {
+      if (_data.seekingGender == null) return 'Odaberi koga tražiš.';
+      if (_data.prefAgeFrom == null) return 'Upiši donju granicu dobi.';
+      if (_data.prefAgeTo == null) return 'Upiši gornju granicu dobi.';
+      final from = _data.prefAgeFrom!;
+      final to   = _data.prefAgeTo!;
+      if (from < 18 || from > 99) return 'Minimalna dob je 18 godina.';
+      if (to < 18 || to > 99) return 'Maksimalna dob je 99 godina.';
+      if (from > to) return 'Gornja granica mora biti veća od donje.';
+    }
     return null;
   }
 
@@ -911,7 +958,12 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
                 onTap: () => Navigator.push(context, PageRouteBuilder(
                   pageBuilder: (_, a, __) => AiProfileScreen(
                     currentData: _data,
-                    onFilled: (filled) => setState(() => _data = filled),
+                    onFilled: (filled) {
+                      setState(() {
+                        _data = filled;
+                        globalProfileData = filled;
+                      });
+                    },
                   ),
                   transitionsBuilder: (_, a, __, child) => SlideTransition(
                     position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero)
@@ -937,7 +989,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
                 ),
               ),
             ),
-          _SetupNextBtn(step: _step, onTap: _next, mq: mq),
+          _SetupNextBtn(step: _step, totalSteps: 4, onTap: _next, mq: mq),
         ]),
       ]),
     );
@@ -947,7 +999,8 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
     switch (_step) {
       case 0: return ProfileStep1(key: const ValueKey('s1'), data: _data, onChange: (d) => setState(() => _data = d), mq: mq);
       case 1: return ProfileStep2(key: const ValueKey('s2'), data: _data, onChange: (d) => setState(() => _data = d));
-      default: return ProfileStep3(key: const ValueKey('s3'), data: _data, onChange: (d) => setState(() => _data = d));
+      case 2: return ProfileStep3(key: const ValueKey('s3'), data: _data, onChange: (d) => setState(() => _data = d));
+      default: return ProfileStep4(key: const ValueKey('s4'), data: _data, onChange: (d) => setState(() => _data = d));
     }
   }
 }
@@ -980,8 +1033,8 @@ class _SetupHeader extends StatelessWidget {
 }
 
 class _SetupNextBtn extends StatefulWidget {
-  final int step; final VoidCallback onTap; final MediaQueryData mq;
-  const _SetupNextBtn({required this.step, required this.onTap, required this.mq});
+  final int step; final int totalSteps; final VoidCallback onTap; final MediaQueryData mq;
+  const _SetupNextBtn({required this.step, required this.totalSteps, required this.onTap, required this.mq});
   @override State<_SetupNextBtn> createState() => _SetupNextBtnState();
 }
 
@@ -998,7 +1051,7 @@ class _SetupNextBtnState extends State<_SetupNextBtn> with SingleTickerProviderS
         child: ScaleTransition(scale: _s, child: Container(height: 54, width: double.infinity,
             decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(27), boxShadow: [BoxShadow(color: _bordo.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 7), spreadRadius: -3)]),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(widget.step == 2 ? 'Završi' : 'Nastavi', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+              Text(widget.step == widget.totalSteps - 1 ? 'Završi' : 'Nastavi', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(width: 10),
               Container(width: 26, height: 26, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 18)),
             ]))),

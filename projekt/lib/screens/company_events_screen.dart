@@ -36,9 +36,9 @@ class _Attendee {
 
   String get genderLabel {
     switch (gender) {
-      case 'zensko': return '♀';
-      case 'musko':  return '♂';
-      default:       return '⚧';
+      case 'zensko': return 'Ž';
+      case 'musko':  return 'M';
+      default:       return 'O';
     }
   }
 }
