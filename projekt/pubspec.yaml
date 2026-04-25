@@ -20,7 +20,7 @@ dependencies:
   path_provider: ^2.1.2
   cupertino_icons: ^1.0.8
   http_parser: ^4.0.2
-  record: ^5.2.1
+  record: ^4.4.4
 
 dev_dependencies:
   flutter_test:
@@ -35,5 +35,4 @@ flutter:
     - assets/images/profile_3.png
     - assets/images/logo.png
 
-dependency_overrides:
-  record_linux: 0.7.2
+

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../services/cloudinary_service.dart';
+import 'ai_profile_screen.dart';
 import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, HomeScreen;
 import 'login_screen.dart' show LoginScreen;
 import 'auth_state.dart';
@@ -901,7 +902,43 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
           : Column(children: [
         _SetupHeader(step: _step, progressCtrl: _progressCtrl, mq: mq),
         Expanded(child: SlideTransition(position: _pageSlide, child: _buildStep(mq))),
-        _SetupNextBtn(step: _step, onTap: _next, mq: mq),
+        Column(children: [
+          // AI gumb (samo na koraku 0 i 2)
+          if (_step == 0 || _step == 2)
+            Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 10),
+              child: GestureDetector(
+                onTap: () => Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, a, __) => AiProfileScreen(
+                    currentData: _data,
+                    onFilled: (filled) => setState(() => _data = filled),
+                  ),
+                  transitionsBuilder: (_, a, __, child) => SlideTransition(
+                    position: Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero)
+                        .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 400),
+                )),
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: const Color(0xFF700D25).withOpacity(0.35), width: 1.5),
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.mic_rounded, color: Color(0xFF700D25), size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Popuni profil glasom s AI-jem',
+                        style: TextStyle(color: Color(0xFF700D25),
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+            ),
+          _SetupNextBtn(step: _step, onTap: _next, mq: mq),
+        ]),
       ]),
     );
   }
