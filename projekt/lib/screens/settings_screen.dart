@@ -486,10 +486,18 @@ class _SettingsScreenState extends State<SettingsScreen>
           scale: Tween<double>(begin: 0.82, end: 1.0).animate(curved),
           child: FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: MediaQuery.of(ctx).padding.top + 16,
+                    horizontal: 0,
+                  ),
             child: Center(child: _AboutCard(
               primary: _primary, accent: _accent, card: _card,
               onClose: () => Navigator.of(ctx).pop(),
             )),
+                ),
+              ),
           ),
         );
       },
@@ -748,7 +756,10 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
+        padding: EdgeInsets.symmetric(
+          horizontal: 28,
+          vertical: MediaQuery.of(context).padding.top + 16,
+        ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 380),
           decoration: BoxDecoration(
@@ -761,111 +772,114 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              AnimatedBuilder(
-                animation: _sparkleCtrl,
-                builder: (_, __) => SizedBox(
-                  height: 110,
-                  child: Stack(children: [
-                    Positioned.fill(child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 380),
-                      decoration: BoxDecoration(gradient: LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [widget.primary, widget.primary.withOpacity(0.75)],
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                AnimatedBuilder(
+                  animation: _sparkleCtrl,
+                  builder: (_, __) => SizedBox(
+                    height: 110,
+                    child: Stack(children: [
+                      Positioned.fill(child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 380),
+                        decoration: BoxDecoration(gradient: LinearGradient(
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                          colors: [widget.primary, widget.primary.withOpacity(0.75)],
+                        )),
                       )),
-                    )),
-                    ..._sparkles.map((s) {
-                      final t = ((_sparkleCtrl.value + s.phase) % 1.0);
-                      final opacity = math.sin(t * math.pi).clamp(0.0, 1.0);
-                      return Positioned(left: s.x * 300, top: s.y * 110,
-                          child: Opacity(opacity: opacity * 0.7,
-                              child: Icon(Icons.star_rounded, color: widget.accent, size: s.size)));
-                    }),
-                    AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
-                        Positioned(left: 24, top: 18 + _floatCtrl.value * 8,
-                            child: Icon(Icons.favorite_rounded,
-                                color: widget.accent.withOpacity(0.30), size: 22))),
-                    AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
-                        Positioned(right: 28, top: 28 - _floatCtrl.value * 6,
-                            child: Icon(Icons.favorite_rounded,
-                                color: widget.accent.withOpacity(0.22), size: 16))),
-                    Center(child: AnimatedBuilder(animation: _floatCtrl,
-                        builder: (_, __) => Transform.translate(
-                          offset: Offset(0, -4 + _floatCtrl.value * 8),
-                          child: Container(width: 64, height: 64,
-                            decoration: BoxDecoration(color: widget.accent.withOpacity(0.18),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: widget.accent.withOpacity(0.35), width: 2)),
-                            child: Icon(Icons.favorite_rounded, color: widget.accent, size: 32),
-                          ),
-                        ))),
-                  ]),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
-                child: Column(children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: widget.primary, fontSize: 20,
-                        fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                    child: const Text('O MeetCute ♡', textAlign: TextAlign.center),
-                  ),
-                  const SizedBox(height: 14),
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: widget.primary.withOpacity(0.72),
-                        fontSize: 14.5, height: 1.65, fontWeight: FontWeight.w400),
-                    child: const Text(
-                      'MeetCute je nastao kao projekt dviju studentica, Lane i Iris, druge godine računarstva.'
-                          'Ideja se rodila dok su sjedile u svom omiljenom kafiću, pile ledenu kavu i razmišljale o aplikaciji koja bi ljude spajala na malo drugačiji način.\n\n'
-                          'Nisu željele napraviti još jednu swipe-left-swipe-right aplikaciju. Htjele su nešto toplije - mjesto gdje možeš upoznati ljude iz svog grada kroz stvarna događanja i druženja uživo.\n\n'
-                          'Tako je nastao MeetCute - s idejom vraćanja upoznavanja u stvarni svijet. 🍵✨',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 340),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: widget.accent.withOpacity(0.18), borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: widget.primary.withOpacity(0.10)),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.coffee_rounded, color: widget.primary, size: 14),
-                      const SizedBox(width: 6),
-                      Flexible(child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 300),
-                        style: TextStyle(color: widget.primary.withOpacity(0.65),
-                            fontSize: 12.5, fontWeight: FontWeight.w600),
-                        child: const Text('Napravljeno s ljubavlju i ledenom kavom', textAlign: TextAlign.center),
-                      )),
-                      const SizedBox(width: 6),
-                      Icon(Icons.favorite_rounded, color: widget.primary, size: 12),
+                      ..._sparkles.map((s) {
+                        final t = ((_sparkleCtrl.value + s.phase) % 1.0);
+                        final opacity = math.sin(t * math.pi).clamp(0.0, 1.0);
+                        return Positioned(left: s.x * 300, top: s.y * 110,
+                            child: Opacity(opacity: opacity * 0.7,
+                                child: Icon(Icons.star_rounded, color: widget.accent, size: s.size)));
+                      }),
+                      AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
+                          Positioned(left: 24, top: 18 + _floatCtrl.value * 8,
+                              child: Icon(Icons.favorite_rounded,
+                                  color: widget.accent.withOpacity(0.30), size: 22))),
+                      AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
+                          Positioned(right: 28, top: 28 - _floatCtrl.value * 6,
+                              child: Icon(Icons.favorite_rounded,
+                                  color: widget.accent.withOpacity(0.22), size: 16))),
+                      Center(child: AnimatedBuilder(animation: _floatCtrl,
+                          builder: (_, __) => Transform.translate(
+                            offset: Offset(0, -4 + _floatCtrl.value * 8),
+                            child: Container(width: 64, height: 64,
+                              decoration: BoxDecoration(color: widget.accent.withOpacity(0.18),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: widget.accent.withOpacity(0.35), width: 2)),
+                              child: Icon(Icons.favorite_rounded, color: widget.accent, size: 32),
+                            ),
+                          ))),
                     ]),
                   ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: widget.onClose,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 340),
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: widget.primary, borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.30),
-                            blurRadius: 16, offset: const Offset(0, 6))],
-                      ),
-                      child: Center(child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 300),
-                        style: TextStyle(color: widget.accent, fontSize: 15, fontWeight: FontWeight.w800),
-                        child: const Text('Preslatko! ♡'),
-                      )),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+                  child: Column(children: [
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      style: TextStyle(color: widget.primary, fontSize: 20,
+                          fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                      child: const Text('O MeetCute ♡', textAlign: TextAlign.center),
                     ),
-                  ),
-                ]),
-              ),
-            ]),
+                    const SizedBox(height: 14),
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      style: TextStyle(color: widget.primary.withOpacity(0.72),
+                          fontSize: 14.5, height: 1.65, fontWeight: FontWeight.w400),
+                      child: const Text(
+                        'MeetCute je nastao kao projekt dviju studentica, Lane i Iris, druge godine računarstva.'
+                            'Ideja se rodila dok su sjedile u svom omiljenom kafiću, pile ledenu kavu i razmišljale o aplikaciji koja bi ljude spajala na malo drugačiji način.\n\n'
+                            'Nisu željele napraviti još jednu swipe-left-swipe-right aplikaciju. Htjele su nešto toplije - mjesto gdje možeš upoznati ljude iz svog grada kroz stvarna događanja i druženja uživo.\n\n'
+                            'Tako je nastao MeetCute - s idejom vraćanja upoznavanja u stvarni svijet. 🍵✨',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 340),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: widget.accent.withOpacity(0.18), borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: widget.primary.withOpacity(0.10)),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.coffee_rounded, color: widget.primary, size: 14),
+                        const SizedBox(width: 6),
+                        Flexible(child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 300),
+                          style: TextStyle(color: widget.primary.withOpacity(0.65),
+                              fontSize: 12.5, fontWeight: FontWeight.w600),
+                          child: const Text('Napravljeno s ljubavlju i ledenom kavom', textAlign: TextAlign.center),
+                        )),
+                        const SizedBox(width: 6),
+                        Icon(Icons.favorite_rounded, color: widget.primary, size: 12),
+                      ]),
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: widget.onClose,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 340),
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: widget.primary, borderRadius: BorderRadius.circular(24),
+                          boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.30),
+                              blurRadius: 16, offset: const Offset(0, 6))],
+                        ),
+                        child: Center(child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 300),
+                          style: TextStyle(color: widget.accent, fontSize: 15, fontWeight: FontWeight.w800),
+                          child: const Text('Natrag'),
+                        )),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
           ),
         ),
       ),

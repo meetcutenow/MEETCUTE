@@ -120,7 +120,6 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
       if (resp.statusCode == 200) {
         final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
         return list.map((a) {
-          print("PHOTO URL: ${a['photoUrl']}"); // 👈 DODANO
 
           return _Attendee(
             userId:      a['userId'] ?? '',

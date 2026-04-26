@@ -909,8 +909,11 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
       child: Stack(children: [
         Positioned.fill(
           child: hasImg
-              ? Image.file(File(e.userImagePath!), fit: BoxFit.cover,
+              ? (e.userImagePath!.startsWith('http')
+              ? Image.network(e.userImagePath!, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(color: c))
+              : Image.file(File(e.userImagePath!), fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: c)))
               : e.imagePath.isNotEmpty
               ? Image.asset(e.imagePath, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(color: c))
@@ -1352,7 +1355,12 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
               SliverToBoxAdapter(child: ScaleTransition(scale: _heroScale,
                   child: Container(height: mq.size.height * 0.42, color: c,
                       child: Stack(fit: StackFit.expand, children: [
-                        if (hasImg) Image.file(File(e.userImagePath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
+                        if (hasImg)
+                          e.userImagePath!.startsWith('http')
+                              ? Image.network(e.userImagePath!, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: c))
+                              : Image.file(File(e.userImagePath!), fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(color: c))
                         else if (e.imagePath.isNotEmpty) Image.asset(e.imagePath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
                         else Container(color: c),
                         Positioned(bottom: 0, left: 0, right: 0, height: 100,

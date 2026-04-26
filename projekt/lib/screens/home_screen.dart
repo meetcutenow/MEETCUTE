@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ));
   }
 
-  void _showPremiumDialog() {
+  void _showPremiumDialog({bool isFilter = false}) {
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
@@ -284,7 +284,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   onPressed: () {
                     Navigator.pop(context);
-                    _navigateTo(const OrganizeMeetupScreen());
+                    if (isFilter) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: Container(
+                            padding: const EdgeInsets.all(28),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.20), blurRadius: 36, offset: const Offset(0, 14))],
+                            ),
+                            child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              Container(width: 60, height: 60,
+                                  decoration: BoxDecoration(color: kPrimaryLight, shape: BoxShape.circle),
+                                  child: const Icon(Icons.construction_rounded, color: kPrimaryDark, size: 30)),
+                              const SizedBox(height: 16),
+                              const Text('Uskoro!', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20)),
+                              const SizedBox(height: 10),
+                              Text('Filtriranje matcheva je još u razvoju.\nUskoro dolazi! ',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, height: 1.5)),
+                              const SizedBox(height: 24),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Container(
+                                  height: 48, width: double.infinity,
+                                  decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(24)),
+                                  child: const Center(child: Text('Ok!', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
+                                ),
+                              ),
+                            ]),
+                          ),
+                        ),
+                      );
+                    } else {
+                      _navigateTo(const OrganizeMeetupScreen());
+                    }
                   },
                   child: const Text('Nadogradi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 )),
@@ -682,7 +719,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           label: 'Organiziraj susret',
           subtitle: 'Stvori vlastiti događaj',
           isLocked: true,
-          onTap: _showPremiumDialog,
+          onTap: () => _showPremiumDialog(isFilter: false),
           showDivider: true,
         ),
         _buildMenuItem(
@@ -691,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           label: 'Filtriraj matcheve',
           subtitle: 'Pronađi savršenu osobu',
           isLocked: true,
-          onTap: _showPremiumDialog,
+          onTap: () => _showPremiumDialog(isFilter: true),
           showDivider: false,
         ),
       ]),

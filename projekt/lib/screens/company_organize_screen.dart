@@ -76,16 +76,12 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   // ── Tema helperi ────────────────────────────────────────────────────────────
   bool get _isDark => ThemeState.instance.isDark;
 
-  /// Primarna boja: bordo u light, ružičasta u dark
   Color get _primary => _isDark ? const Color(0xFFBF8997) : _bordo;
 
-  /// Pozadina kartice / fielda
   Color get _cardBg => _isDark ? const Color(0xFF393737) : Colors.white;
 
-  /// Lagana pozadina (bordoLight ekvivalent)
   Color get _cardEl => _isDark ? const Color(0xFF5A5A61) : _bordoLight;
 
-  /// Pozadina screena
   Color get _screenBg => _isDark ? const Color(0xFF000000) : Colors.white;
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -256,7 +252,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
           _timeCtrl.text.trim().isNotEmpty &&
           _timeError == null &&
           !_addrChecking &&
-          (_locationCtrl.text.trim().isEmpty || _addrValid == true) &&
+          (_locationCtrl.text.trim().isEmpty || _addrValid == true || _isEditMode) &&
           (!_hasTickets || (_ticketPriceCtrl.text.isNotEmpty &&
               double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.')) != null));
 
@@ -335,7 +331,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       'maxAttendees':     int.tryParse(_maxPeopleCtrl.text.trim()),
       'latitude':         coords?.lat,
       'longitude':        coords?.lng,
-      if (coverPhotoUrl != null) 'coverPhotoUrl': coverPhotoUrl,
+      'coverPhotoUrl': coverPhotoUrl ?? '',
     };
 
     if (!_isEditMode) body['cardColorHex'] = _randomCardColor();
@@ -347,7 +343,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
     try {
       final http.Response resp;
-
+      if (coverPhotoUrl != null) {
+        body['coverPhotoUrl'] = coverPhotoUrl;
+      }
       if (_isEditMode) {
         resp = await http.put(
           Uri.parse('$_base/company/events/${widget.editEvent!.id}'),

@@ -27,14 +27,14 @@ public class EventService {
 
 
     public List<EventResponse> getAllEvents(String userId) {
-        return eventRepository.findByIsActiveTrueOrderByEventDateAsc()
+        return eventRepository.findByIsActiveTrueOrderByCreatedAtDesc()
                 .stream()
                 .map(e -> toResponse(e, userId))
                 .collect(Collectors.toList());
     }
 
     public List<EventResponse> getEventsByCity(String city, String userId) {
-        return eventRepository.findByCityAndIsActiveTrueOrderByEventDateAsc(city)
+        return eventRepository.findByCityAndIsActiveTrueOrderByCreatedAtDesc(city)
                 .stream()
                 .map(e -> toResponse(e, userId))
                 .collect(Collectors.toList());

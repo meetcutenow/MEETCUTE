@@ -11,11 +11,9 @@ import java.util.List;
 @Repository
 public interface EventRepository extends JpaRepository<Event, String> {
 
-    List<Event> findByIsActiveTrueOrderByEventDateAsc();
-
-    List<Event> findByCityAndIsActiveTrueOrderByEventDateAsc(String city);
-
-    List<Event> findByCategoryAndIsActiveTrueOrderByEventDateAsc(String category);
+    List<Event> findByIsActiveTrueOrderByCreatedAtDesc();
+    List<Event> findByCityAndIsActiveTrueOrderByCreatedAtDesc(String city);
+    List<Event> findByCompanyIdAndIsActiveTrueOrderByCreatedAtDesc(String companyId);
 
     // Za company evente
     List<Event> findByCompanyIdAndIsActiveTrueOrderByEventDateAsc(String companyId);

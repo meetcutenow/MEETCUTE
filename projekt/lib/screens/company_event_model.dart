@@ -1,5 +1,3 @@
-
-
 class CompanyEvent {
   final String  id;
   final String  title;
@@ -59,5 +57,6 @@ class CompanyEvent {
     ticketCurrency:   j['ticketCurrency'],
     cardColorHex:     j['cardColorHex'],
     description:      j['description'],
+    coverPhotoUrl:    j['coverPhotoUrl'] as String?,
   );
 }

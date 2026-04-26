@@ -112,8 +112,9 @@ public class CompanyEventService {
         if (req.getCardColorHex() != null)     event.setCardColorHex(req.getCardColorHex());
         if (req.getLatitude() != null)         event.setLatitude(req.getLatitude());
         if (req.getLongitude() != null)        event.setLongitude(req.getLongitude());
-        // FIX: spremi cover photo URL pri uređivanju
-        if (req.getCoverPhotoUrl() != null)    event.setCoverPhotoUrl(req.getCoverPhotoUrl());
+        if (req.getCoverPhotoUrl() != null) {
+            event.setCoverPhotoUrl(req.getCoverPhotoUrl().isEmpty() ? null : req.getCoverPhotoUrl());
+        }
 
         eventRepository.save(event);
 

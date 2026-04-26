@@ -171,13 +171,11 @@ class NotificationState {
 
 class NotificationPollingService {
   static Timer? _timer;
-  static DateTime? _lastPollTime;
 
   static void start() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _poll());
-    // Odmah povuci
     _poll();
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _poll());
   }
 
   static void stop() {
@@ -259,7 +257,7 @@ void seedStaticNotifications() {
   for (final n in staticNotifs) {
     if (AppReadState.isNotifRead(n.id)) n.isRead = true;
     if (!NotificationState.instance._notifications.any((e) => e.id == n.id)) {
-      NotificationState.instance._notifications.add(n);
+      NotificationState.instance._notifications.insert(0, n);
     }
   }
 }
@@ -605,10 +603,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildList(List<AppNotification> notifs) {
+    final sorted = [...notifs]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
     final today = <AppNotification>[];
     final earlier = <AppNotification>[];
     final now = DateTime.now();
-    for (final n in notifs) {
+    for (final n in sorted) {
       if (now.difference(n.timestamp).inHours < 24) today.add(n);
       else earlier.add(n);
     }
