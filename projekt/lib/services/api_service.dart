@@ -1,38 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-// ─────────────────────────────────────────────────────────────────
-//  MeetCute API Service
-//  Connects Flutter app to the Spring Boot backend.
-//
-//  Usage:
-//    final api = ApiService();
-//    await api.login('username', 'password');
-//    final events = await api.getEvents();
-// ─────────────────────────────────────────────────────────────────
-
 class ApiService {
-  // ── Base URL ─────────────────────────────────────────────────
-  // Android emulator  → 10.0.2.2
-  // iOS simulator     → 127.0.0.1
-  // Physical device   → your machine's local IP, e.g. 192.168.1.100
   static const String _base = 'http://localhost:8080/api';
 
-  // Singleton
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // ── Token storage (in-memory; swap for shared_preferences in prod) ──
   String? _accessToken;
   String? _refreshToken;
 
   String? get accessToken => _accessToken;
   bool get isLoggedIn => _accessToken != null;
-
-  // ─────────────────────────────────────────────────────────────
-  //  HELPERS
-  // ─────────────────────────────────────────────────────────────
 
   Map<String, String> get _authHeaders => {
     'Content-Type': 'application/json',
@@ -80,9 +60,6 @@ class ApiService {
     throw ApiException(msg, resp.statusCode);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  AUTH
-  // ─────────────────────────────────────────────────────────────
 
   Future<AuthResult> register(RegisterPayload payload) async {
     final resp = await _post('/auth/register', payload.toJson(), auth: false);
@@ -118,10 +95,6 @@ class ApiService {
     _refreshToken = data['refreshToken'];
     return AuthResult.fromJson(data);
   }
-
-  // ─────────────────────────────────────────────────────────────
-  //  USER
-  // ─────────────────────────────────────────────────────────────
 
   Future<UserData> getMyProfile() async {
     final resp = await _get('/users/me');
@@ -161,19 +134,11 @@ class ApiService {
     return resp['data']['isVisible'] as bool;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  SECRET QUESTIONS
-  // ─────────────────────────────────────────────────────────────
-
   Future<List<SecretQuestion>> getSecretQuestions() async {
     final resp = await _get('/questions', auth: false);
     final list = resp['data'] as List;
     return list.map((e) => SecretQuestion.fromJson(e)).toList();
   }
-
-  // ─────────────────────────────────────────────────────────────
-  //  EVENTS
-  // ─────────────────────────────────────────────────────────────
 
   Future<List<EventData>> getEvents({String? city}) async {
     final path = city != null ? '/events?city=$city' : '/events';
@@ -197,10 +162,6 @@ class ApiService {
     return EventData.fromJson(resp['data']);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  MATCHES & LIKES
-  // ─────────────────────────────────────────────────────────────
-
   Future<MatchData?> likeUser(String likedUserId,
       {String contextType = 'proximity', String? contextEventId}) async {
     final resp = await _post('/likes', {
@@ -223,10 +184,6 @@ class ApiService {
     return MatchData.fromJson(resp['data']);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  CHAT
-  // ─────────────────────────────────────────────────────────────
-
   Future<List<MessageData>> getMessages(String conversationId) async {
     final resp = await _get('/conversations/$conversationId/messages');
     final list = resp['data'] as List;
@@ -242,10 +199,6 @@ class ApiService {
     return MessageData.fromJson(resp['data']);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  NOTIFICATIONS
-  // ─────────────────────────────────────────────────────────────
-
   Future<List<NotificationData>> getNotifications() async {
     final resp = await _get('/notifications');
     final list = resp['data'] as List;
@@ -257,10 +210,6 @@ class ApiService {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  EXCEPTION
-// ─────────────────────────────────────────────────────────────────
-
 class ApiException implements Exception {
   final String message;
   final int statusCode;
@@ -269,10 +218,6 @@ class ApiException implements Exception {
   @override
   String toString() => 'ApiException($statusCode): $message';
 }
-
-// ─────────────────────────────────────────────────────────────────
-//  DATA MODELS
-// ─────────────────────────────────────────────────────────────────
 
 class AuthResult {
   final String accessToken;
@@ -512,10 +457,6 @@ class NotificationData {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  REQUEST PAYLOADS
-// ─────────────────────────────────────────────────────────────────
-
 class RegisterPayload {
   final String username;
   final String displayName;
@@ -524,9 +465,9 @@ class RegisterPayload {
   final int birthMonth;
   final int birthYear;
   final int heightCm;
-  final String gender;       // 'zensko' | 'musko' | 'ostalo'
-  final String hairColor;    // 'plava' | 'smeda' | 'crna' | 'crvena' | 'sijeda' | 'ostalo'
-  final String eyeColor;     // 'smede' | 'zelene' | 'plave' | 'sive'
+  final String gender;
+  final String hairColor;
+  final String eyeColor;
   final bool hasPiercing;
   final bool hasTattoo;
   final List<int> interestIds;
@@ -568,7 +509,7 @@ class CreateEventPayload {
   final String? description;
   final String city;
   final String? specificLocation;
-  final String eventDate; // 'YYYY-MM-DD'
+  final String eventDate;
   final String? timeStart;
   final String? timeEnd;
   final String category;

@@ -37,22 +37,21 @@ class ProfileStorage {
 
     final prefs = await SharedPreferences.getInstance();
     final map = {
-      'photoPaths':    persistedPaths,
-      'birthDay':      data.birthDay,
-      'birthMonth':    data.birthMonth,
-      'birthYear':     data.birthYear,
-      'height':        data.height,
-      'hairColor':     data.hairColor,
-      'eyeColor':      data.eyeColor,
-      'piercing':      data.piercing,
-      'tattoo':        data.tattoo,
-      'gender':        data.gender,
-      'interests':     data.interests,
-      'iceBreaker':    data.iceBreaker,
-      // Preference
+      'photoPaths': persistedPaths,
+      'birthDay': data.birthDay,
+      'birthMonth': data.birthMonth,
+      'birthYear': data.birthYear,
+      'height': data.height,
+      'hairColor': data.hairColor,
+      'eyeColor': data.eyeColor,
+      'piercing': data.piercing,
+      'tattoo': data.tattoo,
+      'gender': data.gender,
+      'interests': data.interests,
+      'iceBreaker': data.iceBreaker,
       'seekingGender': data.seekingGender,
-      'prefAgeFrom':   data.prefAgeFrom,
-      'prefAgeTo':     data.prefAgeTo,
+      'prefAgeFrom': data.prefAgeFrom,
+      'prefAgeTo': data.prefAgeTo,
     };
     await prefs.setString(_key, jsonEncode(map));
   }
@@ -71,21 +70,21 @@ class ProfileStorage {
         }
       }
       return ProfileSetupData(
-        photoPaths:    validPaths,
-        birthDay:      map['birthDay'],
-        birthMonth:    map['birthMonth'],
-        birthYear:     map['birthYear'],
-        height:        map['height'],
-        hairColor:     map['hairColor'],
-        eyeColor:      map['eyeColor'],
-        piercing:      map['piercing'],
-        tattoo:        map['tattoo'],
-        gender:        map['gender'],
-        interests:     List<String>.from(map['interests'] ?? []),
-        iceBreaker:    map['iceBreaker'] ?? '',
+        photoPaths: validPaths,
+        birthDay: map['birthDay'],
+        birthMonth: map['birthMonth'],
+        birthYear: map['birthYear'],
+        height: map['height'],
+        hairColor: map['hairColor'],
+        eyeColor: map['eyeColor'],
+        piercing: map['piercing'],
+        tattoo: map['tattoo'],
+        gender: map['gender'],
+        interests: List<String>.from(map['interests'] ?? []),
+        iceBreaker: map['iceBreaker'] ?? '',
         seekingGender: map['seekingGender'],
-        prefAgeFrom:   map['prefAgeFrom'],
-        prefAgeTo:     map['prefAgeTo'],
+        prefAgeFrom: map['prefAgeFrom'],
+        prefAgeTo: map['prefAgeTo'],
       );
     } catch (e) {
       return null;

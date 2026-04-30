@@ -10,13 +10,8 @@ class CloudinaryUploadResult {
 }
 
 class CloudinaryService {
-  // ── UPIŠI OVDJE ────────────────────────────────────────────────
   static const String _backendBase = 'http://localhost:8080/api';
-  // ───────────────────────────────────────────────────────────────
 
-  /// Upload slike na Cloudinary PUTEM backenda (signed upload)
-  /// [token] - JWT access token korisnika ili tvrtke
-  /// [folder] - 'meetcute/profiles', 'meetcute/logos', 'meetcute/events'
   static Future<CloudinaryUploadResult> uploadImage({
     required String filePath,
     required String token,
@@ -54,7 +49,6 @@ class CloudinaryService {
     );
   }
 
-  /// Upload profilne slike korisnika — sprema i u user_photos tablicu
   static Future<String> uploadProfilePhoto({
     required String filePath,
     required String token,
