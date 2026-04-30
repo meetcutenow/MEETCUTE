@@ -57,11 +57,8 @@ Whisper Server (Railway) - AI izrada profila
 
 3. Dodavanje profilnih fotografija i slika događanja nije dostupno u web pregledniku. Aplikacija koristi image_picker i File iz dart:io za čitanje odabrane slike i njeno slanje kao MultipartRequest na backend. Funkcionalnost je u potpunosti dostupna u mobilnoj verziji aplikacije (Android/iOS).
 
----
 
-#Lokalno pokretanje
-
----
+# Lokalno pokretanje
 
 meetcute/
 
