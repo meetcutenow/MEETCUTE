@@ -19,6 +19,50 @@ trenutno implementirana osnovna match logika koju treba nadograditi
 
 -push obavijesti
 
+# Deploy
+Ova aplikacija je primarno razvijena kao mobilna aplikacija (Flutter) i nije zamišljena kao klasična web aplikacija koja se pokreće u pregledniku.
+
+Zbog toga postoje dvije odvojene konfiguracije:
+
+Ovaj repozitorij → služi za lokalno pokretanje i razvoj
+Deploy verzija → nalazi se na zasebnom repozitoriju i koristi se isključivo za demonstraciju funkcionalnosti u produkcijskom okruženju
+
+---
+
+link: https://meetcutedeploy.netlify.app/
+
+---
+
+
+Flutter Web (Netlify)
+
+        ↓
+        
+Spring Boot API (Railway)
+
+        ↓
+        
+MySQL (Railway)
+
+
+Whisper Server (Railway) - AI izrada profila
+
+----
+
+--- 
+Web Ograničenja 
+---
+
+1. Funkcija "Popuni profil glasom" nije dostupna u web pregledniku. Aplikacija koristi record paket koji za snimanje audio zapisa koristi lokalni datotečni sustav
+ (dart:io) i sprema .wav datoteku na uređaju. Funkcija je u potpunosti dostupna u mobilnoj verziji aplikacije (Android/iOS).
+
+3. Dodavanje profilnih fotografija i slika događanja nije dostupno u web pregledniku. Aplikacija koristi image_picker i File iz dart:io za čitanje odabrane slike i njeno slanje kao MultipartRequest na backend. Funkcionalnost je u potpunosti dostupna u mobilnoj verziji aplikacije (Android/iOS).
+
+---
+
+#Lokalno pokretanje
+
+---
 
 meetcute/
 
