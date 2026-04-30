@@ -2,12 +2,7 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-
 
 @Entity
 @Table(name = "notifications")
@@ -49,7 +44,7 @@ public class Notification {
     @Column(name = "accent_color", length = 7)
     private String accentColor;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -57,6 +52,3 @@ public class Notification {
         createdAt = LocalDateTime.now();
     }
 }
-
-// ── RefreshToken ─────────────────────────────────────────────────
-

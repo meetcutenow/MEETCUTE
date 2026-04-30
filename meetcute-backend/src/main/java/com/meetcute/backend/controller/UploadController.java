@@ -21,21 +21,14 @@ public class UploadController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folder", defaultValue = "meetcute") String folder) {
 
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Datoteka je prazna."));
-        }
+        if (file.isEmpty())
+            return ResponseEntity.badRequest().body(ApiResponse.error("Datoteka je prazna."));
 
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Samo slike su dozvoljene."));
-        }
+        if (contentType == null || !contentType.startsWith("image/"))
+            return ResponseEntity.badRequest().body(ApiResponse.error("Samo slike su dozvoljene."));
 
         var result = cloudinaryService.upload(file, folder);
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "url", result.url(),
-                "publicId", result.publicId()
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("url", result.url(), "publicId", result.publicId())));
     }
 }

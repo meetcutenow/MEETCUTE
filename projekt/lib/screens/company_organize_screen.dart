@@ -12,7 +12,6 @@ import 'company_event_model.dart';
 import '../screens/events_nearby.dart' show AgeGroup, GenderGroup, AgeGroupLabel, GenderGroupLabel;
 import 'theme_state.dart';
 
-// Svjetlosne boje (bordo paleta) — koriste se kao fallback i za light mode
 const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const String _base = 'http://localhost:8080/api';
@@ -67,29 +66,24 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   String? _timeError;
 
   late final AnimationController _entryCtrl;
-  late final Animation<double> _entryFade;
+  late final Animation<double>   _entryFade;
   late final AnimationController _btnCtrl;
-  late final Animation<double> _btnScale;
+  late final Animation<double>   _btnScale;
 
   bool get _isEditMode => widget.editEvent != null;
 
-  // ── Tema helperi ────────────────────────────────────────────────────────────
-  bool get _isDark => ThemeState.instance.isDark;
+  bool  get _isDark    => ThemeState.instance.isDark;
+  Color get _primary   => _isDark ? const Color(0xFFBF8997) : _bordo;
+  Color get _cardBg    => _isDark ? const Color(0xFF393737) : Colors.white;
+  Color get _cardEl    => _isDark ? const Color(0xFF5A5A61) : _bordoLight;
+  Color get _screenBg  => _isDark ? const Color(0xFF000000) : Colors.white;
 
-  Color get _primary => _isDark ? const Color(0xFFBF8997) : _bordo;
+  Map<String, String> get _authHeader => {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
+  };
 
-  Color get _cardBg => _isDark ? const Color(0xFF393737) : Colors.white;
-
-  Color get _cardEl => _isDark ? const Color(0xFF5A5A61) : _bordoLight;
-
-  Color get _screenBg => _isDark ? const Color(0xFF000000) : Colors.white;
-
-  // ───────────────────────────────────────────────────────────────────────────
-
-  String _randomCardColor() {
-    final r = math.Random();
-    return _autoColors[r.nextInt(_autoColors.length)];
-  }
+  String _randomCardColor() => _autoColors[math.Random().nextInt(_autoColors.length)];
 
   @override
   void initState() {
@@ -97,11 +91,12 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     ThemeState.instance.addListener(_onTheme);
 
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
-    _btnScale = Tween<double>(begin: 1.0, end: 0.94)
+    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _btnCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 140));
+    _btnScale  = Tween<double>(begin: 1.0, end: 0.94)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
     _entryCtrl.forward();
+
     _locationCtrl.addListener(_onAddrChanged);
     _timeCtrl.addListener(_onTimeChanged);
     for (final c in [_titleCtrl, _descCtrl, _maxPeopleCtrl, _ticketPriceCtrl]) {
@@ -114,32 +109,25 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   void _onTheme() { if (mounted) setState(() {}); }
 
   void _populateFromEvent(CompanyEvent ev) {
-    _titleCtrl.text = ev.title;
-    _descCtrl.text  = ev.description ?? '';
+    _titleCtrl.text    = ev.title;
+    _descCtrl.text     = ev.description ?? '';
     _locationCtrl.text = ev.specificLocation ?? '';
     _maxPeopleCtrl.text = ev.maxAttendees?.toString() ?? '';
 
     if (_cities.contains(ev.city)) _selectedCity = ev.city;
 
-    final catNames = _categories.map((c) => c.$1).toList();
-    if (catNames.contains(ev.category)) _selectedCategory = ev.category;
+    if (_categories.map((c) => c.$1).contains(ev.category)) {
+      _selectedCategory = ev.category;
+    }
 
-    try {
-      _selAge = AgeGroup.values.firstWhere((g) => g.name == ev.ageGroup,
-          orElse: () => AgeGroup.all);
-    } catch (_) {}
-
-    try {
-      _selGender = GenderGroup.values.firstWhere((g) => g.name == ev.genderGroup,
-          orElse: () => GenderGroup.all);
-    } catch (_) {}
+    _selAge    = AgeGroup.values.firstWhere((g) => g.name == ev.ageGroup,    orElse: () => AgeGroup.all);
+    _selGender = GenderGroup.values.firstWhere((g) => g.name == ev.genderGroup, orElse: () => GenderGroup.all);
 
     if (ev.eventDate != null) {
       try {
-        final parts = ev.eventDate!.split('-');
-        _pickedDate = DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-        _selectedDate = '${parts[2]}.${parts[1]}.${parts[0]}.';
+        final p = ev.eventDate!.split('-');
+        _pickedDate   = DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+        _selectedDate = '${p[2]}.${p[1]}.${p[0]}.';
       } catch (_) {}
     }
 
@@ -169,8 +157,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     ThemeState.instance.removeListener(_onTheme);
     _addrDebounce?.cancel();
     _entryCtrl.dispose(); _btnCtrl.dispose();
-    _titleCtrl.dispose(); _descCtrl.dispose(); _maxPeopleCtrl.dispose();
-    _timeCtrl.dispose(); _locationCtrl.dispose(); _ticketPriceCtrl.dispose();
+    _titleCtrl.dispose(); _descCtrl.dispose();
+    _maxPeopleCtrl.dispose(); _timeCtrl.dispose();
+    _locationCtrl.dispose(); _ticketPriceCtrl.dispose();
     super.dispose();
   }
 
@@ -196,7 +185,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       if (!mounted) return;
       final current = _locationCtrl.text.trim();
       if (current != text) return;
-      final city = _selectedCity ?? '';
+      final city   = _selectedCity ?? '';
       final result = await _geocode('$text${city.isNotEmpty ? ', $city' : ''}, Croatia');
       if (!mounted || _locationCtrl.text.trim() != text) return;
       setState(() {
@@ -219,8 +208,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   Future<_LatLng?> _geocode(String address) async {
     try {
-      final q   = Uri.encodeComponent(address);
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=$q&format=json&limit=1');
+      final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(address)}&format=json&limit=1');
       final res = await http.get(url, headers: {'User-Agent': 'MeetCuteApp/1.0'})
           .timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
@@ -237,8 +226,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
 
   (String?, String?) _parseTime(String text) {
     final t = text.trim();
-    final range = RegExp(r'^(\d{2}:\d{2})\s*[–\-]\s*(\d{2}:\d{2})$');
-    final m = range.firstMatch(t);
+    final m = RegExp(r'^(\d{2}:\d{2})\s*[–\-]\s*(\d{2}:\d{2})$').firstMatch(t);
     if (m != null) return (m.group(1), m.group(2));
     if (t.length == 5) return (t, null);
     return (null, null);
@@ -257,8 +245,7 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
               double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.')) != null));
 
   Future<void> _pickDate() async {
-    final now    = DateTime.now();
-    final p = _primary;
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _pickedDate ?? now.add(const Duration(days: 1)),
@@ -267,8 +254,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.light(
-            primary: p, onPrimary: Colors.white,
-            surface: _cardBg, onSurface: p,
+            primary: _primary, onPrimary: Colors.white,
+            surface: _cardBg, onSurface: _primary,
           ),
         ),
         child: child!,
@@ -277,9 +264,9 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     if (picked == null) return;
     setState(() {
       _pickedDate   = picked;
-      final d  = picked.day.toString().padLeft(2, '0');
-      final mo = picked.month.toString().padLeft(2, '0');
-      _selectedDate = '$d.$mo.${picked.year}.';
+      _selectedDate = '${picked.day.toString().padLeft(2, '0')}'
+          '.${picked.month.toString().padLeft(2, '0')}'
+          '.${picked.year}.';
     });
   }
 
@@ -292,17 +279,15 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     String? coverPhotoUrl;
     if (_coverImagePath != null && !_coverImagePath!.startsWith('http')) {
       try {
-        final token = CompanyAuthState.instance.accessToken!;
-        final result = await CloudinaryService.uploadImage(
+        coverPhotoUrl = (await CloudinaryService.uploadImage(
           filePath: _coverImagePath!,
-          token: token,
+          token: CompanyAuthState.instance.accessToken!,
           folder: 'meetcute/events',
-        );
-        coverPhotoUrl = result.url;
+        )).url;
       } catch (e) {
         debugPrint('Upload cover slike nije uspio: $e');
       }
-    } else if (_coverImagePath != null && _coverImagePath!.startsWith('http')) {
+    } else if (_coverImagePath != null) {
       coverPhotoUrl = _coverImagePath;
     }
 
@@ -331,43 +316,25 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
       'maxAttendees':     int.tryParse(_maxPeopleCtrl.text.trim()),
       'latitude':         coords?.lat,
       'longitude':        coords?.lng,
-      'coverPhotoUrl': coverPhotoUrl ?? '',
+      'coverPhotoUrl':    coverPhotoUrl ?? '',
     };
 
     if (!_isEditMode) body['cardColorHex'] = _randomCardColor();
-
     if (_hasTickets) {
       body['ticketPrice']    = double.tryParse(_ticketPriceCtrl.text.replaceAll(',', '.'));
       body['ticketCurrency'] = _selectedCurrency;
     }
 
     try {
-      final http.Response resp;
-      if (coverPhotoUrl != null) {
-        body['coverPhotoUrl'] = coverPhotoUrl;
-      }
-      if (_isEditMode) {
-        resp = await http.put(
-          Uri.parse('$_base/company/events/${widget.editEvent!.id}'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
-          },
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 15));
-      } else {
-        resp = await http.post(
-          Uri.parse('$_base/company/events'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}',
-          },
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 15));
-      }
+      final resp = await (_isEditMode
+          ? http.put(Uri.parse('$_base/company/events/${widget.editEvent!.id}'),
+          headers: _authHeader, body: jsonEncode(body))
+          : http.post(Uri.parse('$_base/company/events'),
+          headers: _authHeader, body: jsonEncode(body))
+      ).timeout(const Duration(seconds: 15));
 
-      final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       if (!mounted) return;
+      final decoded = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
 
       if (resp.statusCode == 200 && decoded['success'] == true) {
         _showSuccess();
@@ -384,63 +351,53 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   void _showSuccess() => showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) {
-      final p  = _primary;
-      final el = _cardEl;
-      final bg = _cardBg;
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.0),
-          duration: const Duration(milliseconds: 420),
-          curve: Curves.easeOutBack,
-          builder: (_, v, child) => Transform.scale(scale: v, child: child),
-          child: Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: bg, borderRadius: BorderRadius.circular(28),
-              boxShadow: [BoxShadow(
-                  color: p.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
-            ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 68, height: 68,
-                  decoration: BoxDecoration(color: el, shape: BoxShape.circle),
-                  child: Icon(
-                    _isEditMode ? Icons.check_circle_outline_rounded : Icons.check_rounded,
-                    color: p, size: 34,
-                  )),
-              const SizedBox(height: 18),
-              Text(
-                _isEditMode ? 'Događanje ažurirano!' : 'Događanje kreirano!',
-                style: TextStyle(color: p,
-                    fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _isEditMode
-                    ? 'Svi prijavljeni korisnici su obaviješteni o izmjenama.'
-                    : 'Vaš događaj je objavljen i vidljiv korisnicima MeetCute-a.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: p.withOpacity(0.55), fontSize: 14, height: 1.55),
-              ),
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop(true);
-                },
-                child: Container(height: 50,
-                    decoration: BoxDecoration(color: p, borderRadius: BorderRadius.circular(25),
-                        boxShadow: [BoxShadow(color: p.withOpacity(0.30),
-                            blurRadius: 16, offset: const Offset(0, 6))]),
-                    child: const Center(child: Text('U redu', style: TextStyle(
-                        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)))),
-              ),
-            ]),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.8, end: 1.0),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutBack,
+        builder: (_, v, child) => Transform.scale(scale: v, child: child),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: _cardBg, borderRadius: BorderRadius.circular(28),
+            boxShadow: [BoxShadow(
+                color: _primary.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 14))],
           ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 68, height: 68,
+                decoration: BoxDecoration(color: _cardEl, shape: BoxShape.circle),
+                child: Icon(
+                  _isEditMode ? Icons.check_circle_outline_rounded : Icons.check_rounded,
+                  color: _primary, size: 34,
+                )),
+            const SizedBox(height: 18),
+            Text(_isEditMode ? 'Događanje ažurirano!' : 'Događanje kreirano!',
+                style: TextStyle(color: _primary,
+                    fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.4)),
+            const SizedBox(height: 10),
+            Text(
+              _isEditMode
+                  ? 'Svi prijavljeni korisnici su obaviješteni o izmjenama.'
+                  : 'Vaš događaj je objavljen i vidljiv korisnicima MeetCute-a.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 14, height: 1.55),
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () { Navigator.of(context).pop(); Navigator.of(context).pop(true); },
+              child: Container(height: 50,
+                  decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(25),
+                      boxShadow: [BoxShadow(color: _primary.withOpacity(0.30),
+                          blurRadius: 16, offset: const Offset(0, 6))]),
+                  child: const Center(child: Text('U redu', style: TextStyle(
+                      color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)))),
+            ),
+          ]),
         ),
-      );
-    },
+      ),
+    ),
   );
 
   void _showSnack(String msg) {
@@ -454,11 +411,10 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
   }
 
   void _showValidationSnack() {
-    String msg = 'Popuni sva obavezna polja';
-    if (_addrChecking)           msg = 'Pričekaj provjeru adrese...';
-    else if (_addrValid == false) msg = 'Adresa nije ispravna — ispravi je';
-    else if (_timeError != null)  msg = 'Format vremena: 10:00 ili 10:00 – 12:00';
-    _showSnack(msg);
+    _showSnack(_addrChecking         ? 'Pričekaj provjeru adrese...'
+        : _addrValid == false        ? 'Adresa nije ispravna — ispravi je'
+        : _timeError != null         ? 'Format vremena: 10:00 ili 10:00 – 12:00'
+        : 'Popuni sva obavezna polja');
   }
 
   @override
@@ -472,7 +428,6 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         body: FadeTransition(
           opacity: _entryFade,
           child: Column(children: [
-            // ── Header ──────────────────────────────────────────────────────
             AnimatedContainer(
               duration: const Duration(milliseconds: 380),
               color: _cardBg,
@@ -485,16 +440,14 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 ),
                 const SizedBox(width: 4),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    _isEditMode ? 'Uredi događaj' : 'Organiziraj događaj',
-                    style: TextStyle(color: _primary, fontSize: 22,
-                        fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                  ),
+                  Text(_isEditMode ? 'Uredi događaj' : 'Organiziraj događaj',
+                      style: TextStyle(color: _primary, fontSize: 22,
+                          fontWeight: FontWeight.w900, letterSpacing: -0.5)),
                   Text(
                     _isEditMode
                         ? 'Izmijeni detalje — sudionici će biti obaviješteni'
                         : 'Kreirajte događanje za svoju zajednicu',
-                    style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 13, fontWeight: FontWeight.w400),
+                    style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 13),
                   ),
                 ])),
                 if (_isEditMode)
@@ -514,27 +467,22 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                   ),
               ]),
             ),
-
             Expanded(child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(20, 4, 20, mq.padding.bottom + 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
                 _label('Naslovna slika (opcionalno)'),
                 const SizedBox(height: 8),
                 _buildCoverPhoto(),
                 const SizedBox(height: 18),
-
                 _label('Naziv događaja *'),
                 const SizedBox(height: 8),
                 _field(_titleCtrl, 'npr. Sportsko okupljanje', Icons.edit_rounded),
                 const SizedBox(height: 18),
-
                 _label('Grad *'),
                 const SizedBox(height: 8),
                 _cityDrop(),
                 const SizedBox(height: 18),
-
                 _label('Specifična lokacija'),
                 const SizedBox(height: 8),
                 _field(_locationCtrl, 'npr. Dom sportova, Zagreb', Icons.place_rounded),
@@ -543,22 +491,18 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                   _addrStatusWidget(),
                 ],
                 const SizedBox(height: 18),
-
                 _label('Kategorija *'),
                 const SizedBox(height: 10),
                 _catChips(),
                 const SizedBox(height: 18),
-
                 _label('Dobna skupina'),
                 const SizedBox(height: 10),
                 _ageChips(),
                 const SizedBox(height: 18),
-
                 _label('Za koga je događaj?'),
                 const SizedBox(height: 10),
                 _genderChips(),
                 const SizedBox(height: 18),
-
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     _label('Datum *'),
@@ -583,21 +527,16 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                   ])),
                 ]),
                 const SizedBox(height: 18),
-
                 _label('Maks. broj sudionika'),
                 const SizedBox(height: 8),
                 _field(_maxPeopleCtrl, '100', Icons.people_rounded, keyboard: TextInputType.number),
                 const SizedBox(height: 24),
-
                 _ticketBox(),
                 const SizedBox(height: 18),
-
                 _label('Opis'),
                 const SizedBox(height: 8),
                 _descField(),
                 const SizedBox(height: 32),
-
-                // ── Submit gumb ────────────────────────────────────────────
                 ScaleTransition(
                   scale: _btnScale,
                   child: GestureDetector(
@@ -617,19 +556,14 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                           ? const SizedBox(width: 22, height: 22,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(
-                          _isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
-                          color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                          size: 20,
-                        ),
+                        Icon(_isEditMode ? Icons.save_rounded : Icons.celebration_rounded,
+                            color: _isValid ? Colors.white : Colors.white.withOpacity(0.45), size: 20),
                         const SizedBox(width: 10),
-                        Text(
-                          _isEditMode ? 'Spremi izmjene' : 'Objavi događaj',
-                          style: TextStyle(
-                            color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
-                            fontSize: 16, fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                        Text(_isEditMode ? 'Spremi izmjene' : 'Objavi događaj',
+                            style: TextStyle(
+                              color: _isValid ? Colors.white : Colors.white.withOpacity(0.45),
+                              fontSize: 16, fontWeight: FontWeight.w800,
+                            )),
                       ])),
                     ),
                   ),
@@ -642,17 +576,14 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
     );
   }
 
-  // ── Cover photo ─────────────────────────────────────────────────────────────
   Widget _buildCoverPhoto() {
     return GestureDetector(
       onTap: _coverImagePath == null ? _pickCoverPhoto : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 240),
-        height: 130,
-        width: double.infinity,
+        height: 130, width: double.infinity,
         decoration: BoxDecoration(
-          color: _cardBg,
-          borderRadius: BorderRadius.circular(16),
+          color: _cardBg, borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _coverImagePath != null ? _primary.withOpacity(0.40) : _primary.withOpacity(0.15),
             width: _coverImagePath != null ? 1.5 : 1.2,
@@ -667,51 +598,41 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 ? Image.network(_coverImagePath!, width: double.infinity, height: 130, fit: BoxFit.cover)
                 : Image.file(File(_coverImagePath!), width: double.infinity, height: 130, fit: BoxFit.cover),
           ),
-          Positioned(bottom: 10, left: 10,
-              child: GestureDetector(
-                onTap: _pickCoverPhoto,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.edit_rounded, color: Colors.white, size: 13),
-                    SizedBox(width: 5),
-                    Text('Promijeni', style: TextStyle(
-                        color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-              )),
-          Positioned(top: 10, right: 10,
-              child: GestureDetector(
-                onTap: _removeCoverPhoto,
-                child: Container(
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.50), shape: BoxShape.circle),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
-                ),
-              )),
+          Positioned(bottom: 10, left: 10, child: GestureDetector(
+            onTap: _pickCoverPhoto,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(10)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.edit_rounded, color: Colors.white, size: 13),
+                SizedBox(width: 5),
+                Text('Promijeni', style: TextStyle(
+                    color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          )),
+          Positioned(top: 10, right: 10, child: GestureDetector(
+            onTap: _removeCoverPhoto,
+            child: Container(
+              width: 30, height: 30,
+              decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.50), shape: BoxShape.circle),
+              child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+            ),
+          )),
         ])
-            : Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(width: 48, height: 48,
-                  decoration: BoxDecoration(color: _cardEl, borderRadius: BorderRadius.circular(14)),
-                  child: Icon(Icons.add_photo_alternate_rounded, color: _primary, size: 24)),
-              const SizedBox(height: 10),
-              Text('Dodaj naslovnu sliku', style: TextStyle(
-                  color: _primary, fontSize: 14, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text('PNG, JPG · opcionalno', style: TextStyle(
-                  color: _primary.withOpacity(0.45), fontSize: 12)),
-            ],
-          ),
-        ),
+            : Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 48, height: 48,
+              decoration: BoxDecoration(color: _cardEl, borderRadius: BorderRadius.circular(14)),
+              child: Icon(Icons.add_photo_alternate_rounded, color: _primary, size: 24)),
+          const SizedBox(height: 10),
+          Text('Dodaj naslovnu sliku',
+              style: TextStyle(color: _primary, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text('PNG, JPG · opcionalno',
+              style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 12)),
+        ])),
       ),
     );
   }
@@ -791,10 +712,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
                 border: Border.all(color: _primary.withOpacity(0.15), width: 1.2),
                 boxShadow: [BoxShadow(color: _primary.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
               ),
-              child: Center(
-                child: Text('EUR', style: TextStyle(
-                    color: _primary, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-              ),
+              child: Center(child: Text('EUR', style: TextStyle(
+                  color: _primary, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5))),
             ),
           ])),
         ]),
@@ -921,8 +840,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(cat.$2, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 6),
-          Text(cat.$1, style: TextStyle(color: sel ? Colors.white : _primary,
-              fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(cat.$1, style: TextStyle(
+              color: sel ? Colors.white : _primary, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
@@ -959,8 +878,8 @@ class _CompanyOrganizeScreenState extends State<CompanyOrganizeScreen>
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(g.emoji, style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 5),
-          Text(g.label, style: TextStyle(color: sel ? Colors.white : _primary,
-              fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(g.label, style: TextStyle(
+              color: sel ? Colors.white : _primary, fontSize: 13, fontWeight: FontWeight.w600)),
         ]),
       ),
     );

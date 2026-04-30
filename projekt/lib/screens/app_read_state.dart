@@ -1,7 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Trajno pamti koji su razgovori i obavijesti označeni kao pročitani.
-/// Preživljava restart aplikacije I odjavu.
 class AppReadState {
   static const _kReadNotifIds = 'read_notif_ids';
   static const _kReadConvIds  = 'read_conv_ids';
@@ -11,59 +9,43 @@ class AppReadState {
 
   static SharedPreferences? _prefs;
 
-  // Javna metoda za dohvat SharedPreferences instance
-  static Future<SharedPreferences> getPrefsInstance() async {
+  static Future<SharedPreferences> _getPrefs() async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
   }
 
-  // ── Učitaj pri pokretanju ──────────────────────────────────────────────────
   static Future<void> loadFromStorage() async {
-    final prefs = await getPrefsInstance();
-    final notifList = prefs.getStringList(_kReadNotifIds) ?? [];
-    _readNotifIds.addAll(notifList);
-    final convList = prefs.getStringList(_kReadConvIds) ?? [];
-    _readConvIds.addAll(convList);
+    final prefs = await _getPrefs();
+    _readNotifIds.addAll(prefs.getStringList(_kReadNotifIds) ?? []);
+    _readConvIds.addAll(prefs.getStringList(_kReadConvIds) ?? []);
   }
 
-  // ── Obavijesti ─────────────────────────────────────────────────────────────
   static bool isNotifRead(String id) => _readNotifIds.contains(id);
 
   static Future<void> markNotifRead(String id) async {
-    if (_readNotifIds.contains(id)) return;
-    _readNotifIds.add(id);
-    await _saveNotifs();
+    if (_readNotifIds.add(id)) await _save(_kReadNotifIds, _readNotifIds);
   }
 
   static Future<void> markAllNotifsRead(List<String> ids) async {
     _readNotifIds.addAll(ids);
-    await _saveNotifs();
+    await _save(_kReadNotifIds, _readNotifIds);
   }
 
-  static Future<void> _saveNotifs() async {
-    final prefs = await getPrefsInstance();
-    await prefs.setStringList(_kReadNotifIds, _readNotifIds.toList());
-  }
-
-  // ── Chat razgovori ─────────────────────────────────────────────────────────
   static bool isConvRead(String id) => _readConvIds.contains(id);
 
   static Future<void> markConvRead(String id) async {
-    if (_readConvIds.contains(id)) return;
-    _readConvIds.add(id);
-    await _saveConvs();
+    if (_readConvIds.add(id)) await _save(_kReadConvIds, _readConvIds);
   }
 
-  static Future<void> _saveConvs() async {
-    final prefs = await getPrefsInstance();
-    await prefs.setStringList(_kReadConvIds, _readConvIds.toList());
+  static Future<void> _save(String key, Set<String> data) async {
+    final prefs = await _getPrefs();
+    await prefs.setStringList(key, data.toList());
   }
 
-  // ── Čišćenje ───────────────────────────────────────────────────────────────
   static Future<void> clearAll() async {
     _readNotifIds.clear();
     _readConvIds.clear();
-    final prefs = await getPrefsInstance();
+    final prefs = await _getPrefs();
     await prefs.remove(_kReadNotifIds);
     await prefs.remove(_kReadConvIds);
   }

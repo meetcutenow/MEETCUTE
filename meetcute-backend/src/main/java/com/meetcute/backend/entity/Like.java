@@ -2,11 +2,7 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "likes")
@@ -32,7 +28,7 @@ public class Like {
     @Column(name = "context_event_id", length = 36)
     private String contextEventId;
 
-    @Column(name = "liked_at")
+    @Column(name = "liked_at", updatable = false)
     private LocalDateTime likedAt;
 
     @PrePersist
@@ -40,5 +36,3 @@ public class Like {
         likedAt = LocalDateTime.now();
     }
 }
-
-// ── Match ─────────────────────────────────────────────────────────

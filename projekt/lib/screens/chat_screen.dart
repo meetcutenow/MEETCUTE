@@ -43,8 +43,7 @@ class ChatConversation {
   String get lastMessageText {
     final msg = lastMessage;
     if (msg == null) return '';
-    if (msg.imagePath != null) return '📷 Slika';
-    return msg.text ?? '';
+    return msg.imagePath != null ? '📷 Slika' : msg.text ?? '';
   }
 
   String get lastMessageTime {
@@ -54,9 +53,7 @@ class ChatConversation {
   }
 
   bool get hasUnread =>
-      lastMessage != null &&
-          !lastMessage!.isMe &&
-          !AppReadState.isConvRead(id);
+      lastMessage != null && !lastMessage!.isMe && !AppReadState.isConvRead(id);
 }
 
 class ChatState extends ChangeNotifier {
@@ -149,20 +146,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     ThemeState.instance.addListener(_onStateChanged);
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text.toLowerCase()));
 
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
 
     _headerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
     _headerFade = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    _listCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
-    _listFade = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
+    _listCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _listFade  = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
     _listSlide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
         .animate(CurvedAnimation(parent: _listCtrl, curve: Curves.easeOutCubic));
 
-    _navBarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _navBarCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _navBarSlide = Tween<double>(begin: 90, end: 0)
         .animate(CurvedAnimation(parent: _navBarCtrl, curve: Curves.easeOutBack));
 
@@ -190,7 +187,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     NotificationState.instance.removeListener(_onStateChanged);
     ThemeState.instance.removeListener(_onStateChanged);
     _searchCtrl.dispose();
-    _entryCtrl.dispose(); _headerCtrl.dispose(); _listCtrl.dispose(); _navBarCtrl.dispose();
+    _entryCtrl.dispose(); _headerCtrl.dispose();
+    _listCtrl.dispose(); _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     super.dispose();
   }
@@ -207,9 +205,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (index == _selectedNavIndex) return;
     HapticFeedback.selectionClick();
     if (index == 0) {
-      for (int i = 0; i < _navTapCtrls.length; i++) {
-        _navTapCtrls[i].value = 0.0;
-      }
+      for (final c in _navTapCtrls) c.value = 0.0;
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     }
@@ -217,41 +213,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
-    Widget? screen;
-    switch (index) {
-      case 2: screen = const NotificationsScreen(); break;
-      case 3: screen = const ProfileScreen(); break;
-      case 4: screen = const SettingsScreen(); break;
-      default: screen = null;
-    }
-    if (screen != null) {
-      Navigator.push(context, PageRouteBuilder(
-        pageBuilder: (_, a, __) => screen!,
-        transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
-                .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-            child: child,
-          ),
+    final screen = switch (index) {
+      2 => const NotificationsScreen(),
+      3 => const ProfileScreen(),
+      4 => const SettingsScreen(),
+      _ => null,
+    };
+    if (screen == null) return;
+    Navigator.push(context, PageRouteBuilder(
+      pageBuilder: (_, a, __) => screen,
+      transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
         ),
-        transitionDuration: const Duration(milliseconds: 320),
-      )).then((_) {
-        _navTapCtrls[index].reverse();
-        _navTapCtrls[1].forward(from: 0.0);
-        setState(() => _selectedNavIndex = 1);
-      });
-    }
+      ),
+      transitionDuration: const Duration(milliseconds: 320),
+    )).then((_) {
+      _navTapCtrls[index].reverse();
+      _navTapCtrls[1].forward(from: 0.0);
+      setState(() => _selectedNavIndex = 1);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    final mq       = MediaQuery.of(context);
     final filtered = _filtered;
-    final isDark = ThemeState.instance.isDark;
-    final bgColor = isDark ? kDarkBg : kSurface;
+    final isDark   = ThemeState.instance.isDark;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
-      color: bgColor,
+      color: isDark ? kDarkBg : kSurface,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: FadeTransition(
@@ -275,11 +268,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildHeader(MediaQueryData mq) {
-    final unread = ChatState.instance.totalUnread;
     final isDark   = ThemeState.instance.isDark;
     final primary  = isDark ? kDarkPrimary : kLightPrimary;
     final cardBg   = isDark ? kDarkCard : Colors.white;
     final searchBg = isDark ? kDarkBg : kSurface;
+    final unread   = ChatState.instance.totalUnread;
     return FadeTransition(
       opacity: _headerFade,
       child: SlideTransition(
@@ -294,40 +287,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 18),
           child: Column(children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
-                      style: TextStyle(color: primary, fontSize: 28,
-                          fontWeight: FontWeight.w900, letterSpacing: -0.8),
-                      child: const Text('Poruke'),
-                    ),
-                    const SizedBox(width: 10),
-                    if (unread > 0)
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeOutBack,
-                        builder: (_, v, child) => Transform.scale(scale: v, child: child),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 340),
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
-                          child: Text('$unread',
-                              style: TextStyle(color: isDark ? kDarkBg : Colors.white,
-                                  fontSize: 12, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                  ]),
-                  const SizedBox(height: 3),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
-                    child: Text('${ChatState.instance.conversations.length} razgovora'),
+                    style: TextStyle(color: primary, fontSize: 28,
+                        fontWeight: FontWeight.w900, letterSpacing: -0.8),
+                    child: const Text('Poruke'),
                   ),
+                  const SizedBox(width: 10),
+                  if (unread > 0)
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutBack,
+                      builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 340),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                        decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
+                        child: Text('$unread', style: TextStyle(
+                            color: isDark ? kDarkBg : Colors.white,
+                            fontSize: 12, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
                 ]),
-              ),
+                const SizedBox(height: 3),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 300),
+                  style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
+                  child: Text('${ChatState.instance.conversations.length} razgovora'),
+                ),
+              ])),
             ]),
             const SizedBox(height: 16),
             AnimatedContainer(
@@ -342,23 +333,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 const SizedBox(width: 13),
                 Icon(Icons.search_rounded, color: primary.withOpacity(0.32), size: 19),
                 const SizedBox(width: 9),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    style: TextStyle(color: primary, fontSize: 14, fontWeight: FontWeight.w400),
-                    decoration: InputDecoration(
-                      hintText: 'Pretraži razgovore...',
-                      hintStyle: TextStyle(color: primary.withOpacity(0.30), fontSize: 14),
-                      border: InputBorder.none, isDense: true,
-                    ),
+                Expanded(child: TextField(
+                  controller: _searchCtrl,
+                  style: TextStyle(color: primary, fontSize: 14, fontWeight: FontWeight.w400),
+                  decoration: InputDecoration(
+                    hintText: 'Pretraži razgovore...',
+                    hintStyle: TextStyle(color: primary.withOpacity(0.30), fontSize: 14),
+                    border: InputBorder.none, isDense: true,
                   ),
-                ),
+                )),
                 if (_searchQuery.isNotEmpty)
                   GestureDetector(
                     onTap: () { _searchCtrl.clear(); FocusScope.of(context).unfocus(); },
                     child: Padding(
                       padding: const EdgeInsets.only(right: 10),
-                      child: Icon(Icons.close_rounded, color: kPrimaryDark.withOpacity(0.45), size: 18),
+                      child: Icon(Icons.close_rounded, color: primary.withOpacity(0.45), size: 18),
                     ),
                   ),
               ]),
@@ -420,9 +409,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNavBar(MediaQueryData mq) {
-    final isDark   = ThemeState.instance.isDark;
-    final navBg    = isDark ? kDarkCard : Colors.white;
-    final primary  = isDark ? kDarkPrimary : kLightPrimary;
+    final isDark  = ThemeState.instance.isDark;
+    final navBg   = isDark ? kDarkCard : Colors.white;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
     return AnimatedBuilder(
       animation: _navBarSlide,
       builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
@@ -436,7 +425,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(5, (i) => _buildNavItem(i)),
+          children: List.generate(5, _buildNavItem),
         ),
       ),
     );
@@ -446,7 +435,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final isDark     = ThemeState.instance.isDark;
     final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
-    final item = kNavItems[index];
+    final item       = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
     final notifUnread = NotificationState.instance.unreadCount;
     final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
@@ -457,7 +446,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: AnimatedBuilder(
         animation: _navTapCtrls[index],
         builder: (_, __) {
-          final t = _navTapCtrls[index].value;
+          final t     = _navTapCtrls[index].value;
           final scale = isSelected
               ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0))
               : 1.0;
@@ -475,7 +464,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       color: isSelected ? navPrimary : navPrimary.withOpacity(0.25),
                       size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showChatBadge)  Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
                 if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
@@ -516,10 +505,9 @@ class _DismissibleTileState extends State<_DismissibleTile>
 
   @override
   Widget build(BuildContext context) {
-    final convo = widget.convo;
+    final convo     = widget.convo;
     final hasUnread = convo.hasUnread;
-    final isDark = ThemeState.instance.isDark;
-
+    final isDark    = ThemeState.instance.isDark;
     final tileText   = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
     final tileAccent = isDark ? kDarkPrimary : kPrimaryDark;
     final avatarBg   = isDark ? const Color(0xFF5A4A52) : kPrimaryLight;
@@ -606,10 +594,7 @@ class _DismissibleTileState extends State<_DismissibleTile>
               color: cardBg,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: hasUnread
-                    ? tileAccent.withOpacity(0.25)
-                    : tileAccent.withOpacity(isDark ? 0.15 : 0.07),
-                width: 1,
+                color: hasUnread ? tileAccent.withOpacity(0.25) : tileAccent.withOpacity(isDark ? 0.15 : 0.07),
               ),
               boxShadow: [BoxShadow(
                 color: isDark ? Colors.black.withOpacity(0.30) : kPrimaryDark.withOpacity(0.07),
@@ -678,14 +663,14 @@ class ChatConversationScreen extends StatefulWidget {
 }
 
 class _ConvoState extends State<ChatConversationScreen> with TickerProviderStateMixin {
-  final TextEditingController _textCtrl = TextEditingController();
-  final ScrollController _scrollCtrl = ScrollController();
-  final FocusNode _focusNode = FocusNode();
-  final ImagePicker _picker = ImagePicker();
+  final TextEditingController _textCtrl  = TextEditingController();
+  final ScrollController      _scrollCtrl = ScrollController();
+  final FocusNode             _focusNode  = FocusNode();
+  final ImagePicker           _picker     = ImagePicker();
 
   late AnimationController _headerCtrl;
-  late Animation<double> _headerFade;
-  late Animation<Offset> _headerSlide;
+  late Animation<double>   _headerFade;
+  late Animation<Offset>   _headerSlide;
 
   List<ChatMessage> get _messages {
     final convo = ChatState.instance.conversations
@@ -698,8 +683,8 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     super.initState();
     ChatState.instance.addListener(_rebuild);
     ThemeState.instance.addListener(_rebuild);
-    _headerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _headerFade = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
+    _headerCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
     _headerCtrl.forward();
@@ -731,29 +716,23 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     if (text.isEmpty) return;
     HapticFeedback.lightImpact();
     _textCtrl.clear();
-    final convo = ChatState.instance.conversations
-        .firstWhere((c) => c.id == widget.convo.id, orElse: () => widget.convo);
-    final idx = ChatState.instance.conversations.indexWhere((c) => c.id == widget.convo.id);
-    if (idx != -1) ChatState.instance.conversations[idx] = ChatConversation(
-        id: convo.id, name: convo.name,
-        messages: List<ChatMessage>.from(convo.messages)
-          ..add(ChatMessage(text: text, isMe: true, sentAt: DateTime.now())));
-    setState(() {});
-    ChatState.instance.notifyListeners();
-    Future.delayed(const Duration(milliseconds: 60), _scrollToBottom);
+    _addMessage(ChatMessage(text: text, isMe: true, sentAt: DateTime.now()));
   }
 
   Future<void> _pickImage() async {
     final XFile? picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked == null) return;
     HapticFeedback.lightImpact();
-    final convo = ChatState.instance.conversations
-        .firstWhere((c) => c.id == widget.convo.id, orElse: () => widget.convo);
+    _addMessage(ChatMessage(imagePath: picked.path, isMe: true, sentAt: DateTime.now()));
+  }
+
+  void _addMessage(ChatMessage msg) {
     final idx = ChatState.instance.conversations.indexWhere((c) => c.id == widget.convo.id);
-    if (idx != -1) ChatState.instance.conversations[idx] = ChatConversation(
-        id: convo.id, name: convo.name,
-        messages: List<ChatMessage>.from(convo.messages)
-          ..add(ChatMessage(imagePath: picked.path, isMe: true, sentAt: DateTime.now())));
+    if (idx == -1) return;
+    final old = ChatState.instance.conversations[idx];
+    ChatState.instance.conversations[idx] = ChatConversation(
+        id: old.id, name: old.name,
+        messages: List<ChatMessage>.from(old.messages)..add(msg));
     setState(() {});
     ChatState.instance.notifyListeners();
     Future.delayed(const Duration(milliseconds: 60), _scrollToBottom);
@@ -761,12 +740,11 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    final mq     = MediaQuery.of(context);
     final isDark = ThemeState.instance.isDark;
-    final bgColor = isDark ? kDarkBg : kSurface;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
-      color: bgColor,
+      color: isDark ? kDarkBg : kSurface,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Column(children: [
@@ -789,7 +767,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     );
   }
 
-  // CHANGED: removed avatar tap → profile navigation, removed subtitle "Klikni za profil"
   Widget _buildHeader(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
@@ -818,7 +795,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
               ),
             ),
             const SizedBox(width: 11),
-            // Avatar - no tap handler
             AnimatedContainer(
               duration: const Duration(milliseconds: 380),
               width: 46, height: 46,
@@ -832,13 +808,11 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
               child: Icon(Icons.person_rounded, color: primary, size: 23),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: primary, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                child: Text(widget.convo.name),
-              ),
-            ),
+            Expanded(child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: primary, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+              child: Text(widget.convo.name),
+            )),
           ]),
         ),
       ),
@@ -878,12 +852,12 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
       );
     }
 
-    final isMe = msg.isMe;
-    final timeStr = _fmt(msg.sentAt);
-    final myBubbleBg    = isDark ? kDarkPrimary : kLightPrimary;
-    final myBubbleText  = isDark ? const Color(0xFF1A0A12) : Colors.white;
-    final theirBubbleBg = isDark ? const Color(0xFF4A3A42) : Colors.white;
-    final theirBubbleText = isDark ? const Color(0xFFEEE0E5) : kLightPrimary;
+    final isMe           = msg.isMe;
+    final timeStr        = _fmt(msg.sentAt);
+    final myBubbleBg     = isDark ? kDarkPrimary : kLightPrimary;
+    final myBubbleText   = isDark ? const Color(0xFF1A0A12) : Colors.white;
+    final theirBubbleBg  = isDark ? const Color(0xFF4A3A42) : Colors.white;
+    final theirText      = isDark ? const Color(0xFFEEE0E5) : kLightPrimary;
 
     Widget bubble;
     if (msg.imagePath != null) {
@@ -930,11 +904,10 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
                     blurRadius: 12, offset: const Offset(0, 4),
                   )],
                 ),
-                child: Text(msg.text ?? '',
-                    style: TextStyle(
-                      color: isMe ? myBubbleText : theirBubbleText,
-                      fontSize: 14, height: 1.4, fontWeight: FontWeight.w400,
-                    )),
+                child: Text(msg.text ?? '', style: TextStyle(
+                  color: isMe ? myBubbleText : theirText,
+                  fontSize: 14, height: 1.4, fontWeight: FontWeight.w400,
+                )),
               ),
             ),
           ],
@@ -945,7 +918,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     return _SwipeRevealTime(isMe: isMe, timeStr: timeStr, child: bubble);
   }
 
-  // CHANGED: removed GestureDetector with _onAvatarTap
   Widget _avatar() {
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
@@ -965,11 +937,11 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
   }
 
   Widget _buildInput(MediaQueryData mq) {
-    final isDark   = ThemeState.instance.isDark;
-    final primary  = isDark ? kDarkPrimary : kLightPrimary;
-    final cardBg   = isDark ? kDarkCard : Colors.white;
-    final inputBg  = isDark ? kDarkBg : kSurface;
-    final accent   = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final cardBg  = isDark ? kDarkCard : Colors.white;
+    final inputBg = isDark ? kDarkBg : kSurface;
+    final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
@@ -1004,7 +976,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
               decoration: InputDecoration(
                 hintText: 'Napiši poruku...',
                 hintStyle: TextStyle(color: primary.withOpacity(0.38), fontSize: 14),
-                filled: false,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                 border: InputBorder.none,
               ),
@@ -1081,18 +1052,15 @@ class _SwipeRevealTimeState extends State<_SwipeRevealTime>
                     color: primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(widget.timeStr,
-                      style: TextStyle(color: primary.withOpacity(0.65),
-                          fontSize: 11.5, fontWeight: FontWeight.w500)),
+                  child: Text(widget.timeStr, style: TextStyle(
+                      color: primary.withOpacity(0.65),
+                      fontSize: 11.5, fontWeight: FontWeight.w500)),
                 ),
               ),
             ),
           ),
         ),
-        Transform.translate(
-          offset: Offset(_offset, 0),
-          child: widget.child,
-        ),
+        Transform.translate(offset: Offset(_offset, 0), child: widget.child),
       ]),
     );
   }

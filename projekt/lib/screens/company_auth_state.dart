@@ -21,13 +21,13 @@ class CompanyAuthState {
   String? get logoUrl      => _logoUrl;
   bool    get isLoggedIn   => _accessToken != null && _accessToken!.isNotEmpty;
 
-  static const _kAccess    = 'company_access_token';
-  static const _kRefresh   = 'company_refresh_token';
-  static const _kId        = 'company_id';
-  static const _kUsername  = 'company_username';
-  static const _kOrgName   = 'company_org_name';
-  static const _kEmail     = 'company_email';
-  static const _kLogoUrl   = 'company_logo_url';
+  static const _kAccess   = 'company_access_token';
+  static const _kRefresh  = 'company_refresh_token';
+  static const _kId       = 'company_id';
+  static const _kUsername = 'company_username';
+  static const _kOrgName  = 'company_org_name';
+  static const _kEmail    = 'company_email';
+  static const _kLogoUrl  = 'company_logo_url';
 
   static Future<bool> loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,12 +63,7 @@ class CompanyAuthState {
     if (_logoUrl != null) await prefs.setString(_kLogoUrl, _logoUrl!);
   }
 
-  /// Ažurira samo profil podatke (bez tokena) — trajno u SharedPreferences
-  Future<void> updateProfile({
-    String? orgName,
-    String? email,
-    String? logoUrl,
-  }) async {
+  Future<void> updateProfile({String? orgName, String? email, String? logoUrl}) async {
     if (orgName != null) _orgName = orgName;
     if (email != null)   _email   = email;
     if (logoUrl != null) _logoUrl = logoUrl;

@@ -2,11 +2,6 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "user_interests")
@@ -28,14 +23,6 @@ public class UserInterest {
     @JoinColumn(name = "interest_id")
     private Interest interest;
 
-    @Column(name = "added_at")
-    private LocalDateTime addedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        addedAt = LocalDateTime.now();
-    }
-
     @Embeddable
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
@@ -47,6 +34,3 @@ public class UserInterest {
         private Integer interestId;
     }
 }
-
-// ── UserLocation ────────────────────────────────────────────────
-

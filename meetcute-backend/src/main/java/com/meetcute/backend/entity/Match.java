@@ -2,11 +2,7 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "matches")
@@ -38,14 +34,8 @@ public class Match {
     @Builder.Default
     private String status = "pending_meetup";
 
-    @Column(name = "question_creator_id", length = 36)
-    private String questionCreatorId;
-
-    @Column(name = "matched_at")
+    @Column(name = "matched_at", updatable = false)
     private LocalDateTime matchedAt;
-
-    @Column(name = "unlock_notif_sent_at")
-    private LocalDateTime unlockNotifSentAt;
 
     @Column(name = "chat_unlocked_at")
     private LocalDateTime chatUnlockedAt;
@@ -58,5 +48,3 @@ public class Match {
         matchedAt = LocalDateTime.now();
     }
 }
-
-// ── MatchSecretQuestion ────────────────────────────────────────────

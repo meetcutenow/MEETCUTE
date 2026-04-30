@@ -5,8 +5,9 @@ import lombok.*;
 
 import java.util.List;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class RegisterRequest {
+
     @NotBlank(message = "Korisničko ime je obavezno")
     @Size(min = 3, max = 50, message = "Korisničko ime mora biti između 3 i 50 znakova")
     @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Korisničko ime smije sadržavati samo slova, brojeve i _")
@@ -58,13 +59,6 @@ public class RegisterRequest {
     @Size(max = 500)
     private String iceBreaker;
 
-    @NotNull(message = "Tajno pitanje je obavezno")
-    private Integer secretQuestionId;
-
-    @NotBlank(message = "Odgovor na tajno pitanje je obavezan")
-    private String secretAnswer;
-
-    // Preference — obavezno
     @NotBlank(message = "Tražim spol je obavezan")
     private String seekingGender;
 

@@ -2,11 +2,7 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "messages")
@@ -33,7 +29,7 @@ public class Message {
     @Column(name = "photo_url", length = 512)
     private String photoUrl;
 
-    @Column(name = "sent_at")
+    @Column(name = "sent_at", updatable = false)
     private LocalDateTime sentAt;
 
     @Column(name = "is_deleted")
@@ -45,6 +41,3 @@ public class Message {
         sentAt = LocalDateTime.now();
     }
 }
-
-// ── Notification ─────────────────────────────────────────────────
-

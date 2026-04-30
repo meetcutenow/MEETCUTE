@@ -17,7 +17,6 @@ public class ProfileResponse {
     private Boolean hasTattoo;
     private String iceBreaker;
     private Boolean isVisible;
-    private String secretQuestion;
     private Integer prefAgeFrom;
     private Integer prefAgeTo;
 }

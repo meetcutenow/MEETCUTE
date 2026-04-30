@@ -3,7 +3,7 @@ package com.meetcute.backend.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class CompanyRegisterRequest {
 
     @NotBlank(message = "Korisničko ime je obavezno")
@@ -23,6 +23,5 @@ public class CompanyRegisterRequest {
     @Size(min = 8)
     private String password;
 
-    // Opcionalni URL loga (Cloudinary ili drugi CDN)
     private String logoUrl;
 }

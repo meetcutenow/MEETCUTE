@@ -5,19 +5,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Dopušta Flutter app na localhostu
-
-# Whisper model — "base" je brz i točan za HR/EN
-# Za bolji HR/EN: promijenite u "small" ili "medium"
-# Za najveću točnost: "large-v3" (sporiji, treba više RAM-a)
+CORS(app)
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "medium")
-
-
 
 print(f"[MeetCute Whisper] Učitavam model '{MODEL_SIZE}'...")
 model = whisper.load_model(MODEL_SIZE)
 print(f"[MeetCute Whisper] Model spreman! Server pokrenut na http://localhost:5050")
-
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
@@ -30,14 +23,13 @@ def transcribe():
 
     audio_file = request.files["audio"]
 
-    # Spremi privremeno
+
     suffix = "." + (audio_file.filename.rsplit(".", 1)[-1] if "." in audio_file.filename else "m4a")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         audio_file.save(tmp.name)
         tmp_path = tmp.name
 
     try:
-        # Whisper transcripcija — automatski detektira jezik (HR ili EN)
         result = model.transcribe(
             tmp_path,
             language="hr",

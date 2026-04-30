@@ -11,12 +11,6 @@ const Color _bordo      = Color(0xFF700D25);
 const Color _bordoLight = Color(0xFFF2E8E9);
 const String _base = 'http://localhost:8080/api';
 
-// ── MODEL ─────────────────────────────────────────────────────────────────────
-
-
-
-// ── MODEL za sudionika ────────────────────────────────────────────────────────
-
 class _Attendee {
   final String  userId;
   final String  displayName;
@@ -34,16 +28,12 @@ class _Attendee {
 
   int? get age => birthYear != null ? DateTime.now().year - birthYear! : null;
 
-  String get genderLabel {
-    switch (gender) {
-      case 'zensko': return 'Ž';
-      case 'musko':  return 'M';
-      default:       return 'O';
-    }
-  }
+  String get genderLabel => switch (gender) {
+    'zensko' => 'Ž',
+    'musko'  => 'M',
+    _        => 'O',
+  };
 }
-
-// ── SCREEN ────────────────────────────────────────────────────────────────────
 
 class CompanyEventsScreen extends StatefulWidget {
   const CompanyEventsScreen({super.key});
@@ -53,7 +43,7 @@ class CompanyEventsScreen extends StatefulWidget {
 class _CompanyEventsScreenState extends State<CompanyEventsScreen>
     with TickerProviderStateMixin {
 
-  List<CompanyEvent> _events  = [];
+  List<CompanyEvent> _events = [];
   bool    _loading = true;
   String? _error;
 
@@ -65,7 +55,7 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
     super.initState();
     ThemeState.instance.addListener(_onTheme);
     _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _load();
   }
 
@@ -78,29 +68,31 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
     super.dispose();
   }
 
-  bool  get _isDark   => ThemeState.instance.isDark;
-  Color get _bg       => _isDark ? kDarkBg   : const Color(0xFFF8F0F1);
-  Color get _card     => _isDark ? kDarkCard : Colors.white;
-  Color get _primary  => _isDark ? kDarkPrimary : _bordo;
+  bool  get _isDark    => ThemeState.instance.isDark;
+  Color get _bg        => _isDark ? kDarkBg : const Color(0xFFF8F0F1);
+  Color get _card      => _isDark ? kDarkCard : Colors.white;
+  Color get _primary   => _isDark ? kDarkPrimary : _bordo;
   Color get _onPrimary => _isDark ? kDarkBg : Colors.white;
+
+  Map<String, String> get _authHeader =>
+      {'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}'};
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
       final resp = await http.get(
         Uri.parse('$_base/company/events'),
-        headers: {'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}'},
+        headers: _authHeader,
       ).timeout(const Duration(seconds: 10));
 
+      final body = jsonDecode(utf8.decode(resp.bodyBytes));
       if (resp.statusCode == 200) {
-        final body = jsonDecode(utf8.decode(resp.bodyBytes));
         final list = body['data'] as List? ?? [];
         setState(() => _events = list
             .map((e) => CompanyEvent.fromJson(e as Map<String, dynamic>))
             .toList());
         _entryCtrl.forward(from: 0);
       } else {
-        final body = jsonDecode(utf8.decode(resp.bodyBytes));
         setState(() => _error = body['message'] ?? 'Greška pri dohvaćanju podataka.');
       }
     } catch (_) {
@@ -114,27 +106,23 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
     try {
       final resp = await http.get(
         Uri.parse('$_base/events/$eventId/attendees'),
-        headers: {'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}'},
+        headers: _authHeader,
       ).timeout(const Duration(seconds: 10));
 
       if (resp.statusCode == 200) {
         final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
-        return list.map((a) {
-
-          return _Attendee(
-            userId:      a['userId'] ?? '',
-            displayName: a['displayName'] ?? '',
-            photoUrl: a['photoUrl'] as String?,
-            gender:      a['gender'],
-            birthYear:   a['birthYear'],
-          );
-        }).toList();
+        return list.map((a) => _Attendee(
+          userId:      a['userId'] ?? '',
+          displayName: a['displayName'] ?? '',
+          photoUrl:    a['photoUrl'] as String?,
+          gender:      a['gender'],
+          birthYear:   a['birthYear'],
+        )).toList();
       }
     } catch (_) {}
     return [];
   }
 
-  // ── Uredi event ───────────────────────────────────────────────────────────
   Future<void> _editEvent(CompanyEvent ev) async {
     final result = await Navigator.push<bool>(context, PageRouteBuilder(
       pageBuilder: (_, a, __) => CompanyOrganizeScreen(editEvent: ev),
@@ -148,20 +136,16 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
     if (result == true) _load();
   }
 
-  // ── Obriši event ──────────────────────────────────────────────────────────
   Future<void> _deleteEvent(CompanyEvent ev) async {
-    final confirmed = await _showDeleteDialog(ev.title);
-    if (!confirmed) return;
-
+    if (!await _showDeleteDialog(ev.title)) return;
     HapticFeedback.mediumImpact();
     try {
       final resp = await http.delete(
         Uri.parse('$_base/company/events/${ev.id}'),
-        headers: {'Authorization': 'Bearer ${CompanyAuthState.instance.accessToken}'},
+        headers: _authHeader,
       ).timeout(const Duration(seconds: 10));
 
       if (!mounted) return;
-
       if (resp.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Događaj obrisan. Sudionici su obaviješteni.',
@@ -209,7 +193,7 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
               Text('Obriši događaj?', style: TextStyle(
                   color: _primary, fontWeight: FontWeight.w800, fontSize: 17)),
               const SizedBox(height: 8),
-              Text('"$title"\n\nSvi prijavljeni korisnici će primiti obavijest o otkazu.',
+              Text('"$title"\n\nSvi prijavljeni korisnici će primiti obavijest o otkazivanju.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: _primary.withOpacity(0.60), fontSize: 13.5, height: 1.5)),
               const SizedBox(height: 22),
@@ -276,8 +260,8 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Moji događaji', style: TextStyle(color: _primary, fontSize: 22,
                     fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-                Text('Svi objavljeni događaji', style: TextStyle(
-                    color: _primary.withOpacity(0.45), fontSize: 13)),
+                Text('Svi objavljeni događaji',
+                    style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 13)),
               ])),
               GestureDetector(
                 onTap: _load,
@@ -294,7 +278,6 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
               ),
             ]),
           ),
-
           Expanded(child: _loading
               ? Center(child: CircularProgressIndicator(color: _primary, strokeWidth: 2.5))
               : _error != null
@@ -330,13 +313,14 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
       Text(_error!, textAlign: TextAlign.center,
           style: TextStyle(color: _primary.withOpacity(0.65), fontSize: 14, height: 1.5)),
       const SizedBox(height: 24),
-      GestureDetector(onTap: _load,
+      GestureDetector(
+        onTap: _load,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           decoration: BoxDecoration(color: _primary, borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: _primary.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))]),
-          child: Text('Pokušaj ponovo', style: TextStyle(
-              color: _onPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
+          child: Text('Pokušaj ponovo',
+              style: TextStyle(color: _onPrimary, fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ),
     ]),
@@ -348,16 +332,14 @@ class _CompanyEventsScreenState extends State<CompanyEventsScreen>
             border: Border.all(color: _primary.withOpacity(0.20))),
         child: Icon(Icons.event_note_rounded, color: _primary, size: 38)),
     const SizedBox(height: 20),
-    Text('Nema objavljenih događaja', style: TextStyle(
-        color: _primary, fontSize: 17, fontWeight: FontWeight.w700)),
+    Text('Nema objavljenih događaja',
+        style: TextStyle(color: _primary, fontSize: 17, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
     Text('Klikni "Organiziraj" na početnom ekranu\nda kreiraš svoj prvi događaj.',
         textAlign: TextAlign.center,
         style: TextStyle(color: _primary.withOpacity(0.50), fontSize: 13.5, height: 1.55)),
   ]));
 }
-
-// ── Kartica događaja ──────────────────────────────────────────────────────────
 
 class _EventCard extends StatefulWidget {
   final CompanyEvent event;
@@ -380,17 +362,17 @@ class _EventCard extends StatefulWidget {
 }
 
 class _EventCardState extends State<_EventCard> {
-  bool _expanded      = false;
-  bool _showPeople    = false;
-  List<_Attendee> _attendees = [];
+  bool _expanded         = false;
+  bool _showPeople       = false;
   bool _loadingAttendees = false;
+  List<_Attendee> _attendees = [];
 
   String get _dateStr {
     final d = widget.event.eventDate;
     if (d == null) return '—';
     try {
-      final parts = d.split('-');
-      return '${parts[2]}.${parts[1]}.${parts[0]}.';
+      final p = d.split('-');
+      return '${p[2]}.${p[1]}.${p[0]}.';
     } catch (_) { return d; }
   }
 
@@ -399,14 +381,12 @@ class _EventCardState extends State<_EventCard> {
     final e = widget.event.timeEnd;
     if (s == null) return '—';
     final start = s.length >= 5 ? s.substring(0, 5) : s;
-    if (e == null) return start;
-    return '$start – ${e.length >= 5 ? e.substring(0, 5) : e}';
+    return e == null ? start : '$start – ${e.length >= 5 ? e.substring(0, 5) : e}';
   }
 
   Color get _cardColor {
     try {
-      final hex = widget.event.cardColorHex ?? '#700D25';
-      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+      return Color(int.parse('FF${(widget.event.cardColorHex ?? '#700D25').replaceAll('#', '')}', radix: 16));
     } catch (_) { return _bordo; }
   }
 
@@ -441,8 +421,6 @@ class _EventCardState extends State<_EventCard> {
             blurRadius: 18, offset: const Offset(0, 5))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-        // ── Header ──────────────────────────────────────────────────────────
         GestureDetector(
           onTap: () { HapticFeedback.selectionClick(); setState(() => _expanded = !_expanded); },
           child: Container(
@@ -472,7 +450,8 @@ class _EventCardState extends State<_EventCard> {
                   Icon(Icons.location_on_rounded, color: subCol, size: 13),
                   const SizedBox(width: 3),
                   Expanded(child: Text(
-                    ev.specificLocation != null ? '${ev.specificLocation}, ${ev.city}' : ev.city,
+                    ev.specificLocation != null
+                        ? '${ev.specificLocation}, ${ev.city}' : ev.city,
                     style: TextStyle(color: subCol, fontSize: 12.5),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   )),
@@ -483,8 +462,6 @@ class _EventCardState extends State<_EventCard> {
             ]),
           ),
         ),
-
-        // ── Info redovi ──────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Row(children: [
@@ -493,12 +470,9 @@ class _EventCardState extends State<_EventCard> {
             _chip(Icons.access_time_rounded, _timeStr, chipBg, primary),
           ]),
         ),
-
-        // ── Akcije: Sudionici | Uredi | Obriši ───────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
           child: Row(children: [
-            // Sudionici gumb
             GestureDetector(
               onTap: _togglePeople,
               child: AnimatedContainer(
@@ -507,9 +481,7 @@ class _EventCardState extends State<_EventCard> {
                 decoration: BoxDecoration(
                   color: ev.isFull
                       ? Colors.redAccent.withOpacity(0.12)
-                      : _showPeople
-                      ? primary.withOpacity(0.15)
-                      : chipBg,
+                      : _showPeople ? primary.withOpacity(0.15) : chipBg,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _showPeople
                       ? primary.withOpacity(0.40) : primary.withOpacity(0.15)),
@@ -533,7 +505,6 @@ class _EventCardState extends State<_EventCard> {
               ),
             ),
             const Spacer(),
-            // Uredi gumb
             GestureDetector(
               onTap: widget.onEdit,
               child: Container(
@@ -552,7 +523,6 @@ class _EventCardState extends State<_EventCard> {
               ),
             ),
             const SizedBox(width: 8),
-            // Obriši gumb
             GestureDetector(
               onTap: widget.onDelete,
               child: Container(
@@ -572,8 +542,6 @@ class _EventCardState extends State<_EventCard> {
             ),
           ]),
         ),
-
-        // ── Lista sudionika ──────────────────────────────────────────────────
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
@@ -602,27 +570,20 @@ class _EventCardState extends State<_EventCard> {
                     style: TextStyle(color: primary.withOpacity(0.55), fontSize: 13)),
               ]),
             )
-                : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Prijavljeni sudionici (${_attendees.length})',
-                    style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                ..._attendees.map((a) => _AttendeeRow(
-                    attendee: a, isDark: isDark, primary: primary)),
-              ],
-            ),
+                : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Prijavljeni sudionici (${_attendees.length})',
+                  style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              ..._attendees.map((a) => _AttendeeRow(attendee: a, isDark: isDark, primary: primary)),
+            ]),
           )
               : const SizedBox(width: double.infinity),
         ),
-
-        // ── Prošireni detalji ────────────────────────────────────────────────
         if (_expanded) ...[
           Divider(height: 1, color: primary.withOpacity(0.10)),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
               if (ev.ticketPrice != null) ...[
                 _statRow(Icons.confirmation_number_rounded, 'Cijena ulaznice',
                     '${ev.ticketPrice!.toStringAsFixed(2)} ${ev.ticketCurrency ?? 'EUR'}',
@@ -633,12 +594,9 @@ class _EventCardState extends State<_EventCard> {
                     isDark, primary),
                 const SizedBox(height: 8),
               ],
-
               if (ev.category != null)
                 _statRow(Icons.category_rounded, 'Kategorija', ev.category!, isDark, primary),
-
               const SizedBox(height: 12),
-
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Popunjenost', style: TextStyle(
                     color: primary.withOpacity(0.70), fontSize: 12.5, fontWeight: FontWeight.w600)),
@@ -657,8 +615,7 @@ class _EventCardState extends State<_EventCard> {
                   minHeight: 8,
                   backgroundColor: primary.withOpacity(0.10),
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    ev.isFull ? Colors.redAccent : primary,
-                  ),
+                      ev.isFull ? Colors.redAccent : primary),
                 ),
               ),
             ]),
@@ -688,8 +645,6 @@ class _EventCardState extends State<_EventCard> {
       ]);
 }
 
-// ── Red sudionika ─────────────────────────────────────────────────────────────
-
 class _AttendeeRow extends StatelessWidget {
   final _Attendee attendee;
   final bool  isDark;
@@ -698,12 +653,12 @@ class _AttendeeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isDark ? kDarkBg : Colors.white;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: bg, borderRadius: BorderRadius.circular(10),
+        color: isDark ? kDarkBg : Colors.white,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: primary.withOpacity(0.12)),
       ),
       child: Row(children: [
@@ -720,8 +675,7 @@ class _AttendeeRow extends StatelessWidget {
             fit: BoxFit.cover,
             loadingBuilder: (_, child, progress) => progress == null
                 ? child
-                : Center(child: CircularProgressIndicator(
-                strokeWidth: 1.5, color: primary)),
+                : Center(child: CircularProgressIndicator(strokeWidth: 1.5, color: primary)),
             errorBuilder: (_, __, ___) => _initial(),
           ))
               : _initial(),
@@ -735,8 +689,7 @@ class _AttendeeRow extends StatelessWidget {
             color: primary.withOpacity(0.08), shape: BoxShape.circle,
             border: Border.all(color: primary.withOpacity(0.20)),
           ),
-          child: Center(child: Text(attendee.genderLabel,
-              style: const TextStyle(fontSize: 13))),
+          child: Center(child: Text(attendee.genderLabel, style: const TextStyle(fontSize: 13))),
         ),
         const SizedBox(width: 8),
         if (attendee.age != null)

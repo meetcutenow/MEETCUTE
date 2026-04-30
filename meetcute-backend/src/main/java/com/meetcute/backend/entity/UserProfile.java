@@ -2,7 +2,6 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,7 +32,6 @@ public class UserProfile {
     @Column(name = "height_cm")
     private Integer heightCm;
 
-    // VARCHAR u bazi — koristimo String, ne Java enum
     @Column(name = "gender", length = 20)
     private String gender;
 
@@ -66,18 +64,11 @@ public class UserProfile {
     @Column(name = "ice_breaker", length = 500)
     private String iceBreaker;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "secret_question_id")
-    private SecretQuestion secretQuestion;
-
-    @Column(name = "secret_answer", length = 255)
-    private String secretAnswer;
-
     @Column(name = "is_visible")
     @Builder.Default
     private Boolean isVisible = true;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")

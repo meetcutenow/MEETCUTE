@@ -5,8 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
-import 'notifications_screen.dart' show NotificationState, seedStaticNotifications;
+import 'home_screen.dart' show kPrimaryDark, kPrimaryLight;
+import 'notifications_screen.dart' show NotificationState;
 import 'theme_state.dart';
 import 'auth_state.dart';
 import 'organize_meetup.dart' show OrganizeMeetupScreen, BackendEventEdit;
@@ -19,32 +19,26 @@ enum AgeGroup { all, g18_25, g26_35, g36_45, g45plus }
 enum GenderGroup { all, female, male }
 
 extension AgeGroupLabel on AgeGroup {
-  String get label {
-    switch (this) {
-      case AgeGroup.all:     return 'Sve';
-      case AgeGroup.g18_25:  return '18–25';
-      case AgeGroup.g26_35:  return '26–35';
-      case AgeGroup.g36_45:  return '36–45';
-      case AgeGroup.g45plus: return '45+';
-    }
-  }
+  String get label => switch (this) {
+    AgeGroup.all    => 'Sve',
+    AgeGroup.g18_25 => '18–25',
+    AgeGroup.g26_35 => '26–35',
+    AgeGroup.g36_45 => '36–45',
+    AgeGroup.g45plus => '45+',
+  };
 }
 
 extension GenderGroupLabel on GenderGroup {
-  String get label {
-    switch (this) {
-      case GenderGroup.all:    return 'Svi';
-      case GenderGroup.female: return 'Žensko';
-      case GenderGroup.male:   return 'Muško';
-    }
-  }
-  String get emoji {
-    switch (this) {
-      case GenderGroup.all:    return '🌍';
-      case GenderGroup.female: return '♀️';
-      case GenderGroup.male:   return '♂️';
-    }
-  }
+  String get label => switch (this) {
+    GenderGroup.all    => 'Svi',
+    GenderGroup.female => 'Žensko',
+    GenderGroup.male   => 'Muško',
+  };
+  String get emoji => switch (this) {
+    GenderGroup.all    => '🌍',
+    GenderGroup.female => '♀️',
+    GenderGroup.male   => '♂️',
+  };
 }
 
 class EventData {
@@ -117,8 +111,9 @@ int _effectiveAttendees(EventData e) {
   if (joined == null) return e.attendees;
   return joined ? e.attendees + 1 : e.attendees;
 }
-class _City  { final String name; const _City(this.name); }
-class _Cat   { final String label; final IconData? icon; final String? emoji;
+
+class _City { final String name; const _City(this.name); }
+class _Cat  { final String label; final IconData? icon; final String? emoji;
 const _Cat({required this.label, this.icon, this.emoji}); }
 
 const _cities = [ _City('Zagreb'), _City('Split'), _City('Rijeka'), _City('Osijek'), _City('Zadar') ];
@@ -278,7 +273,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _entryCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
@@ -298,7 +293,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
     _entryCtrl.forward();
     ThemeState.instance.addListener(_onTheme);
-
     _loadFromBackend();
   }
 
@@ -317,7 +311,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
       if (resp.statusCode == 200) {
         final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List;
 
-        // Očisti stare backend evente
         for (final c in _cities) {
           _userEventsByCity[c.name]?.removeWhere((e) => e.id.isNotEmpty);
         }
@@ -325,8 +318,6 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
         for (final e in list) {
           final isUserEvent    = e['isUserEvent']    == true;
           final isCompanyEvent = e['isCompanyEvent'] == true;
-
-          // ── KLJUČNI FIX: prikaži i user i company evente ──────────────────
           if (!isUserEvent && !isCompanyEvent) continue;
 
           final city = e['city'] as String? ?? '';
@@ -364,7 +355,8 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
           for (final v in GenderGroup.values) {
             if (v.name == gg) { genderGroup = v; break; }
           }
-          final String? coverPhotoUrl = e['coverPhotoUrl'] as String?;
+
+          final coverPhotoUrl = e['coverPhotoUrl'] as String?;
           final event = EventData(
             id:               e['id'] as String? ?? '',
             creatorId:        e['creatorId'] as String?,
@@ -380,9 +372,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
               (e['latitude']  as num?)?.toDouble() ?? 45.8150,
               (e['longitude'] as num?)?.toDouble() ?? 15.9819,
             ),
-            userImagePath:    (coverPhotoUrl != null && coverPhotoUrl.isNotEmpty)   // ← DODAJ OVO
-                ? coverPhotoUrl
-                : null,
+            userImagePath:    (coverPhotoUrl != null && coverPhotoUrl.isNotEmpty) ? coverPhotoUrl : null,
             categories:       [e['category'] as String? ?? ''],
             cardColor:        cardColor,
             isUserEvent:      isUserEvent,
@@ -400,9 +390,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
           _userEventsByCity.putIfAbsent(city, () => []);
           _userEventsByCity[city]!.add(event);
 
-          if (e['isAttending'] == true) {
-            attendanceState[event.title] = true;
-          }
+          if (e['isAttending'] == true) attendanceState[event.title] = true;
         }
 
         if (mounted) setState(() {});
@@ -418,7 +406,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
   void _buildCardAnims(int dir) {
     _cardSlide = Tween<Offset>(begin: Offset(dir * 0.22, 0), end: Offset.zero)
         .animate(CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOutCubic));
-    _cardFade = Tween<double>(begin: 0.0, end: 1.0)
+    _cardFade  = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _cardCtrl, curve: const Interval(0, 0.6, curve: Curves.easeOut)));
     _cardScale = Tween<double>(begin: 0.94, end: 1.0)
         .animate(CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOutCubic));
@@ -435,21 +423,17 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
   List<EventData> get _cityEvents {
     final name = _cities[_cityIdx].name;
-    final stat = _eventsByCity[_cityIdx] ?? [];
-    final user = _userEventsByCity[name] ?? [];
-    return [...user, ...stat];
+    return [...(_userEventsByCity[name] ?? []), ...(_eventsByCity[_cityIdx] ?? [])];
   }
 
-  List<EventData> get _filtered {
-    return _cityEvents.where((e) {
-      final matchCat = _selCat == null || e.categories.contains(_selCat);
-      final matchAge = _selAge == AgeGroup.all || e.ageGroup == _selAge || e.ageGroup == AgeGroup.all;
-      final matchGen = _selGen == GenderGroup.all || e.genderGroup == _selGen || e.genderGroup == GenderGroup.all;
-      final q = _search.toLowerCase();
-      final matchSearch = q.isEmpty || e.title.toLowerCase().contains(q) || e.location.toLowerCase().contains(q);
-      return matchCat && matchAge && matchGen && matchSearch;
-    }).toList();
-  }
+  List<EventData> get _filtered => _cityEvents.where((e) {
+    final matchCat    = _selCat == null || e.categories.contains(_selCat);
+    final matchAge    = _selAge == AgeGroup.all || e.ageGroup == _selAge || e.ageGroup == AgeGroup.all;
+    final matchGen    = _selGen == GenderGroup.all || e.genderGroup == _selGen || e.genderGroup == GenderGroup.all;
+    final q           = _search.toLowerCase();
+    final matchSearch = q.isEmpty || e.title.toLowerCase().contains(q) || e.location.toLowerCase().contains(q);
+    return matchCat && matchAge && matchGen && matchSearch;
+  }).toList();
 
   bool get _hasFilters => _selAge != AgeGroup.all || _selGen != GenderGroup.all;
 
@@ -460,8 +444,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
   }
 
   void _next() {
-    final ev = _filtered;
-    if (_page >= ev.length - 1) return;
+    if (_page >= _filtered.length - 1) return;
     setState(() => _page++);
     _swap(1);
   }
@@ -516,7 +499,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final mq    = MediaQuery.of(context);
+    final mq     = MediaQuery.of(context);
     final isDark = ThemeState.instance.isDark;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
@@ -529,23 +512,21 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
             position: _entrySlide,
             child: Column(children: [
               _header(mq),
-              Expanded(
-                child: Stack(children: [
-                  Column(children: [
-                    const SizedBox(height: 14),
-                    _locationBar(),
-                    const SizedBox(height: 10),
-                    _catChips(),
-                    const SizedBox(height: 6),
-                    _filterPanel(),
-                    Expanded(child: _backendLoading
-                        ? Center(child: CircularProgressIndicator(color: _bordo.withOpacity(0.5), strokeWidth: 2))
-                        : _cardArea()),
-                    _searchBar(mq),
-                  ]),
-                  if (_showCity) _cityOverlay(),
+              Expanded(child: Stack(children: [
+                Column(children: [
+                  const SizedBox(height: 14),
+                  _locationBar(),
+                  const SizedBox(height: 10),
+                  _catChips(),
+                  const SizedBox(height: 6),
+                  _filterPanel(),
+                  Expanded(child: _backendLoading
+                      ? Center(child: CircularProgressIndicator(color: _bordo.withOpacity(0.5), strokeWidth: 2))
+                      : _cardArea()),
+                  _searchBar(mq),
                 ]),
-              ),
+                if (_showCity) _cityOverlay(),
+              ])),
             ]),
           ),
         ),
@@ -584,14 +565,10 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
               border: Border.all(color: _hasFilters ? primary : primary.withOpacity(0.12)),
             ),
             child: Stack(alignment: Alignment.center, children: [
-              Icon(Icons.tune_rounded,
-                  color: _hasFilters ? Colors.white : primary, size: 18),
-              if (_hasFilters)
-                Positioned(top: 6, right: 6,
-                    child: Container(
-                      width: 7, height: 7,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    )),
+              Icon(Icons.tune_rounded, color: _hasFilters ? Colors.white : primary, size: 18),
+              if (_hasFilters) Positioned(top: 6, right: 6,
+                  child: Container(width: 7, height: 7,
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle))),
             ]),
           ),
         ),
@@ -604,6 +581,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
     final primary = isDark ? kDarkPrimary : _bordo;
     final inBg    = isDark ? kDarkCard : const Color(0xFFF4EDED);
     final inBdr   = isDark ? kPrimaryLight.withOpacity(0.15) : const Color(0xFFE8D5D8);
+    final fgColor = _showCity ? (isDark ? kDarkBg : Colors.white) : primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: GestureDetector(
@@ -615,26 +593,21 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
             color: _showCity ? primary : inBg,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: _showCity ? primary : inBdr, width: 1.5),
-            boxShadow: _showCity ? [BoxShadow(color: primary.withOpacity(0.20), blurRadius: 14, offset: const Offset(0,4))] : [],
+            boxShadow: _showCity ? [BoxShadow(color: primary.withOpacity(0.20), blurRadius: 14, offset: const Offset(0, 4))] : [],
           ),
           child: Row(children: [
-            Icon(Icons.location_on_rounded,
-                color: _showCity ? (isDark ? kDarkBg : Colors.white) : primary, size: 18),
+            Icon(Icons.location_on_rounded, color: fgColor, size: 18),
             const SizedBox(width: 9),
             Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text('Tvoja lokacija', style: TextStyle(
-                  color: (_showCity ? (isDark ? kDarkBg : Colors.white) : primary).withOpacity(0.55),
-                  fontSize: 10.5, fontWeight: FontWeight.w500)),
+              Text('Tvoja lokacija', style: TextStyle(color: fgColor.withOpacity(0.55), fontSize: 10.5, fontWeight: FontWeight.w500)),
               const SizedBox(height: 1),
-              Text(_cities[_cityIdx].name, style: TextStyle(
-                  color: _showCity ? (isDark ? kDarkBg : Colors.white) : primary,
-                  fontSize: 16, fontWeight: FontWeight.w800)),
+              Text(_cities[_cityIdx].name, style: TextStyle(color: fgColor, fontSize: 16, fontWeight: FontWeight.w800)),
             ]),
             const Spacer(),
             AnimatedRotation(
-                turns: _showCity ? 0.5 : 0, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
-                child: Icon(Icons.keyboard_arrow_down_rounded,
-                    color: (_showCity ? (isDark ? kDarkBg : Colors.white) : primary).withOpacity(0.70), size: 22)),
+              turns: _showCity ? 0.5 : 0, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
+              child: Icon(Icons.keyboard_arrow_down_rounded, color: fgColor.withOpacity(0.70), size: 22),
+            ),
           ]),
         ),
       ),
@@ -711,7 +684,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
                     color: sel ? primary : chipBg,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: sel ? primary : chipBdr, width: 1.2),
-                    boxShadow: sel ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0,3))] : [],
+                    boxShadow: sel ? [BoxShadow(color: primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))] : [],
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     if (cat.icon != null) ...[Icon(cat.icon, size: 13, color: sel ? fg : primary), const SizedBox(width: 4)]
@@ -780,8 +753,8 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
   }
 
   Widget _cardArea() {
-    final ev     = _filtered;
-    final isDark = ThemeState.instance.isDark;
+    final ev      = _filtered;
+    final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : _bordo;
     final emptyBg = isDark ? kDarkCardEl : _bordoLight;
 
@@ -789,7 +762,7 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(width: 72, height: 72,
             decoration: BoxDecoration(color: emptyBg, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: primary.withOpacity(0.12), blurRadius: 20, offset: const Offset(0,6))]),
+                boxShadow: [BoxShadow(color: primary.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 6))]),
             child: Icon(_cityEvents.isEmpty ? Icons.location_off_rounded : Icons.search_off_rounded,
                 color: primary.withOpacity(0.55), size: 32)),
         const SizedBox(height: 16),
@@ -826,12 +799,12 @@ class _EventsNearbyState extends State<EventsNearbyScreen> with TickerProviderSt
             if (ev.length > page + 2)
               Positioned(top: 16, left: 12, right: 12, height: cardH,
                   child: Container(decoration: BoxDecoration(
-                      color: ev[(page+2).clamp(0,ev.length-1)].cardColor.withOpacity(0.45),
+                      color: ev[(page + 2).clamp(0, ev.length - 1)].cardColor.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(26)))),
             if (ev.length > page + 1)
               Positioned(top: 8, left: 6, right: 6, height: cardH,
                   child: Container(decoration: BoxDecoration(
-                      color: ev[(page+1).clamp(0,ev.length-1)].cardColor.withOpacity(0.70),
+                      color: ev[(page + 1).clamp(0, ev.length - 1)].cardColor.withOpacity(0.70),
                       borderRadius: BorderRadius.circular(26)))),
             Positioned(top: 0, left: 0, right: 0, height: cardH,
                 child: AnimatedBuilder(
@@ -898,27 +871,25 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
-    final e      = widget.event;
-    final c      = e.cardColor;
-    final isUser    = e.isUserEvent;
+    final e         = widget.event;
+    final c         = e.cardColor;
     final isCompany = e.isCompanyEvent;
-    final hasImg = e.userImagePath != null && e.userImagePath!.isNotEmpty;
+    final isUser    = e.isUserEvent;
+    final hasImg    = e.userImagePath != null && e.userImagePath!.isNotEmpty;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: Stack(children: [
-        Positioned.fill(
-          child: hasImg
-              ? (e.userImagePath!.startsWith('http')
-              ? Image.network(e.userImagePath!, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: c))
-              : Image.file(File(e.userImagePath!), fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: c)))
-              : e.imagePath.isNotEmpty
-              ? Image.asset(e.imagePath, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: c))
-              : Container(color: c),
-        ),
+        Positioned.fill(child: hasImg
+            ? (e.userImagePath!.startsWith('http')
+            ? Image.network(e.userImagePath!, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: c))
+            : Image.file(File(e.userImagePath!), fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: c)))
+            : e.imagePath.isNotEmpty
+            ? Image.asset(e.imagePath, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(color: c))
+            : Container(color: c)),
         Positioned.fill(child: AnimatedBuilder(animation: _shim, builder: (_, __) => Positioned(
             left: -80 + _shim.value * (MediaQuery.of(context).size.width + 160), top: 0, bottom: 0,
             child: Container(width: 80, decoration: BoxDecoration(gradient: LinearGradient(colors: [
@@ -926,7 +897,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
         _cloud(top: 18, left: 14, w: 52, h: 24),
         _cloud(top: 8, right: 46, w: 38, h: 18),
         _cloud(top: 44, right: 10, w: 28, h: 14),
-        // Badge za company event
         if (isCompany)
           Positioned(top: 12, left: 12,
               child: Container(
@@ -936,7 +906,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                     const Icon(Icons.business_rounded, color: _bordo, size: 12), const SizedBox(width: 4),
                     Text(e.companyName ?? 'Tvrtka', style: const TextStyle(color: _bordo, fontSize: 11, fontWeight: FontWeight.w700)),
                   ]))),
-        // Badge za user event
         if (isUser && !isCompany)
           Positioned(top: 12, left: 12,
               child: Container(
@@ -954,7 +923,6 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
                   Icon(Icons.touch_app_rounded, color: Colors.white, size: 13), SizedBox(width: 4),
                   Text('detalji', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                 ]))),
-        // Ticket price badge
         if (e.ticketPrice != null && e.ticketPrice! > 0)
           Positioned(bottom: 90, left: 12,
               child: Container(
@@ -971,8 +939,7 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
             margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
             decoration: BoxDecoration(
-              color: _bordo,
-              borderRadius: BorderRadius.circular(16),
+              color: _bordo, borderRadius: BorderRadius.circular(16),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.22), blurRadius: 10, offset: const Offset(0, -2))],
             ),
             child: Row(children: [
@@ -1001,7 +968,8 @@ class _EventCardState extends State<_EventCard> with SingleTickerProviderStateMi
 
   Widget _cloud({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
       Positioned(top: top, bottom: bottom, left: left, right: right,
-          child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.52), borderRadius: BorderRadius.circular(h/2))));
+          child: Container(width: w, height: h, decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.52), borderRadius: BorderRadius.circular(h / 2))));
 }
 
 class _CityTile extends StatefulWidget {
@@ -1078,15 +1046,15 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _contentSlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-    _heroCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _heroCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
     _heroScale = Tween<double>(begin: 1.06, end: 1.0)
         .animate(CurvedAnimation(parent: _heroCtrl, curve: Curves.easeOutCubic));
-    _btnCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 160));
+    _btnCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 160));
     _btnScale = Tween<double>(begin: 1.0, end: 0.92)
         .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeIn));
     _countCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _countAnim = CurvedAnimation(parent: _countCtrl, curve: Curves.easeOutBack);
-    _mapCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
+    _mapCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
     _entryCtrl.forward(); _heroCtrl.forward();
   }
 
@@ -1095,17 +1063,15 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
   @override
   void dispose() {
     ThemeState.instance.removeListener(_onTheme);
-    _entryCtrl.dispose(); _heroCtrl.dispose(); _btnCtrl.dispose(); _countCtrl.dispose(); _mapCtrl.dispose();
+    _entryCtrl.dispose(); _heroCtrl.dispose(); _btnCtrl.dispose();
+    _countCtrl.dispose(); _mapCtrl.dispose();
     super.dispose();
   }
 
   void _toggleJoin() async {
-    if (widget.event.isCompanyEvent) {
-      // Company eventi — prijava putem backend API-a
-      if (!AuthState.instance.isLoggedIn) {
-        _showSnack('Moraš biti prijavljen/a da se prijavljuješ na evente.');
-        return;
-      }
+    if (widget.event.isCompanyEvent && !AuthState.instance.isLoggedIn) {
+      _showSnack('Moraš biti prijavljen/a da se prijavljuješ na evente.');
+      return;
     }
     if (!_joined && widget.event.isUserEvent && widget.event.maxAttendees > 0) {
       if (_effectiveAttendees(widget.event) >= widget.event.maxAttendees) { _showFull(); return; }
@@ -1113,7 +1079,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     HapticFeedback.mediumImpact();
     await _btnCtrl.forward(); await _btnCtrl.reverse();
 
-    // Pokušaj backend toggle ako event ima ID
     if (widget.event.id.isNotEmpty && AuthState.instance.isLoggedIn) {
       try {
         final resp = await http.post(
@@ -1125,25 +1090,22 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
           _showSnack(decoded['message'] ?? 'Greška pri prijavi.');
           return;
         }
-      } catch (_) {
-        // Nastavi lokalno ako backend nije dostupan
-      }
+      } catch (_) {}
     }
 
     final was = _joined;
     setState(() { attendanceState[widget.event.title] = !was; });
     _countCtrl.forward(from: 0);
-    NotificationState.instance.onAttendanceChanged(widget.event.title, widget.event.location, widget.event.cardColor, !was);
+    NotificationState.instance.onAttendanceChanged(
+        widget.event.title, widget.event.location, widget.event.cardColor, !was);
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(color: Colors.white)),
-      backgroundColor: _bordo, behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.all(16),
-    ));
-  }
+  void _showSnack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg, style: const TextStyle(color: Colors.white)),
+    backgroundColor: _bordo, behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    margin: const EdgeInsets.all(16),
+  ));
 
   void _showFull() {
     HapticFeedback.mediumImpact();
@@ -1155,7 +1117,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
         child: Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 32, offset: const Offset(0,12))]),
+              boxShadow: [BoxShadow(color: _bordo.withOpacity(0.20), blurRadius: 32, offset: const Offset(0, 12))]),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 60, height: 60, decoration: BoxDecoration(color: _bordoLight, shape: BoxShape.circle),
                 child: const Icon(Icons.group_off_rounded, color: _bordo, size: 28)),
@@ -1187,14 +1149,12 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
         backgroundColor: Colors.transparent,
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.85, end: 1.0),
-          duration: const Duration(milliseconds: 340),
-          curve: Curves.easeOutBack,
+          duration: const Duration(milliseconds: 340), curve: Curves.easeOutBack,
           builder: (_, v, child) => Transform.scale(scale: v, child: child),
           child: Container(
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(26),
+              color: Colors.white, borderRadius: BorderRadius.circular(26),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 36, offset: const Offset(0, 14))],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1246,7 +1206,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       ).timeout(const Duration(seconds: 10));
 
       if (!mounted) return;
-
       if (resp.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Događaj obrisan.', style: TextStyle(color: Colors.white)),
@@ -1276,8 +1235,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
           headers: headers,
         ).timeout(const Duration(seconds: 8));
         if (resp.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as Map<String, dynamic>;
-          eventDate = data['eventDate'] as String? ?? '';
+          eventDate = (jsonDecode(utf8.decode(resp.bodyBytes))['data'] as Map<String, dynamic>)['eventDate'] as String? ?? '';
         }
       } catch (_) {}
     }
@@ -1285,8 +1243,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     if (eventDate.isEmpty) {
       final day   = e.dateDay.replaceAll('.', '').padLeft(2, '0');
       final month = e.dateMonth.replaceAll('.', '').padLeft(2, '0');
-      final year  = DateTime.now().year.toString();
-      eventDate = '$year-$month-$day';
+      eventDate   = '${DateTime.now().year}-$month-$day';
     }
 
     String? timeStart, timeEnd;
@@ -1327,21 +1284,19 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       transitionDuration: const Duration(milliseconds: 400),
     ));
 
-    if (result == true && mounted) {
-      Navigator.pop(context, 'updated');
-    }
+    if (result == true && mounted) Navigator.pop(context, 'updated');
   }
 
   @override
   Widget build(BuildContext context) {
-    final mq     = MediaQuery.of(context);
-    final e      = widget.event;
-    final c      = e.cardColor;
-    final att    = _effectiveAttendees(e);
-    final isDark = ThemeState.instance.isDark;
-    final bgCol  = isDark ? kDarkBg : Colors.white;
+    final mq      = MediaQuery.of(context);
+    final e       = widget.event;
+    final c       = e.cardColor;
+    final att     = _effectiveAttendees(e);
+    final isDark  = ThemeState.instance.isDark;
+    final bgCol   = isDark ? kDarkBg : Colors.white;
     final primary = isDark ? kDarkPrimary : _bordoDark;
-    final hasImg = e.userImagePath != null && e.userImagePath!.isNotEmpty;
+    final hasImg  = e.userImagePath != null && e.userImagePath!.isNotEmpty;
     final locDisplay = e.specificLocation.isNotEmpty ? e.specificLocation : e.location;
 
     return AnimatedContainer(
@@ -1361,13 +1316,13 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                               errorBuilder: (_, __, ___) => Container(color: c))
                               : Image.file(File(e.userImagePath!), fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(color: c))
-                        else if (e.imagePath.isNotEmpty) Image.asset(e.imagePath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
+                        else if (e.imagePath.isNotEmpty)
+                          Image.asset(e.imagePath, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: c))
                         else Container(color: c),
                         Positioned(bottom: 0, left: 0, right: 0, height: 100,
                             child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                 colors: [Colors.transparent, Colors.black.withOpacity(0.18)])))),
-                        // Badge za user event - kreator
                         if (e.isUserEvent && _isMyEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1378,7 +1333,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                   Text(e.maxAttendees > 0 ? 'Tvoj event · max ${e.maxAttendees} ljudi' : 'Tvoj osobni event',
                                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                                 ]))),
-                        // Badge za user event - tuđi
                         if (e.isUserEvent && !_isMyEvent) Positioned(bottom: 16, left: 20,
                             child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1415,13 +1369,12 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                             const SizedBox(width: 12),
                             Container(width: 68, height: 68,
                                 decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0,5))]),
+                                    boxShadow: [BoxShadow(color: _bordo.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))]),
                                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                                   Text(e.dateDay, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
                                   Text(e.dateMonth, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.0)),
                                 ])),
                           ]),
-
                           const SizedBox(height: 20),
 
                           GestureDetector(onTap: _toggleMap,
@@ -1429,8 +1382,8 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                 decoration: BoxDecoration(
                                     color: isDark ? kDarkCard : _bordoLight,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: primary.withOpacity(0.12), width: 1),
-                                    boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0,4))]),
+                                    border: Border.all(color: primary.withOpacity(0.12)),
+                                    boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4))]),
                                 child: Column(children: [
                                   Padding(padding: const EdgeInsets.all(16),
                                       child: Row(children: [
@@ -1497,7 +1450,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
 
                           const SizedBox(height: 24),
 
-                          // ── Company info kartica ───────────────────────────
                           if (e.isCompanyEvent && e.companyName != null) ...[
                             Container(
                               margin: const EdgeInsets.only(bottom: 16),
@@ -1510,7 +1462,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                 ),
                               ),
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                // ── Gornji red: logo + naziv + cijena ─────────
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                                   child: Row(children: [
@@ -1533,9 +1484,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                     if (e.ticketPrice != null && e.ticketPrice! > 0)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: _bordo, borderRadius: BorderRadius.circular(12),
-                                        ),
+                                        decoration: BoxDecoration(color: _bordo, borderRadius: BorderRadius.circular(12)),
                                         child: Column(children: [
                                           Text('${e.ticketPrice!.toStringAsFixed(2)} ${e.ticketCurrency ?? 'EUR'}',
                                               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
@@ -1544,7 +1493,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                       ),
                                   ]),
                                 ),
-                                // ── Plaćanje info (samo za plaćene evente) ────
                                 if (e.ticketPrice != null && e.ticketPrice! > 0) ...[
                                   Divider(height: 1, color: isDark ? const Color(0xFFBF8997).withOpacity(0.25) : _bordo.withOpacity(0.12)),
                                   Padding(
@@ -1561,7 +1509,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                     ]),
                                   ),
                                 ],
-                                // ── Kontakt mail ──────────────────────────────
                                 if (e.companyEmail != null && e.companyEmail!.isNotEmpty) ...[
                                   Divider(height: 1, color: _bordo.withOpacity(0.12)),
                                   Padding(
@@ -1571,8 +1518,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                                           color: isDark ? const Color(0xFFBF8997) : _bordo.withOpacity(0.60), size: 15),
                                       const SizedBox(width: 8),
                                       Text('Kontakt: ${e.companyEmail!}',
-                                          style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70),
-                                              fontSize: 12.5)),
+                                          style: TextStyle(color: isDark ? kDarkText.withOpacity(0.70) : _bordo.withOpacity(0.70), fontSize: 12.5)),
                                     ]),
                                   ),
                                 ],
@@ -1616,7 +1562,6 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
 
           Positioned(top: mq.padding.top + 14, left: 14,
               child: FadeTransition(opacity: _entryFade, child: _BackBtn(onTap: () => Navigator.pop(context)))),
-
           Positioned(bottom: 0, left: 0, right: 0, child: _joinBar(mq)),
         ]),
       ),
@@ -1629,31 +1574,24 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
     child: const Icon(Icons.business_rounded, color: Colors.white, size: 20),
   );
 
-  Widget _detailRow(bool isDark, IconData icon, String label, String value, Color primary) {
-    return Row(children: [
-      Container(
-        width: 34, height: 34,
-        decoration: BoxDecoration(
-          color: primary.withOpacity(isDark ? 0.18 : 0.10),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: primary, size: 17),
-      ),
-      const SizedBox(width: 12),
-      Text(label, style: TextStyle(
-        color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.55),
-        fontSize: 14,
-      )),
-      const Spacer(),
-      Text(value, style: TextStyle(
-        color: primary, fontSize: 14, fontWeight: FontWeight.w700,
-      )),
-    ]);
-  }
+  Widget _detailRow(bool isDark, IconData icon, String label, String value, Color primary) =>
+      Row(children: [
+        Container(width: 34, height: 34,
+            decoration: BoxDecoration(
+                color: primary.withOpacity(isDark ? 0.18 : 0.10),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: primary, size: 17)),
+        const SizedBox(width: 12),
+        Text(label, style: TextStyle(
+            color: isDark ? kDarkText.withOpacity(0.65) : Colors.black.withOpacity(0.55), fontSize: 14)),
+        const Spacer(),
+        Text(value, style: TextStyle(color: primary, fontSize: 14, fontWeight: FontWeight.w700)),
+      ]);
 
   Widget _cw({double? top, double? bottom, double? left, double? right, required double w, required double h}) =>
       Positioned(top: top, bottom: bottom, left: left, right: right,
-          child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white.withOpacity(0.50), borderRadius: BorderRadius.circular(h/2))));
+          child: Container(width: w, height: h, decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.50), borderRadius: BorderRadius.circular(h / 2))));
 
   Widget _joinBar(MediaQueryData mq) {
     final isDark  = ThemeState.instance.isDark;
@@ -1664,7 +1602,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
       return AnimatedContainer(
         duration: const Duration(milliseconds: 380),
         decoration: BoxDecoration(color: cardBg,
-            boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0,-4))]),
+            boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))]),
         padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
         child: Row(children: [
           Expanded(child: GestureDetector(
@@ -1687,8 +1625,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
             onTap: _deleteEvent,
             child: Container(height: 50,
               decoration: BoxDecoration(
-                color: Colors.redAccent,
-                borderRadius: BorderRadius.circular(25),
+                color: Colors.redAccent, borderRadius: BorderRadius.circular(25),
                 boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.30), blurRadius: 14, offset: const Offset(0, 5))],
               ),
               child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1707,7 +1644,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
 
     return AnimatedContainer(duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(color: cardBg,
-          boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0,-4))]),
+          boxShadow: [BoxShadow(color: primary.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4))]),
       padding: EdgeInsets.fromLTRB(24, 14, 24, mq.padding.bottom + 14),
       child: AnimatedBuilder(animation: _btnScale,
         builder: (_, child) => Transform.scale(scale: _btnScale.value, child: child),
@@ -1721,7 +1658,7 @@ class _EventDetailState extends State<EventDetailScreen> with TickerProviderStat
                 borderRadius: BorderRadius.circular(27),
                 boxShadow: [BoxShadow(
                     color: (isFull ? Colors.grey : _joined ? Colors.black : _bordo).withOpacity(0.28),
-                    blurRadius: 16, offset: const Offset(0,6))]),
+                    blurRadius: 16, offset: const Offset(0, 6))]),
             child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
               AnimatedSwitcher(duration: const Duration(milliseconds: 250),
                   transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),

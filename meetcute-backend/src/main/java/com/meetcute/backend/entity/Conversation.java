@@ -3,10 +3,7 @@ package com.meetcute.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "conversations")
@@ -24,7 +21,7 @@ public class Conversation {
     @JoinColumn(name = "match_id")
     private Match match;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "last_message_at")
@@ -35,6 +32,3 @@ public class Conversation {
         createdAt = LocalDateTime.now();
     }
 }
-
-// ── ConversationParticipant ──────────────────────────────────────
-

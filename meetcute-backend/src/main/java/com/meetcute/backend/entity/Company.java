@@ -40,6 +40,9 @@ public class Company {
     @Column(name = "push_token", length = 512)
     private String pushToken;
 
+    @Column(name = "logo_url", length = 512)
+    private String logoUrl;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -48,12 +51,6 @@ public class Company {
 
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
-
-    @Column(name = "logo_url", length = 512)
-    private String logoUrl;
-
-    @Column(name = "cloudinary_public_id", length = 200)
-    private String cloudinaryPublicId;
 
     @PrePersist
     protected void onCreate() {

@@ -21,40 +21,29 @@ public class CompanyAuthService {
 
     @Transactional
     public CompanyAuthResponse register(CompanyRegisterRequest req) {
-        if (companyRepository.existsByUsername(req.getUsername().trim().toLowerCase())) {
+        if (companyRepository.existsByUsername(req.getUsername().trim().toLowerCase()))
             throw new RuntimeException("Korisničko ime već postoji.");
-        }
-        if (companyRepository.existsByEmail(req.getEmail().trim().toLowerCase())) {
+        if (companyRepository.existsByEmail(req.getEmail().trim().toLowerCase()))
             throw new RuntimeException("Email već postoji.");
-        }
 
-        Company company = Company.builder()
+        return buildAuthResponse(companyRepository.save(Company.builder()
                 .username(req.getUsername().trim().toLowerCase())
                 .orgName(req.getOrgName().trim())
                 .email(req.getEmail().trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .logoUrl(req.getLogoUrl())
-                .build();
-
-        company = companyRepository.save(company);
-        return buildAuthResponse(company);
+                .build()));
     }
 
     @Transactional
     public CompanyAuthResponse login(CompanyLoginRequest req) {
-        Company company = companyRepository
-                .findByUsername(req.getUsername().trim().toLowerCase())
+        Company company = companyRepository.findByUsername(req.getUsername().trim().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Pogrešno korisničko ime ili lozinka."));
 
-        if (company.getIsBanned()) {
-            throw new RuntimeException("Račun je suspendiran.");
-        }
-        if (!company.getIsActive()) {
-            throw new RuntimeException("Račun nije aktivan.");
-        }
-        if (!passwordEncoder.matches(req.getPassword(), company.getPasswordHash())) {
+        if (company.getIsBanned()) throw new RuntimeException("Račun je suspendiran.");
+        if (!company.getIsActive()) throw new RuntimeException("Račun nije aktivan.");
+        if (!passwordEncoder.matches(req.getPassword(), company.getPasswordHash()))
             throw new RuntimeException("Pogrešno korisničko ime ili lozinka.");
-        }
 
         companyRepository.updateLastSeen(company.getId());
         return buildAuthResponse(company);
@@ -62,20 +51,16 @@ public class CompanyAuthService {
 
     @Transactional
     public CompanyAuthResponse refresh(String refreshToken) {
-        if (!jwtUtil.isTokenValid(refreshToken)) {
+        if (!jwtUtil.isTokenValid(refreshToken))
             throw new RuntimeException("Neispravan refresh token.");
-        }
 
-        String tokenHash = hashToken(refreshToken);
-        CompanyRefreshToken stored = tokenRepository.findByTokenHash(tokenHash)
+        CompanyRefreshToken stored = tokenRepository.findByTokenHash(hashToken(refreshToken))
                 .orElseThrow(() -> new RuntimeException("Token nije pronađen."));
 
-        if (stored.getIsRevoked() || stored.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (stored.getIsRevoked() || stored.getExpiresAt().isBefore(LocalDateTime.now()))
             throw new RuntimeException("Token je istekao.");
-        }
 
-        String companyId = jwtUtil.extractUserId(refreshToken);
-        Company company = companyRepository.findById(companyId)
+        Company company = companyRepository.findById(jwtUtil.extractUserId(refreshToken))
                 .orElseThrow(() -> new RuntimeException("Tvrtka nije pronađena."));
 
         stored.setIsRevoked(true);
@@ -85,37 +70,33 @@ public class CompanyAuthService {
 
     @Transactional
     public void logout(String refreshToken) {
-        String tokenHash = hashToken(refreshToken);
-        tokenRepository.findByTokenHash(tokenHash).ifPresent(t -> {
+        tokenRepository.findByTokenHash(hashToken(refreshToken)).ifPresent(t -> {
             t.setIsRevoked(true);
             tokenRepository.save(t);
         });
     }
 
     private CompanyAuthResponse buildAuthResponse(Company company) {
-        String accessToken  = jwtUtil.generateAccessTokenWithRole(
+        String accessToken = jwtUtil.generateAccessTokenWithRole(
                 company.getId(), company.getUsername(), "company");
         String refreshToken = jwtUtil.generateRefreshToken(company.getId());
 
-        CompanyRefreshToken tokenEntity = CompanyRefreshToken.builder()
+        tokenRepository.save(CompanyRefreshToken.builder()
                 .company(company)
                 .tokenHash(hashToken(refreshToken))
                 .expiresAt(LocalDateTime.now().plusDays(30))
-                .build();
-        tokenRepository.save(tokenEntity);
-
-        CompanyResponse companyResponse = CompanyResponse.builder()
-                .id(company.getId())
-                .username(company.getUsername())
-                .orgName(company.getOrgName())
-                .email(company.getEmail())
-                .logoUrl(company.getLogoUrl())
-                .build();
+                .build());
 
         return CompanyAuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .company(companyResponse)
+                .company(CompanyResponse.builder()
+                        .id(company.getId())
+                        .username(company.getUsername())
+                        .orgName(company.getOrgName())
+                        .email(company.getEmail())
+                        .logoUrl(company.getLogoUrl())
+                        .build())
                 .build();
     }
 

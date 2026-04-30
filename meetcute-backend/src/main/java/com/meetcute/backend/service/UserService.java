@@ -20,21 +20,18 @@ public class UserService {
     private final UserPhotoRepository photoRepository;
     private final UserInterestRepository interestRepository;
     private final UserLocationRepository locationRepository;
-    private final SecretQuestionRepository questionRepository;
     private final InterestRepository interestLookup;
 
     public UserResponse getMyProfile(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Korisnik nije pronađen."));
-        return toResponse(user);
+        return toResponse(userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Korisnik nije pronađen.")));
     }
 
     public UserResponse getUserProfile(String targetUserId) {
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Korisnik nije pronađen."));
-        if (user.getIsBanned() || !user.getIsActive()) {
+        if (user.getIsBanned() || !user.getIsActive())
             throw new RuntimeException("Profil nije dostupan.");
-        }
         return toResponse(user);
     }
 
@@ -49,32 +46,30 @@ public class UserService {
         if (req.getPrefAgeFrom() != null)      profile.setPrefAgeFrom(req.getPrefAgeFrom());
         if (req.getPrefAgeTo() != null)        profile.setPrefAgeTo(req.getPrefAgeTo());
         if (req.getIceBreaker() != null)       profile.setIceBreaker(req.getIceBreaker());
-        if (req.getHeightCm() != null)   profile.setHeightCm(req.getHeightCm());
-        if (req.getHairColor() != null)  profile.setHairColor(req.getHairColor());
-        if (req.getEyeColor() != null)   profile.setEyeColor(req.getEyeColor());
-        if (req.getHasPiercing() != null) profile.setHasPiercing(req.getHasPiercing());
-        if (req.getHasTattoo() != null)  profile.setHasTattoo(req.getHasTattoo());
-        if (req.getGender() != null)     profile.setGender(req.getGender());
-        if (req.getBirthDay() != null)   profile.setBirthDay(req.getBirthDay());
-        if (req.getBirthMonth() != null) profile.setBirthMonth(req.getBirthMonth());
-        if (req.getBirthYear() != null)  profile.setBirthYear(req.getBirthYear());
+        if (req.getHeightCm() != null)         profile.setHeightCm(req.getHeightCm());
+        if (req.getHairColor() != null)        profile.setHairColor(req.getHairColor());
+        if (req.getEyeColor() != null)         profile.setEyeColor(req.getEyeColor());
+        if (req.getHasPiercing() != null)      profile.setHasPiercing(req.getHasPiercing());
+        if (req.getHasTattoo() != null)        profile.setHasTattoo(req.getHasTattoo());
+        if (req.getGender() != null)           profile.setGender(req.getGender());
+        if (req.getBirthDay() != null)         profile.setBirthDay(req.getBirthDay());
+        if (req.getBirthMonth() != null)       profile.setBirthMonth(req.getBirthMonth());
+        if (req.getBirthYear() != null)        profile.setBirthYear(req.getBirthYear());
 
         profileRepository.save(profile);
+
         if (req.getInterestIds() != null && !req.getInterestIds().isEmpty()) {
             interestRepository.deleteByUserId(userId);
-            req.getInterestIds().forEach(interestId -> {
-                interestLookup.findById(interestId).ifPresent(interest -> {
-                    UserInterest ui = UserInterest.builder()
-                            .id(new UserInterest.UserInterestId(userId, interestId))
-                            .user(userRepository.getReferenceById(userId))
-                            .interest(interest)
-                            .build();
-                    interestRepository.save(ui);
-                });
-            });
+            req.getInterestIds().forEach(interestId ->
+                    interestLookup.findById(interestId).ifPresent(interest ->
+                            interestRepository.save(UserInterest.builder()
+                                    .id(new UserInterest.UserInterestId(userId, interestId))
+                                    .user(userRepository.getReferenceById(userId))
+                                    .interest(interest)
+                                    .build())));
         }
-        User user = userRepository.findById(userId).orElseThrow();
-        return toResponse(user);
+
+        return toResponse(userRepository.findById(userId).orElseThrow());
     }
 
     @Transactional
@@ -97,40 +92,21 @@ public class UserService {
         return profile.getIsVisible();
     }
 
-    public List<SecretQuestionResponse> getSecretQuestions() {
-        return questionRepository.findByIsActiveTrue()
-                .stream()
-                .map(q -> SecretQuestionResponse.builder()
-                        .id(q.getId())
-                        .questionText(q.getQuestionText())
-                        .category(q.getCategory())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
     private UserResponse toResponse(User user) {
-        List<String> photos = photoRepository
-                .findByUserIdOrderByPhotoOrder(user.getId())
-                .stream()
-                .map(UserPhoto::getPhotoUrl)
-                .collect(Collectors.toList());
+        List<String> photos = photoRepository.findByUserIdOrderByPhotoOrder(user.getId())
+                .stream().map(UserPhoto::getPhotoUrl).collect(Collectors.toList());
 
-        List<String> interests = interestRepository
-                .findByUserId(user.getId())
-                .stream()
-                .map(ui -> ui.getInterest().getName())
-                .collect(Collectors.toList());
+        List<String> interests = interestRepository.findByUserId(user.getId())
+                .stream().map(ui -> ui.getInterest().getName()).collect(Collectors.toList());
 
         ProfileResponse profileResp = null;
         if (user.getProfile() != null) {
             UserProfile p = user.getProfile();
-            int age = p.getBirthYear() != null ? Year.now().getValue() - p.getBirthYear() : 0;
-
             profileResp = ProfileResponse.builder()
                     .birthDay(p.getBirthDay())
                     .birthMonth(p.getBirthMonth())
                     .birthYear(p.getBirthYear())
-                    .age(age)
+                    .age(p.getBirthYear() != null ? Year.now().getValue() - p.getBirthYear() : 0)
                     .gender(p.getGender())
                     .seekingGender(p.getSeekingGender())
                     .heightCm(p.getHeightCm())
@@ -140,8 +116,6 @@ public class UserService {
                     .hasTattoo(p.getHasTattoo())
                     .iceBreaker(p.getIceBreaker())
                     .isVisible(p.getIsVisible())
-                    .secretQuestion(p.getSecretQuestion() != null
-                            ? p.getSecretQuestion().getQuestionText() : null)
                     .prefAgeFrom(p.getPrefAgeFrom())
                     .prefAgeTo(p.getPrefAgeTo())
                     .build();

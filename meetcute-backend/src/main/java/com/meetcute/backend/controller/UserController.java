@@ -26,22 +26,20 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMyProfile(
             @AuthenticationPrincipal UserDetails userDetails) {
-        UserResponse response = userService.getMyProfile(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(userService.getMyProfile(userDetails.getUsername())));
     }
 
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody UpdateProfileRequest req) {
-        UserResponse response = userService.updateProfile(userDetails.getUsername(), req);
-        return ResponseEntity.ok(ApiResponse.ok("Profil ažuriran.", response));
+        return ResponseEntity.ok(ApiResponse.ok("Profil ažuriran.",
+                userService.updateProfile(userDetails.getUsername(), req)));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable String id) {
-        UserResponse response = userService.getUserProfile(id);
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(id)));
     }
 
     @PutMapping("/me/location")
@@ -55,8 +53,8 @@ public class UserController {
     @PostMapping("/me/visibility")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> toggleVisibility(
             @AuthenticationPrincipal UserDetails userDetails) {
-        boolean visible = userService.toggleVisibility(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("isVisible", visible)));
+        return ResponseEntity.ok(ApiResponse.ok(
+                Map.of("isVisible", userService.toggleVisibility(userDetails.getUsername()))));
     }
 
     @PutMapping("/me/password")
@@ -64,21 +62,16 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest req) {
 
-        String userId = userDetails.getUsername();
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Korisnik nije pronađen."));
 
-        if (!passwordEncoder.matches(req.getOldPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(req.getOldPassword(), user.getPasswordHash()))
             throw new RuntimeException("Stara lozinka nije ispravna.");
-        }
-
-        if (req.getNewPassword().equals(req.getOldPassword())) {
+        if (req.getNewPassword().equals(req.getOldPassword()))
             throw new RuntimeException("Nova lozinka mora biti različita od stare.");
-        }
 
         user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
-
         return ResponseEntity.ok(ApiResponse.ok("Lozinka uspješno promijenjena.", null));
     }
 }

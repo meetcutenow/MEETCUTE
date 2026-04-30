@@ -3,7 +3,6 @@ package com.meetcute.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,7 +44,7 @@ public class User {
     @Column(name = "push_token", length = 512)
     private String pushToken;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")

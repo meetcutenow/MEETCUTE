@@ -2,11 +2,7 @@ package com.meetcute.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "event_attendees")
@@ -32,7 +28,7 @@ public class EventAttendee {
     @Builder.Default
     private String status = "joined";
 
-    @Column(name = "joined_at")
+    @Column(name = "joined_at", updatable = false)
     private LocalDateTime joinedAt;
 
     @PrePersist
@@ -51,6 +47,3 @@ public class EventAttendee {
         private String userId;
     }
 }
-
-// ── Interest ────────────────────────────────────────────────────
-

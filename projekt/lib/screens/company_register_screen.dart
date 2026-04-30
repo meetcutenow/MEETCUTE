@@ -31,10 +31,9 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
   bool _obscureConfirm = true;
   bool _loading        = false;
   String? _error;
+  String? _logoPath;
+  String? _logoUrl;
 
-  // Logo upload
-  String? _logoPath;        // lokalna putanja do slike
-  String? _logoUrl;         // URL ako se pusti na CDN ili base64 za demo
   final ImagePicker _picker = ImagePicker();
 
   late final AnimationController _bgCtrl;
@@ -58,8 +57,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
   @override
   void initState() {
     super.initState();
-    _bgCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
-    _bgAnim = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
+    _bgCtrl   = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
+    _bgAnim   = CurvedAnimation(parent: _bgCtrl, curve: Curves.easeInOut);
     _cardCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
     _cardFade  = CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut);
     _cardSlide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
@@ -85,30 +84,22 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
     HapticFeedback.lightImpact();
     final xFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (xFile == null) return;
-    setState(() {
-      _logoPath = xFile.path;
-      // U produkciji ovdje bi se uploadalo na Cloudinary i dobio URL.
-      // Za demo šaljemo null (logo_url ostaje prazan u bazi).
-      // Ako imaš Cloudinary integration, dodaj ovdje.
-      _logoUrl = null;
-    });
+    setState(() { _logoPath = xFile.path; _logoUrl = null; });
   }
 
-  void _removeLogo() {
-    setState(() { _logoPath = null; _logoUrl = null; });
-  }
+  void _removeLogo() => setState(() { _logoPath = null; _logoUrl = null; });
 
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
     if (!_valid || _loading) return;
     HapticFeedback.mediumImpact();
-    setState(() { _loading = true; _error = null; });
 
-    final emailRegex = RegExp(r'^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
-    if (!emailRegex.hasMatch(_emailCtrl.text.trim())) {
+    if (!RegExp(r'^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$').hasMatch(_emailCtrl.text.trim())) {
       setState(() => _error = 'Unesite ispravnu email adresu.');
       return;
     }
+
+    setState(() { _loading = true; _error = null; });
 
     try {
       final resp = await http.post(
@@ -119,7 +110,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           'orgName':  _orgNameCtrl.text.trim(),
           'email':    _emailCtrl.text.trim().toLowerCase(),
           'password': _passCtrl.text,
-          'logoUrl':  _logoUrl,  // null za demo, URL kad integriraš Cloudinary
+          'logoUrl':  _logoUrl,
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -132,17 +123,11 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           try {
             final token = CompanyAuthState.instance.accessToken!;
             final result = await CloudinaryService.uploadImage(
-              filePath: _logoPath!,
-              token: token,
-              folder: 'meetcute/logos',
+              filePath: _logoPath!, token: token, folder: 'meetcute/logos',
             );
-            // Spremi logo URL u bazu
             await http.put(
               Uri.parse('$_base/company/auth/profile'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
+              headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
               body: jsonEncode({'logoUrl': result.url}),
             );
           } catch (e) {
@@ -154,8 +139,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
             pageBuilder: (_, a, __) => const CompanyHomeScreen(),
-            transitionsBuilder: (_, a, __, child) =>
-                FadeTransition(opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: child),
+            transitionsBuilder: (_, a, __, child) => FadeTransition(
+                opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: child),
             transitionDuration: const Duration(milliseconds: 500),
           ),
               (r) => false,
@@ -163,12 +148,11 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
       } else {
         setState(() => _error = decoded['message'] ?? 'Greška pri registraciji.');
       }
-    } catch (e) {
+    } catch (_) {
       setState(() => _error = 'Ne mogu se spojiti na server.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-
   }
 
   @override
@@ -181,11 +165,8 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           animation: _bgAnim,
           builder: (_, __) => CustomPaint(painter: _GradBgPainter(_bgAnim.value)),
         )),
-
-        // ── Back gumb ──────────────────────────────────────────────────────
         Positioned(
-          top: mq.padding.top + 14,
-          left: 16,
+          top: mq.padding.top + 14, left: 16,
           child: GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -193,13 +174,12 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.18),
                 borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: Colors.white.withOpacity(0.30), width: 1),
+                border: Border.all(color: Colors.white.withOpacity(0.30)),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
             ),
           ),
         ),
-
         Center(
           child: FadeTransition(
             opacity: _cardFade,
@@ -219,42 +199,35 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(22, 48, 22, mq.padding.bottom + 24),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Registracija organizacije',
-                            style: TextStyle(color: _bordo, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.4)),
+                        Text('Registracija organizacije', style: TextStyle(
+                            color: _bordo, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.4)),
                         const SizedBox(height: 4),
                         Text('Organizirajte događanja i spajajte ljude.',
                             style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 13.5)),
                         const SizedBox(height: 20),
-
-                        // ── Logo upload ──────────────────────────────────────
                         _lbl('Logo'),
                         const SizedBox(height: 10),
                         _buildLogoUploader(),
                         const SizedBox(height: 16),
-
                         _lbl('Naziv organizacije'),
                         const SizedBox(height: 6),
                         _field(ctrl: _orgNameCtrl, hint: 'npr. EventCo d.o.o.', icon: Icons.business_rounded),
                         const SizedBox(height: 14),
-
                         _lbl('Korisničko ime'),
                         const SizedBox(height: 6),
                         _field(ctrl: _usernameCtrl, hint: 'npr. eventco', icon: Icons.alternate_email_rounded),
                         const SizedBox(height: 14),
-
                         _lbl('Email adresa'),
                         const SizedBox(height: 6),
                         _field(ctrl: _emailCtrl, hint: 'info@eventco.hr',
                             icon: Icons.email_outlined, keyboard: TextInputType.emailAddress),
                         const SizedBox(height: 14),
-
                         _lbl('Lozinka'),
                         const SizedBox(height: 6),
                         _field(ctrl: _passCtrl, hint: '••••••••',
                             icon: Icons.lock_outline_rounded, obs: _obscurePass,
                             onTog: () => setState(() => _obscurePass = !_obscurePass)),
                         const SizedBox(height: 14),
-
                         _lbl('Ponovi lozinku'),
                         const SizedBox(height: 6),
                         _field(ctrl: _confirmCtrl, hint: '••••••••',
@@ -263,15 +236,12 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                             action: TextInputAction.done,
                             onSub: (_) => _register()),
                         const SizedBox(height: 14),
-
                         _passRules(),
-
                         if (_error != null) ...[
                           const SizedBox(height: 10),
                           _errBox(_error!),
                         ],
                         const SizedBox(height: 22),
-
                         ScaleTransition(
                           scale: _btnScale,
                           child: GestureDetector(
@@ -291,11 +261,9 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                               child: Center(child: _loading
                                   ? const SizedBox(width: 22, height: 22,
                                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                  : Text('Registriraj organizaciju',
-                                  style: TextStyle(
-                                    color: _valid ? Colors.white : Colors.white.withOpacity(0.45),
-                                    fontSize: 15, fontWeight: FontWeight.w700,
-                                  ))),
+                                  : Text('Registriraj organizaciju', style: TextStyle(
+                                  color: _valid ? Colors.white : Colors.white.withOpacity(0.45),
+                                  fontSize: 15, fontWeight: FontWeight.w700))),
                             ),
                           ),
                         ),
@@ -309,8 +277,6 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
                       ]),
                     ),
                   ),
-
-                  // Pill na vrhu
                   Positioned(top: -15, left: 0, right: 0,
                     child: Center(child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
@@ -341,8 +307,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
         duration: const Duration(milliseconds: 240),
         height: 90,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white, borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _logoPath != null ? _bordo.withOpacity(0.40) : _bordo.withOpacity(0.15),
             width: _logoPath != null ? 1.5 : 1.2,
@@ -357,11 +322,14 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
             child: Image.file(File(_logoPath!), width: 62, height: 62, fit: BoxFit.cover),
           ),
           const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text('Logo odabran ✓', style: TextStyle(color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 3),
-            Text('Logo će biti prikazan na tvojim eventima', style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 12)),
-          ])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text('Logo odabran ✓', style: TextStyle(
+                    color: _bordo, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text('Logo će biti prikazan na tvojim eventima',
+                    style: TextStyle(color: _bordo.withOpacity(0.50), fontSize: 12)),
+              ])),
           GestureDetector(
             onTap: _removeLogo,
             child: Container(
@@ -374,79 +342,71 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
           ),
         ])
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(14)),
-            child: const Icon(Icons.add_photo_alternate_rounded, color: _bordo, size: 24),
-          ),
+          Container(width: 48, height: 48,
+              decoration: BoxDecoration(color: _bordoLight, borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.add_photo_alternate_rounded, color: _bordo, size: 24)),
           const SizedBox(width: 14),
-          Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Dodaj logo', style: TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
-            Text('PNG, JPG (opcionalno)', style: TextStyle(color: _bordo.withOpacity(0.45), fontSize: 12)),
-          ]),
+          Column(mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Dodaj logo', style: TextStyle(color: _bordo, fontSize: 14, fontWeight: FontWeight.w700)),
+                Text('PNG, JPG (opcionalno)', style: TextStyle(color: _bordo.withOpacity(0.45), fontSize: 12)),
+              ]),
         ]),
       ),
     );
   }
 
-  Widget _lbl(String text) => Text(text,
-      style: TextStyle(color: _bordo.withOpacity(0.60), fontSize: 11.5, fontWeight: FontWeight.w700));
+  Widget _lbl(String text) => Text(text, style: TextStyle(
+      color: _bordo.withOpacity(0.60), fontSize: 11.5, fontWeight: FontWeight.w700));
 
   Widget _field({
     required TextEditingController ctrl, required String hint, required IconData icon,
     bool obs = false, VoidCallback? onTog, TextInputType? keyboard,
     TextInputAction action = TextInputAction.next, void Function(String)? onSub,
-  }) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: _bordo.withOpacity(0.07), blurRadius: 6, offset: const Offset(0, 2))]),
-      child: Row(children: [
-        const SizedBox(width: 13),
-        Icon(icon, color: _bordo.withOpacity(0.32), size: 16),
-        const SizedBox(width: 10),
-        Expanded(child: TextField(
-          controller: ctrl, obscureText: obs, keyboardType: keyboard,
-          textInputAction: action, onSubmitted: onSub,
-          style: TextStyle(color: _bordo.withOpacity(0.88), fontSize: 14.5),
-          decoration: InputDecoration(
-            hintText: hint, hintStyle: TextStyle(color: _bordo.withOpacity(0.26), fontSize: 14.5),
-            border: InputBorder.none, isDense: true,
-          ),
-        )),
-        if (onTog != null)
-          GestureDetector(onTap: onTog, child: Padding(padding: const EdgeInsets.only(right: 12),
-              child: Icon(obs ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: _bordo.withOpacity(0.28), size: 16))),
-      ]),
-    );
-  }
+  }) =>
+      Container(
+        height: 48,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: _bordo.withOpacity(0.07), blurRadius: 6, offset: const Offset(0, 2))]),
+        child: Row(children: [
+          const SizedBox(width: 13),
+          Icon(icon, color: _bordo.withOpacity(0.32), size: 16),
+          const SizedBox(width: 10),
+          Expanded(child: TextField(
+            controller: ctrl, obscureText: obs, keyboardType: keyboard,
+            textInputAction: action, onSubmitted: onSub,
+            style: TextStyle(color: _bordo.withOpacity(0.88), fontSize: 14.5),
+            decoration: InputDecoration(
+              hintText: hint, hintStyle: TextStyle(color: _bordo.withOpacity(0.26), fontSize: 14.5),
+              border: InputBorder.none, isDense: true,
+            ),
+          )),
+          if (onTog != null)
+            GestureDetector(onTap: onTog, child: Padding(padding: const EdgeInsets.only(right: 12),
+                child: Icon(obs ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: _bordo.withOpacity(0.28), size: 16))),
+        ]),
+      );
 
-  Widget _passRules() {
-    bool h8  = _hasMin8;
-    bool hU  = _hasUpper;
-    bool hN  = _hasNum;
-    bool hM  = _passMatch;
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55), borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _bordo.withOpacity(0.08)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('UVJETI ZA LOZINKU', style: TextStyle(color: _bordo.withOpacity(0.38),
-            fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-        const SizedBox(height: 9),
-        _rule('Najmanje 8 znakova', h8),
-        const SizedBox(height: 5),
-        _rule('Jedno veliko slovo (A–Z)', hU),
-        const SizedBox(height: 5),
-        _rule('Jedan broj (0–9)', hN),
-        const SizedBox(height: 5),
-        _rule('Lozinke se podudaraju', hM),
-      ]),
-    );
-  }
+  Widget _passRules() => Container(
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.55), borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: _bordo.withOpacity(0.08)),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('UVJETI ZA LOZINKU', style: TextStyle(color: _bordo.withOpacity(0.38),
+          fontSize: 8.5, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+      const SizedBox(height: 9),
+      _rule('Najmanje 8 znakova', _hasMin8),
+      const SizedBox(height: 5),
+      _rule('Jedno veliko slovo (A–Z)', _hasUpper),
+      const SizedBox(height: 5),
+      _rule('Jedan broj (0–9)', _hasNum),
+      const SizedBox(height: 5),
+      _rule('Lozinke se podudaraju', _passMatch),
+    ]),
+  );
 
   Widget _rule(String t, bool ok) => Row(children: [
     AnimatedContainer(
@@ -480,6 +440,7 @@ class _CompanyRegisterScreenState extends State<CompanyRegisterScreen>
 class _GradBgPainter extends CustomPainter {
   final double t;
   _GradBgPainter(this.t);
+
   @override
   void paint(Canvas canvas, Size size) {
     final wave = math.sin(t * math.pi * 2) * 0.5 + 0.5;
@@ -491,5 +452,6 @@ class _GradBgPainter extends CustomPainter {
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..shader = grad.createShader(Rect.fromLTWH(0, 0, size.width, size.height)));
   }
+
   @override bool shouldRepaint(_GradBgPainter o) => o.t != t;
 }

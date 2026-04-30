@@ -22,35 +22,22 @@ public class MatchController {
     public ResponseEntity<ApiResponse<MatchResponse>> likeUser(
             @Valid @RequestBody LikeRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        var match = matchService.likeUser(userDetails.getUsername(), req);
-        if (match.isPresent()) {
-            return ResponseEntity.ok(ApiResponse.ok("💘 Match!", match.get()));
-        }
-        return ResponseEntity.ok(ApiResponse.ok("Lajk zabilježen.", null));
+        return matchService.likeUser(userDetails.getUsername(), req)
+                .map(match -> ResponseEntity.ok(ApiResponse.ok("💘 Match!", match)))
+                .orElseGet(() -> ResponseEntity.ok(ApiResponse.ok("Lajk zabilježen.", null)));
     }
 
     @GetMapping("/matches")
     public ResponseEntity<ApiResponse<List<MatchResponse>>> getMatches(
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<MatchResponse> matches = matchService.getMyMatches(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(matches));
-    }
-
-    @PostMapping("/matches/{id}/answer")
-    public ResponseEntity<ApiResponse<MatchResponse>> checkAnswer(
-            @PathVariable Long id,
-            @Valid @RequestBody SecretAnswerRequest req,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        MatchResponse match = matchService.checkSecretAnswer(id, userDetails.getUsername(), req);
-        return ResponseEntity.ok(ApiResponse.ok(match));
+        return ResponseEntity.ok(ApiResponse.ok(matchService.getMyMatches(userDetails.getUsername())));
     }
 
     @GetMapping("/conversations/{id}/messages")
     public ResponseEntity<ApiResponse<List<MessageResponse>>> getMessages(
             @PathVariable String id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<MessageResponse> messages = matchService.getMessages(id, userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(messages));
+        return ResponseEntity.ok(ApiResponse.ok(matchService.getMessages(id, userDetails.getUsername())));
     }
 
     @PostMapping("/conversations/{id}/messages")
@@ -58,7 +45,6 @@ public class MatchController {
             @PathVariable String id,
             @RequestBody SendMessageRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        MessageResponse message = matchService.sendMessage(id, userDetails.getUsername(), req);
-        return ResponseEntity.ok(ApiResponse.ok(message));
+        return ResponseEntity.ok(ApiResponse.ok(matchService.sendMessage(id, userDetails.getUsername(), req)));
     }
 }

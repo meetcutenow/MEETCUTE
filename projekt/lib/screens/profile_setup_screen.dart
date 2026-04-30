@@ -2,14 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'ai_profile_screen.dart';
-import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
-import 'onboarding_screen.dart';
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE DATA MODEL
-// ═══════════════════════════════════════════════════════════════════════════════
+import 'home_screen.dart' show kPrimaryDark, kPrimaryLight;
 
 class ProfileSetupData {
   List<String> photoPaths;
@@ -23,52 +16,26 @@ class ProfileSetupData {
   String? tattoo;
   String? gender;
   List<String> interests;
-  String iceBreaker;
+  String  iceBreaker;
   String? seekingGender;
   int?    prefAgeFrom;
   int?    prefAgeTo;
 
   ProfileSetupData({
-    List<String>? photoPaths,
-    this.birthDay,
-    this.birthMonth,
-    this.birthYear,
-    this.height,
-    this.hairColor,
-    this.eyeColor,
-    this.piercing,
-    this.tattoo,
-    this.gender,
-    List<String>? interests,
-    this.iceBreaker = '',
-    this.seekingGender,
-    this.prefAgeFrom,
-    this.prefAgeTo,
-  })  : photoPaths = photoPaths ?? [],
-        interests  = interests  ?? [];
+    List<String>? photoPaths, this.birthDay, this.birthMonth, this.birthYear,
+    this.height, this.hairColor, this.eyeColor, this.piercing, this.tattoo,
+    this.gender, List<String>? interests, this.iceBreaker = '',
+    this.seekingGender, this.prefAgeFrom, this.prefAgeTo,
+  }) : photoPaths = photoPaths ?? [], interests = interests ?? [];
 
   ProfileSetupData copy() => ProfileSetupData(
-    photoPaths:    List.from(photoPaths),
-    birthDay:      birthDay,
-    birthMonth:    birthMonth,
-    birthYear:     birthYear,
-    height:        height,
-    hairColor:     hairColor,
-    eyeColor:      eyeColor,
-    piercing:      piercing,
-    tattoo:        tattoo,
-    gender:        gender,
-    interests:     List.from(interests),
-    iceBreaker:    iceBreaker,
-    seekingGender: seekingGender,
-    prefAgeFrom:   prefAgeFrom,
-    prefAgeTo:     prefAgeTo,
+    photoPaths: List.from(photoPaths), birthDay: birthDay, birthMonth: birthMonth,
+    birthYear: birthYear, height: height, hairColor: hairColor, eyeColor: eyeColor,
+    piercing: piercing, tattoo: tattoo, gender: gender, interests: List.from(interests),
+    iceBreaker: iceBreaker, seekingGender: seekingGender,
+    prefAgeFrom: prefAgeFrom, prefAgeTo: prefAgeTo,
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 1 — fotografije i osobni podaci
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep1 extends StatefulWidget {
   final ProfileSetupData data;
@@ -79,7 +46,7 @@ class ProfileStep1 extends StatefulWidget {
 }
 
 class _ProfileStep1State extends State<ProfileStep1> {
-  final ImagePicker _picker = ImagePicker();
+  final _picker = ImagePicker();
   late final TextEditingController _heightCtrl;
   late final TextEditingController _dayCtrl;
   late final TextEditingController _monthCtrl;
@@ -90,17 +57,10 @@ class _ProfileStep1State extends State<ProfileStep1> {
   static const _yesNo         = ['da', 'ne'];
   static const _genderOptions = ['zensko', 'musko', 'ostalo'];
 
-  static const _hairLabels = {
-    'plava':  'Plava',  'smeda':  'Smeđa', 'crna':   'Crna',
-    'crvena': 'Crvena', 'sijeda': 'Sijeda', 'ostalo': 'Ostalo',
-  };
-  static const _eyeLabels = {
-    'smede': 'Smeđe', 'zelene': 'Zelene', 'plave': 'Plave', 'sive': 'Sive',
-  };
-  static const _genderLabels = {
-    'zensko': 'Žensko', 'musko': 'Muško', 'ostalo': 'Ostalo',
-  };
-  static const _yesNoLabels = {'da': 'Da', 'ne': 'Ne'};
+  static const _hairLabels   = {'plava': 'Plava', 'smeda': 'Smeđa', 'crna': 'Crna', 'crvena': 'Crvena', 'sijeda': 'Sijeda', 'ostalo': 'Ostalo'};
+  static const _eyeLabels    = {'smede': 'Smeđe', 'zelene': 'Zelene', 'plave': 'Plave', 'sive': 'Sive'};
+  static const _genderLabels = {'zensko': 'Žensko', 'musko': 'Muško', 'ostalo': 'Ostalo'};
+  static const _yesNoLabels  = {'da': 'Da', 'ne': 'Ne'};
 
   @override
   void initState() {
@@ -117,21 +77,14 @@ class _ProfileStep1State extends State<ProfileStep1> {
     _monthCtrl.dispose();  _yearCtrl.dispose();
     super.dispose();
   }
+
   @override
-  void didUpdateWidget(ProfileStep1 oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.data.birthYear != widget.data.birthYear) {
-      _yearCtrl.text = widget.data.birthYear?.toString() ?? '';
-    }
-    if (oldWidget.data.birthMonth != widget.data.birthMonth) {
-      _monthCtrl.text = widget.data.birthMonth?.toString() ?? '';
-    }
-    if (oldWidget.data.birthDay != widget.data.birthDay) {
-      _dayCtrl.text = widget.data.birthDay?.toString() ?? '';
-    }
-    if (oldWidget.data.height != widget.data.height) {
-      _heightCtrl.text = widget.data.height ?? '';
-    }
+  void didUpdateWidget(ProfileStep1 old) {
+    super.didUpdateWidget(old);
+    if (old.data.birthYear  != widget.data.birthYear)  _yearCtrl.text   = widget.data.birthYear?.toString()  ?? '';
+    if (old.data.birthMonth != widget.data.birthMonth) _monthCtrl.text  = widget.data.birthMonth?.toString() ?? '';
+    if (old.data.birthDay   != widget.data.birthDay)   _dayCtrl.text    = widget.data.birthDay?.toString()   ?? '';
+    if (old.data.height     != widget.data.height)     _heightCtrl.text = widget.data.height ?? '';
   }
 
   void _update(ProfileSetupData Function(ProfileSetupData) fn) =>
@@ -161,15 +114,13 @@ class _ProfileStep1State extends State<ProfileStep1> {
     _update((d) { d.photoPaths.removeAt(idx); return d; });
   }
 
-  bool _isAsset(String path) => path.startsWith('assets/');
-
   Widget _emptyPhotoContent() => Center(
-    child: Icon(Icons.add_a_photo_rounded, color: kPrimaryDark.withOpacity(0.28), size: 28),
-  );
+      child: Icon(Icons.add_a_photo_rounded, color: kPrimaryDark.withOpacity(0.28), size: 28));
 
   Widget _photoSlot(int idx) {
-    final photos = widget.data.photoPaths;
-    final hasPhoto = idx < photos.length;
+    final photos    = widget.data.photoPaths;
+    final hasPhoto  = idx < photos.length;
+    final path      = hasPhoto ? photos[idx] : '';
     return Stack(clipBehavior: Clip.none, children: [
       GestureDetector(
         onTap: () => _pickPhoto(idx),
@@ -180,96 +131,78 @@ class _ProfileStep1State extends State<ProfileStep1> {
             border: Border.all(color: kPrimaryDark.withOpacity(0.10), width: 1),
           ),
           child: hasPhoto
-              ? ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: Stack(fit: StackFit.expand, children: [
-              if (photos[idx].startsWith('http'))
-                Image.network(photos[idx], fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _emptyPhotoContent())
-              else if (_isAsset(photos[idx]))
-                Image.asset(photos[idx], fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _emptyPhotoContent())
-              else
-                Image.file(File(photos[idx]), fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _emptyPhotoContent()),
-              Positioned(bottom: 4, right: 4,
-                child: Container(width: 24, height: 24,
-                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)]),
-                    child: Icon(Icons.edit_rounded, color: kPrimaryDark, size: 13)),
-              ),
-            ]),
-          )
+              ? ClipRRect(borderRadius: BorderRadius.circular(13),
+              child: Stack(fit: StackFit.expand, children: [
+                path.startsWith('http')
+                    ? Image.network(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _emptyPhotoContent())
+                    : path.startsWith('assets/')
+                    ? Image.asset(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _emptyPhotoContent())
+                    : Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _emptyPhotoContent()),
+                Positioned(bottom: 4, right: 4,
+                    child: Container(width: 24, height: 24,
+                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4)]),
+                        child: Icon(Icons.edit_rounded, color: kPrimaryDark, size: 13))),
+              ]))
               : _emptyPhotoContent(),
         ),
       ),
       if (hasPhoto && photos.length > 1)
         Positioned(top: -8, right: -8,
-            child: GestureDetector(
-              onTap: () => _removePhoto(idx),
-              child: Container(width: 22, height: 22,
-                  decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)]),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 13)),
-            )),
+            child: GestureDetector(onTap: () => _removePhoto(idx),
+                child: Container(width: 22, height: 22,
+                    decoration: BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)]),
+                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 13)))),
     ]);
   }
 
   Widget _addSlot() => GestureDetector(
     onTap: _addPhoto,
     child: Container(
-      decoration: BoxDecoration(
-        color: kPrimaryLight, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: kPrimaryDark.withOpacity(0.18), width: 1.5),
-      ),
+      decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kPrimaryDark.withOpacity(0.18), width: 1.5)),
       child: Center(child: Icon(Icons.add_rounded, color: kPrimaryDark, size: 36)),
     ),
   );
 
   @override
   Widget build(BuildContext context) {
-    final d = widget.data;
-    final photos = d.photoPaths;
-
-    final hairValue   = _hairOptions.contains(d.hairColor)   ? d.hairColor   : null;
-    final eyeValue    = _eyeOptions.contains(d.eyeColor)     ? d.eyeColor    : null;
-    final genderValue = _genderOptions.contains(d.gender)    ? d.gender      : null;
-    final piercingVal = _yesNo.contains(d.piercing)          ? d.piercing    : null;
-    final tattooVal   = _yesNo.contains(d.tattoo)            ? d.tattoo      : null;
+    final d       = widget.data;
+    final photos  = d.photoPaths;
+    final hairVal   = _hairOptions.contains(d.hairColor)   ? d.hairColor   : null;
+    final eyeVal    = _eyeOptions.contains(d.eyeColor)     ? d.eyeColor    : null;
+    final genderVal = _genderOptions.contains(d.gender)    ? d.gender      : null;
+    final piercingVal = _yesNo.contains(d.piercing)        ? d.piercing    : null;
+    final tattooVal   = _yesNo.contains(d.tattoo)          ? d.tattoo      : null;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          height: 156,
-          child: Row(children: [
-            Expanded(child: _photoSlot(0)),
+        SizedBox(height: 156, child: Row(children: [
+          Expanded(child: _photoSlot(0)),
+          const SizedBox(width: 10),
+          Expanded(child: photos.length >= 2 ? _photoSlot(1) : _addSlot()),
+          if (photos.length >= 2) ...[
             const SizedBox(width: 10),
-            Expanded(child: photos.length >= 2 ? _photoSlot(1) : _addSlot()),
-            if (photos.length >= 2) ...[
-              const SizedBox(width: 10),
-              Expanded(child: photos.length >= 3 ? _photoSlot(2) : _addSlot()),
-            ],
-            if (photos.length >= 3 && photos.length < 6) ...[
-              const SizedBox(width: 10),
-              Expanded(child: _addSlot()),
-            ],
-          ]),
-        ),
+            Expanded(child: photos.length >= 3 ? _photoSlot(2) : _addSlot()),
+          ],
+          if (photos.length >= 3 && photos.length < 6) ...[
+            const SizedBox(width: 10),
+            Expanded(child: _addSlot()),
+          ],
+        ])),
         const SizedBox(height: 22),
         _label('Datum rođenja:'),
         const SizedBox(height: 8),
         Row(children: [
-          Expanded(child: _textField(ctrl: _dayCtrl, hint: 'DD', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthDay = int.tryParse(v); return d; }))),
+          Expanded(child: _textField(ctrl: _dayCtrl,   hint: 'DD',   keyboardType: TextInputType.number, onChanged: (v) => _update((d) { d.birthDay   = int.tryParse(v); return d; }))),
           const SizedBox(width: 8),
-          Expanded(child: _textField(ctrl: _monthCtrl, hint: 'MM', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthMonth = int.tryParse(v); return d; }))),
+          Expanded(child: _textField(ctrl: _monthCtrl, hint: 'MM',   keyboardType: TextInputType.number, onChanged: (v) => _update((d) { d.birthMonth = int.tryParse(v); return d; }))),
           const SizedBox(width: 8),
-          Expanded(flex: 2, child: _textField(ctrl: _yearCtrl, hint: 'GGGG', keyboardType: TextInputType.number,
-              onChanged: (v) => _update((d) { d.birthYear = int.tryParse(v); return d; }))),
+          Expanded(flex: 2, child: _textField(ctrl: _yearCtrl, hint: 'GGGG', keyboardType: TextInputType.number, onChanged: (v) => _update((d) { d.birthYear = int.tryParse(v); return d; }))),
         ]),
         const SizedBox(height: 16),
         _label('Visina (cm):'),
@@ -279,60 +212,53 @@ class _ProfileStep1State extends State<ProfileStep1> {
         const SizedBox(height: 16),
         _label('Spol:'),
         const SizedBox(height: 8),
-        _dropdown(value: genderValue, hint: 'Odaberi spol', items: _genderOptions,
-            labelMap: _genderLabels,
-            onChanged: (v) => _update((dd) { dd.gender = v; return dd; })),
+        _dropdown(value: genderVal, hint: 'Odaberi spol', items: _genderOptions, labelMap: _genderLabels,
+            onChanged: (v) => _update((d) { d.gender = v; return d; })),
         const SizedBox(height: 16),
         _label('Boja kose:'),
         const SizedBox(height: 8),
-        _dropdown(value: hairValue, hint: 'Odaberi boju kose', items: _hairOptions,
-            labelMap: _hairLabels,
-            onChanged: (v) => _update((dd) { dd.hairColor = v; return dd; })),
+        _dropdown(value: hairVal, hint: 'Odaberi boju kose', items: _hairOptions, labelMap: _hairLabels,
+            onChanged: (v) => _update((d) { d.hairColor = v; return d; })),
         const SizedBox(height: 16),
         _label('Boja očiju:'),
         const SizedBox(height: 8),
-        _dropdown(value: eyeValue, hint: 'Odaberi boju očiju', items: _eyeOptions,
-            labelMap: _eyeLabels,
-            onChanged: (v) => _update((dd) { dd.eyeColor = v; return dd; })),
+        _dropdown(value: eyeVal, hint: 'Odaberi boju očiju', items: _eyeOptions, labelMap: _eyeLabels,
+            onChanged: (v) => _update((d) { d.eyeColor = v; return d; })),
         const SizedBox(height: 16),
         _label('Pirsing:'),
         const SizedBox(height: 8),
-        _dropdown(value: piercingVal, hint: 'Imaš li pirsing?', items: _yesNo,
-            labelMap: _yesNoLabels,
-            onChanged: (v) => _update((dd) { dd.piercing = v; return dd; })),
+        _dropdown(value: piercingVal, hint: 'Imaš li pirsing?', items: _yesNo, labelMap: _yesNoLabels,
+            onChanged: (v) => _update((d) { d.piercing = v; return d; })),
         const SizedBox(height: 16),
         _label('Tetovaža:'),
         const SizedBox(height: 8),
-        _dropdown(value: tattooVal, hint: 'Imaš li tetovažu?', items: _yesNo,
-            labelMap: _yesNoLabels,
-            onChanged: (v) => _update((dd) { dd.tattoo = v; return dd; })),
+        _dropdown(value: tattooVal, hint: 'Imaš li tetovažu?', items: _yesNo, labelMap: _yesNoLabels,
+            onChanged: (v) => _update((d) { d.tattoo = v; return d; })),
         const SizedBox(height: 8),
       ]),
     );
   }
 
   Widget _label(String text) => Text(text,
-      style: TextStyle(color: kPrimaryDark, fontSize: 14.5, fontWeight: FontWeight.w600));
+      style: const TextStyle(color: kPrimaryDark, fontSize: 14.5, fontWeight: FontWeight.w600));
 
   Widget _textField({
     required TextEditingController ctrl, required String hint,
     TextInputType? keyboardType, required void Function(String) onChanged,
-  }) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2)),
-      child: TextField(
-        controller: ctrl, keyboardType: keyboardType, onChanged: onChanged,
-        style: TextStyle(color: kPrimaryDark, fontSize: 15),
-        decoration: InputDecoration(
-          hintText: hint, hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 15),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14), isDense: true,
-        ),
+  }) => Container(
+    height: 50,
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2)),
+    child: TextField(
+      controller: ctrl, keyboardType: keyboardType, onChanged: onChanged,
+      style: const TextStyle(color: kPrimaryDark, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: hint, hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 15),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14), isDense: true,
       ),
-    );
-  }
+    ),
+  );
 
   Widget _dropdown({
     required String? value, required String hint, required List<String> items,
@@ -352,19 +278,14 @@ class _ProfileStep1State extends State<ProfileStep1> {
         hint: Text(hint, style: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 15)),
         isExpanded: true,
         icon: Icon(Icons.keyboard_arrow_down_rounded, color: kPrimaryDark.withOpacity(0.45)),
-        style: TextStyle(color: kPrimaryDark, fontSize: 15, fontFamily: 'SF Pro Display'),
+        style: const TextStyle(color: kPrimaryDark, fontSize: 15, fontFamily: 'SF Pro Display'),
         dropdownColor: Colors.white, borderRadius: BorderRadius.circular(12),
         onChanged: onChanged,
-        items: items.map((s) => DropdownMenuItem(value: s,
-            child: Text(labelMap?[s] ?? s))).toList(),
+        items: items.map((s) => DropdownMenuItem(value: s, child: Text(labelMap?[s] ?? s))).toList(),
       )),
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 2 — interesi
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep2 extends StatefulWidget {
   final ProfileSetupData data;
@@ -376,11 +297,11 @@ class ProfileStep2 extends StatefulWidget {
 class _ProfileStep2State extends State<ProfileStep2> with TickerProviderStateMixin {
 
   static const _allInterests = [
-    ('Crtanje',    '🎨'), ('Fotografija','📸'), ('Pisanje',    '✍️'),
-    ('Film',       '🎬'), ('Trčanje',    '🏃‍♀️'), ('Biciklizam', '🚴'),
-    ('Planinarenje','🥾'), ('Teretana',  '🏋️'), ('Boks',       '🥊'),
-    ('Tenis',      '🎾'), ('Nogomet',   '⚽'),  ('Odbojka',    '🏐'),
-    ('Kuhanje',    '👨‍🍳'), ('Putovanja', '✈️'),  ('Gaming',     '🎮'),
+    ('Crtanje',    '🎨'), ('Fotografija','📸'), ('Pisanje',     '✍️'),
+    ('Film',       '🎬'), ('Trčanje',    '🏃‍♀️'), ('Biciklizam',  '🚴'),
+    ('Planinarenje','🥾'), ('Teretana',  '🏋️'), ('Boks',        '🥊'),
+    ('Tenis',      '🎾'), ('Nogomet',   '⚽'),  ('Odbojka',     '🏐'),
+    ('Kuhanje',    '👨‍🍳'), ('Putovanja', '✈️'),  ('Gaming',      '🎮'),
     ('Formula',    '🏎️'), ('Glazba',    '🎵'),
   ];
 
@@ -399,8 +320,7 @@ class _ProfileStep2State extends State<ProfileStep2> with TickerProviderStateMix
   void _toggle(int idx) {
     final name = _allInterests[idx].$1;
     final copy = widget.data.copy();
-    if (copy.interests.contains(name)) copy.interests.remove(name);
-    else copy.interests.add(name);
+    copy.interests.contains(name) ? copy.interests.remove(name) : copy.interests.add(name);
     widget.onChange(copy);
     HapticFeedback.selectionClick();
   }
@@ -414,35 +334,32 @@ class _ProfileStep2State extends State<ProfileStep2> with TickerProviderStateMix
         child: Text('Odaberi svoje interese:',
             style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 16, fontWeight: FontWeight.w600)),
       ),
-
-      Expanded(
-        child: GridView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.05,
-          ),
-          itemCount: _allInterests.length,
-          itemBuilder: (_, i) {
-            final name  = _allInterests[i].$1;
-            final emoji = _allInterests[i].$2;
-            final isSel = selected.contains(name);
-            return GestureDetector(
-              onTapDown: (_) => _tapCtrls[i].forward(),
-              onTapUp: (_) { _tapCtrls[i].reverse(); _toggle(i); },
-              onTapCancel: () => _tapCtrls[i].reverse(),
-              child: AnimatedBuilder(
-                animation: _tapCtrls[i],
-                builder: (_, __) => Transform.scale(
-                  scale: 1.0 - _tapCtrls[i].value * 0.04,
-                  child: _InterestCell(name: name, emoji: emoji, isSelected: isSel,
-                      onRemove: isSel ? () => _toggle(i) : null),
-                ),
-              ),
-            );
-          },
+      Expanded(child: GridView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.05,
         ),
-      ),
+        itemCount: _allInterests.length,
+        itemBuilder: (_, i) {
+          final name  = _allInterests[i].$1;
+          final emoji = _allInterests[i].$2;
+          final isSel = selected.contains(name);
+          return GestureDetector(
+            onTapDown: (_) => _tapCtrls[i].forward(),
+            onTapUp: (_) { _tapCtrls[i].reverse(); _toggle(i); },
+            onTapCancel: () => _tapCtrls[i].reverse(),
+            child: AnimatedBuilder(
+              animation: _tapCtrls[i],
+              builder: (_, __) => Transform.scale(
+                scale: 1.0 - _tapCtrls[i].value * 0.04,
+                child: _InterestCell(name: name, emoji: emoji, isSelected: isSel,
+                    onRemove: isSel ? () => _toggle(i) : null),
+              ),
+            ),
+          );
+        },
+      )),
     ]);
   }
 }
@@ -455,39 +372,32 @@ class _InterestCell extends StatelessWidget {
     required this.isSelected, this.onRemove});
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      decoration: BoxDecoration(
-        color: isSelected ? kPrimaryLight : kPrimaryLight.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isSelected ? kPrimaryDark.withOpacity(0.20) : Colors.transparent, width: 1.2),
-        boxShadow: isSelected
-            ? [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 12, offset: const Offset(0, 4))]
-            : [],
-      ),
-      child: Stack(children: [
-        Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(emoji, style: const TextStyle(fontSize: 44)),
-          const SizedBox(height: 8),
-          Text(name, style: TextStyle(color: kPrimaryDark, fontSize: 15, fontWeight: FontWeight.w700)),
-        ])),
-        if (isSelected && onRemove != null)
-          Positioned(top: 6, right: 6,
-              child: GestureDetector(onTap: onRemove,
-                  child: Container(width: 22, height: 22,
-                      decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)]),
-                      child: Icon(Icons.close_rounded, size: 14, color: kPrimaryDark)))),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: const Duration(milliseconds: 220),
+    decoration: BoxDecoration(
+      color: isSelected ? kPrimaryLight : kPrimaryLight.withOpacity(0.55),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: isSelected ? kPrimaryDark.withOpacity(0.20) : Colors.transparent, width: 1.2),
+      boxShadow: isSelected
+          ? [BoxShadow(color: kPrimaryDark.withOpacity(0.10), blurRadius: 12, offset: const Offset(0, 4))]
+          : [],
+    ),
+    child: Stack(children: [
+      Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(emoji, style: const TextStyle(fontSize: 44)),
+        const SizedBox(height: 8),
+        Text(name, style: const TextStyle(color: kPrimaryDark, fontSize: 15, fontWeight: FontWeight.w700)),
+      ])),
+      if (isSelected && onRemove != null)
+        Positioned(top: 6, right: 6,
+            child: GestureDetector(onTap: onRemove,
+                child: Container(width: 22, height: 22,
+                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)]),
+                    child: Icon(Icons.close_rounded, size: 14, color: kPrimaryDark)))),
+    ]),
+  );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 3 — icebreaker
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep3 extends StatefulWidget {
   final ProfileSetupData data;
@@ -531,42 +441,38 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final hasText = _ctrl.text.isNotEmpty;
-    return LayoutBuilder(builder: (context, constraints) {
+    return LayoutBuilder(builder: (_, constraints) {
       const double fabSize = 52.0;
       final double boundary = constraints.maxHeight * 5 / 12;
-      final double fabTop   = boundary - fabSize / 2;
-
       return GestureDetector(
         onTap: _editing ? _stopEdit : null,
         child: Stack(children: [
           Column(children: [
-            Expanded(flex: 5,
-                child: Container(width: double.infinity,
-                    color: kPrimaryLight.withOpacity(0.60),
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.fromLTRB(28, 0, 90, 0),
-                    child: Text('Napiši kako želiš da ti\nnetko priđe:',
-                        style: TextStyle(color: kPrimaryDark.withOpacity(0.70),
-                            fontSize: 22, fontWeight: FontWeight.w700, height: 1.4)))),
-            Expanded(flex: 7,
-                child: Container(width: double.infinity, color: kPrimaryLight,
-                    padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
-                    child: _editing
-                        ? TextField(controller: _ctrl, focusNode: _focus,
-                        onChanged: (_) => setState(() {}), onSubmitted: (_) => _stopEdit(),
-                        maxLines: null,
-                        style: TextStyle(color: kPrimaryDark, fontSize: 26, fontWeight: FontWeight.w800, height: 1.3),
-                        decoration: InputDecoration(
-                            hintText: 'Napiši nešto zanimljivo...',
-                            hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 22, fontWeight: FontWeight.w700),
-                            border: InputBorder.none, contentPadding: EdgeInsets.zero))
-                        : GestureDetector(onTap: _startEdit,
-                        child: Text(hasText ? _ctrl.text : 'Nek me pita koju\nseriju trenutno\nbingam...',
-                            style: TextStyle(
-                                color: hasText ? kPrimaryDark : kPrimaryDark.withOpacity(0.45),
-                                fontSize: 26, fontWeight: FontWeight.w800, height: 1.3))))),
+            Expanded(flex: 5, child: Container(width: double.infinity,
+                color: kPrimaryLight.withOpacity(0.60),
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.fromLTRB(28, 0, 90, 0),
+                child: Text('Napiši kako želiš da ti\nnetko priđe:',
+                    style: TextStyle(color: kPrimaryDark.withOpacity(0.70),
+                        fontSize: 22, fontWeight: FontWeight.w700, height: 1.4)))),
+            Expanded(flex: 7, child: Container(width: double.infinity, color: kPrimaryLight,
+                padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
+                child: _editing
+                    ? TextField(controller: _ctrl, focusNode: _focus,
+                    onChanged: (_) => setState(() {}), onSubmitted: (_) => _stopEdit(),
+                    maxLines: null,
+                    style: const TextStyle(color: kPrimaryDark, fontSize: 26, fontWeight: FontWeight.w800, height: 1.3),
+                    decoration: InputDecoration(
+                        hintText: 'Napiši nešto zanimljivo...',
+                        hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.30), fontSize: 22, fontWeight: FontWeight.w700),
+                        border: InputBorder.none, contentPadding: EdgeInsets.zero))
+                    : GestureDetector(onTap: _startEdit,
+                    child: Text(hasText ? _ctrl.text : 'Nek me pita koju\nseriju trenutno\nbingam...',
+                        style: TextStyle(
+                            color: hasText ? kPrimaryDark : kPrimaryDark.withOpacity(0.45),
+                            fontSize: 26, fontWeight: FontWeight.w800, height: 1.3))))),
           ]),
-          Positioned(top: fabTop, right: 24,
+          Positioned(top: boundary - fabSize / 2, right: 24,
               child: ScaleTransition(
                   scale: Tween<double>(begin: 0.8, end: 1.0).animate(
                       CurvedAnimation(parent: _editBounce, curve: Curves.easeOutBack)),
@@ -575,8 +481,9 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
                       child: AnimatedContainer(duration: const Duration(milliseconds: 260),
                           width: fabSize, height: fabSize,
                           decoration: BoxDecoration(
-                              color: _editing ? Colors.white : kPrimaryDark, shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))]),
+                            color: _editing ? Colors.white : kPrimaryDark, shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+                          ),
                           child: Icon(_editing ? Icons.check_rounded : Icons.edit_rounded,
                               color: _editing ? kPrimaryDark : Colors.white, size: 22))))),
         ]),
@@ -584,10 +491,6 @@ class _ProfileStep3State extends State<ProfileStep3> with SingleTickerProviderSt
     });
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEP 4 — Preference (tražim spol + dobna skupina)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class ProfileStep4 extends StatefulWidget {
   final ProfileSetupData data;
@@ -599,11 +502,7 @@ class ProfileStep4 extends StatefulWidget {
 class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMixin {
 
   static const _seekingOptions = ['zensko', 'musko', 'sve'];
-  static const _seekingLabels  = {
-    'zensko': 'Žensko',
-    'musko':  'Muško',
-    'sve':    'Svejedno',
-  };
+  static const _seekingLabels  = {'zensko': 'Žensko', 'musko': 'Muško', 'sve': 'Svejedno'};
 
   late final TextEditingController _ageFromCtrl;
   late final TextEditingController _ageToCtrl;
@@ -612,12 +511,9 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _ageFromCtrl = TextEditingController(
-        text: widget.data.prefAgeFrom?.toString() ?? '');
-    _ageToCtrl   = TextEditingController(
-        text: widget.data.prefAgeTo?.toString() ?? '');
-    _chipCtrls   = List.generate(3,
-            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 120)));
+    _ageFromCtrl = TextEditingController(text: widget.data.prefAgeFrom?.toString() ?? '');
+    _ageToCtrl   = TextEditingController(text: widget.data.prefAgeTo?.toString()   ?? '');
+    _chipCtrls   = List.generate(3, (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 120)));
   }
 
   @override
@@ -632,19 +528,17 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final d = widget.data;
+    final d            = widget.data;
     final seekingValue = _seekingOptions.contains(d.seekingGender) ? d.seekingGender : null;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: kPrimaryLight.withOpacity(0.60),
-            borderRadius: BorderRadius.circular(16),
+            color: kPrimaryLight.withOpacity(0.60), borderRadius: BorderRadius.circular(16),
             border: Border.all(color: kPrimaryDark.withOpacity(0.10)),
           ),
           child: Row(children: [
@@ -656,15 +550,12 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
                 style: TextStyle(color: kPrimaryDark.withOpacity(0.65), fontSize: 13.5, height: 1.4))),
           ]),
         ),
-
         const SizedBox(height: 28),
-
         _sectionTitle('Tražim:'),
         const SizedBox(height: 12),
         Row(children: List.generate(_seekingOptions.length, (i) {
-          final opt = _seekingOptions[i];
+          final opt   = _seekingOptions[i];
           final isSel = seekingValue == opt;
-          final label = _seekingLabels[opt] ?? opt;
           return Expanded(child: Padding(
             padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
             child: GestureDetector(
@@ -680,50 +571,37 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
                 builder: (_, __) => Transform.scale(
                   scale: 1.0 - _chipCtrls[i].value * 0.04,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: 54,
+                    duration: const Duration(milliseconds: 200), height: 54,
                     decoration: BoxDecoration(
                       color: isSel ? kPrimaryDark : Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: isSel ? kPrimaryDark : kPrimaryDark.withOpacity(0.15), width: 1.5),
-                      boxShadow: isSel ? [BoxShadow(
-                          color: kPrimaryDark.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                      border: Border.all(color: isSel ? kPrimaryDark : kPrimaryDark.withOpacity(0.15), width: 1.5),
+                      boxShadow: isSel ? [BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 4))] : [],
                     ),
-                    child: Center(child: Text(label,
-                        style: TextStyle(
-                          color: isSel ? Colors.white : kPrimaryDark,
-                          fontSize: 14, fontWeight: FontWeight.w700,
-                        ), textAlign: TextAlign.center)),
+                    child: Center(child: Text(_seekingLabels[opt] ?? opt,
+                        style: TextStyle(color: isSel ? Colors.white : kPrimaryDark,
+                            fontSize: 14, fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center)),
                   ),
                 ),
               ),
             ),
           ));
         })),
-
         const SizedBox(height: 30),
-
         _sectionTitle('Dobna skupina koja mi odgovara:'),
         const SizedBox(height: 8),
         Text('Upiši raspon godina koji ti odgovara.',
             style: TextStyle(color: kPrimaryDark.withOpacity(0.45), fontSize: 12.5)),
         const SizedBox(height: 14),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Expanded(child: _ageField(
-            ctrl: _ageFromCtrl, hint: 'Od (npr. 18)',
-            onChanged: (v) => _update((d) { d.prefAgeFrom = int.tryParse(v); return d; }),
-          )),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text('–', style: TextStyle(color: kPrimaryDark, fontSize: 22, fontWeight: FontWeight.w700)),
-          ),
-          Expanded(child: _ageField(
-            ctrl: _ageToCtrl, hint: 'Do (npr. 30)',
-            onChanged: (v) => _update((d) { d.prefAgeTo = int.tryParse(v); return d; }),
-          )),
+          Expanded(child: _ageField(ctrl: _ageFromCtrl, hint: 'Od (npr. 18)',
+              onChanged: (v) => _update((d) { d.prefAgeFrom = int.tryParse(v); return d; }))),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text('–', style: const TextStyle(color: kPrimaryDark, fontSize: 22, fontWeight: FontWeight.w700))),
+          Expanded(child: _ageField(ctrl: _ageToCtrl, hint: 'Do (npr. 30)',
+              onChanged: (v) => _update((d) { d.prefAgeTo = int.tryParse(v); return d; }))),
         ]),
-
         const SizedBox(height: 12),
         _ageHint(d),
       ]),
@@ -731,102 +609,78 @@ class _ProfileStep4State extends State<ProfileStep4> with TickerProviderStateMix
   }
 
   Widget _sectionTitle(String text) => Text(text,
-      style: TextStyle(color: kPrimaryDark, fontSize: 15.5, fontWeight: FontWeight.w700));
+      style: const TextStyle(color: kPrimaryDark, fontSize: 15.5, fontWeight: FontWeight.w700));
 
   Widget _ageField({
-    required TextEditingController ctrl,
-    required String hint,
+    required TextEditingController ctrl, required String hint,
     required void Function(String) onChanged,
-  }) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2),
+  }) => Container(
+    height: 52,
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 1.2)),
+    child: TextField(
+      controller: ctrl, keyboardType: TextInputType.number,
+      onChanged: (v) { setState(() {}); onChanged(v); },
+      style: const TextStyle(color: kPrimaryDark, fontSize: 16, fontWeight: FontWeight.w600),
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        hintText: hint, hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.28), fontSize: 13),
+        border: InputBorder.none, isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
       ),
-      child: TextField(
-        controller: ctrl, keyboardType: TextInputType.number,
-        onChanged: (v) { setState(() {}); onChanged(v); },
-        style: TextStyle(color: kPrimaryDark, fontSize: 16, fontWeight: FontWeight.w600),
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: hint, hintStyle: TextStyle(color: kPrimaryDark.withOpacity(0.28), fontSize: 13),
-          border: InputBorder.none, isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 
   Widget _ageHint(ProfileSetupData d) {
     final from = d.prefAgeFrom;
     final to   = d.prefAgeTo;
 
     if (from == null && to == null) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.orange.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.orange.shade200),
-        ),
-        child: Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 14),
-          const SizedBox(width: 7),
-          Expanded(child: Text('Oba polja su obavezna.',
-              style: TextStyle(color: Colors.orange.shade800, fontSize: 12.5, fontWeight: FontWeight.w500))),
-        ]),
-      );
+      return _hintBox(Colors.orange.shade50, Colors.orange.shade200,
+          Icons.warning_amber_rounded, Colors.orange.shade700, Colors.orange.shade800,
+          'Oba polja su obavezna.');
     }
 
     bool ok = true;
-    String msg = '';
-    if (from == null) { ok = false; msg = 'Upiši donju granicu dobi.'; }
-    else if (to == null) { ok = false; msg = 'Upiši gornju granicu dobi.'; }
+    String msg;
+    if (from == null)           { ok = false; msg = 'Upiši donju granicu dobi.'; }
+    else if (to == null)        { ok = false; msg = 'Upiši gornju granicu dobi.'; }
     else if (from < 18 || from > 99) { ok = false; msg = 'Minimalna dob je 18 godina.'; }
-    else if (to < 18 || to > 99) { ok = false; msg = 'Maksimalna dob je 99 godina.'; }
-    else if (from > to) { ok = false; msg = 'Gornja granica mora biti veća od donje.'; }
-    else { msg = 'Tražiš osobe od $from do $to godina. ✓'; }
+    else if (to < 18 || to > 99)     { ok = false; msg = 'Maksimalna dob je 99 godina.'; }
+    else if (from > to)         { ok = false; msg = 'Gornja granica mora biti veća od donje.'; }
+    else                        { msg = 'Tražiš osobe od $from do $to godina. ✓'; }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: ok ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ok ? Colors.green.shade200 : Colors.red.shade200),
-      ),
-      child: Row(children: [
-        Icon(ok ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
-            color: ok ? Colors.green.shade600 : Colors.redAccent, size: 14),
-        const SizedBox(width: 7),
-        Expanded(child: Text(msg, style: TextStyle(
-            color: ok ? Colors.green.shade700 : Colors.redAccent,
-            fontSize: 12.5, fontWeight: FontWeight.w500))),
-      ]),
+    return _hintBox(
+      ok ? Colors.green.shade50 : Colors.red.shade50,
+      ok ? Colors.green.shade200 : Colors.red.shade200,
+      ok ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
+      ok ? Colors.green.shade600 : Colors.redAccent,
+      ok ? Colors.green.shade700 : Colors.redAccent,
+      msg,
     );
   }
-}
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PROFILE SETUP SCREEN — za UREDI PROFIL (iz profile_screen)
-// ═══════════════════════════════════════════════════════════════════════════════
+  Widget _hintBox(Color bg, Color border, IconData icon, Color iconColor, Color textColor, String msg) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border)),
+        child: Row(children: [
+          Icon(icon, color: iconColor, size: 14),
+          const SizedBox(width: 7),
+          Expanded(child: Text(msg, style: TextStyle(color: textColor, fontSize: 12.5, fontWeight: FontWeight.w500))),
+        ]),
+      );
+}
 
 class ProfileSetupScreen extends StatefulWidget {
   final ProfileSetupData initial;
   final Function(ProfileSetupData) onSave;
-
-  const ProfileSetupScreen({
-    super.key,
-    required this.initial,
-    required this.onSave,
-  });
-
-  @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  const ProfileSetupScreen({super.key, required this.initial, required this.onSave});
+  @override State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen>
-    with TickerProviderStateMixin {
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> with TickerProviderStateMixin {
   late ProfileSetupData _data;
   int _step = 0;
   static const int _totalSteps = 4;
@@ -841,7 +695,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     _data = widget.initial.copy();
     _progressCtrl = AnimationController(vsync: this,
         duration: const Duration(milliseconds: 600), value: 1 / _totalSteps);
-    _pageCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
+    _pageCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
     _pageSlide = Tween<Offset>(begin: const Offset(1.0, 0), end: Offset.zero)
         .animate(CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOutCubic));
     _pageCtrl.value = 1.0;
@@ -850,33 +704,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   @override
   void dispose() { _progressCtrl.dispose(); _pageCtrl.dispose(); super.dispose(); }
 
-  void _update(ProfileSetupData newData) => setState(() => _data = newData);
+  void _update(ProfileSetupData d) => setState(() => _data = d);
 
   String? _validateStep0() {
     if (_data.photoPaths.length < 2) return 'Potrebne su najmanje 2 fotografije.';
-
-    if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null) {
+    if (_data.birthDay == null || _data.birthMonth == null || _data.birthYear == null)
       return 'Datum rođenja je obavezan.';
-    }
-
     final year  = _data.birthYear!;
     final month = _data.birthMonth!;
     final day   = _data.birthDay!;
-
     if (month < 1 || month > 12) return 'Neispravan mjesec (1-12).';
     if (day < 1 || day > 31)     return 'Neispravan dan (1-31).';
-
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    if (day > daysInMonth) return 'Neispravan dan za odabrani mjesec.';
-
+    if (day > DateTime(year, month + 1, 0).day) return 'Neispravan dan za odabrani mjesec.';
     final today    = DateTime.now();
     final birthday = DateTime(year, month, day);
-    final age      = today.year - birthday.year -
-        ((today.month < birthday.month ||
-            (today.month == birthday.month && today.day < birthday.day)) ? 1 : 0);
+    int age = today.year - birthday.year;
+    if (today.month < birthday.month || (today.month == birthday.month && today.day < birthday.day)) age--;
     if (age < 18)    return 'Mora imati najmanje 18 godina.';
     if (year < 1900) return 'Neispravan datum rođenja.';
-
     if (_data.height == null || _data.height!.isEmpty) return 'Visina je obavezna.';
     final h = int.tryParse(_data.height ?? '');
     if (h == null || h < 50 || h > 250) return 'Visina: 50-250 cm.';
@@ -888,24 +733,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     return null;
   }
 
+  String? _validateStep4() {
+    if (_data.seekingGender == null) return 'Odaberi koga tražiš.';
+    if (_data.prefAgeFrom == null)   return 'Upiši donju granicu dobi.';
+    if (_data.prefAgeTo == null)     return 'Upiši gornju granicu dobi.';
+    final from = _data.prefAgeFrom!, to = _data.prefAgeTo!;
+    if (from < 18 || from > 99) return 'Minimalna dob je 18 godina.';
+    if (to < 18 || to > 99)     return 'Maksimalna dob je 99 godina.';
+    if (from > to)               return 'Gornja granica mora biti veća od donje.';
+    return null;
+  }
+
   void _next() {
-    // Validacija po stepovima
     String? err;
     if (_step == 0) err = _validateStep0();
-    if (_step == 1 && _data.interests.length < 2) {
-      err = 'Odaberi najmanje 2 interesa.';
-    }
+    if (_step == 1 && _data.interests.length < 2) err = 'Odaberi najmanje 2 interesa.';
     if (_step == 3) err = _validateStep4();
 
     if (err != null) {
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(err, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: kPrimaryDark,
-        behavior: SnackBarBehavior.floating,
+        backgroundColor: kPrimaryDark, behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16), duration: const Duration(seconds: 3),
       ));
       return;
     }
@@ -920,18 +771,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       widget.onSave(_data);
       Navigator.pop(context);
     }
-  }
-
-  String? _validateStep4() {
-    if (_data.seekingGender == null) return 'Odaberi koga tražiš.';
-    if (_data.prefAgeFrom == null) return 'Upiši donju granicu dobi.';
-    if (_data.prefAgeTo == null) return 'Upiši gornju granicu dobi.';
-    final from = _data.prefAgeFrom!;
-    final to   = _data.prefAgeTo!;
-    if (from < 18 || from > 99) return 'Minimalna dob je 18 godina.';
-    if (to < 18 || to > 99) return 'Maksimalna dob je 99 godina.';
-    if (from > to) return 'Gornja granica mora biti veća od donje.';
-    return null;
   }
 
   void _back() {
@@ -949,79 +788,59 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    Widget currentStep;
-    switch (_step) {
-      case 0: currentStep = ProfileStep1(key: const ValueKey('s1'), data: _data, onChange: _update, mq: mq); break;
-      case 1: currentStep = ProfileStep2(key: const ValueKey('s2'), data: _data, onChange: _update); break;
-      case 2: currentStep = ProfileStep3(key: const ValueKey('s3'), data: _data, onChange: _update); break;
-      default: currentStep = ProfileStep4(key: const ValueKey('s4'), data: _data, onChange: _update);
-    }
-
+    final step = switch (_step) {
+      0 => ProfileStep1(key: const ValueKey('s1'), data: _data, onChange: _update, mq: mq),
+      1 => ProfileStep2(key: const ValueKey('s2'), data: _data, onChange: _update),
+      2 => ProfileStep3(key: const ValueKey('s3'), data: _data, onChange: _update),
+      _ => ProfileStep4(key: const ValueKey('s4'), data: _data, onChange: _update),
+    };
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(children: [
         _buildHeader(mq),
-        Expanded(child: SlideTransition(position: _pageSlide, child: currentStep)),
+        Expanded(child: SlideTransition(position: _pageSlide, child: step)),
         _buildNextBtn(mq),
       ]),
     );
   }
 
-  Widget _buildHeader(MediaQueryData mq) {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(top: mq.padding.top + 10, left: 8, right: 20, bottom: 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          GestureDetector(
-            onTap: _back,
-            child: Container(width: 40, height: 40,
-                decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(13)),
-                child: Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 16)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: AnimatedBuilder(
-            animation: _progressCtrl,
-            builder: (_, __) => LayoutBuilder(builder: (_, box) {
-              final w = box.maxWidth * _progressCtrl.value;
-              return Container(
-                height: 10,
-                decoration: BoxDecoration(
-                    color: kPrimaryDark.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Align(alignment: Alignment.centerLeft,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      width: w.clamp(0.0, box.maxWidth),
-                      decoration: BoxDecoration(
-                          color: kPrimaryDark,
-                          borderRadius: BorderRadius.circular(8)),
-                    )),
-              );
-            }),
-          )),
-        ]),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Text('Uredi profil',
-              style: TextStyle(color: kPrimaryDark, fontSize: 22,
-                  fontWeight: FontWeight.w900, letterSpacing: -0.4)),
+  Widget _buildHeader(MediaQueryData mq) => Container(
+    color: Colors.white,
+    padding: EdgeInsets.only(top: mq.padding.top + 10, left: 8, right: 20, bottom: 16),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        GestureDetector(
+          onTap: _back,
+          child: Container(width: 40, height: 40,
+              decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(13)),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: kPrimaryDark, size: 16)),
         ),
+        const SizedBox(width: 12),
+        Expanded(child: AnimatedBuilder(
+          animation: _progressCtrl,
+          builder: (_, __) => LayoutBuilder(builder: (_, box) {
+            final w = box.maxWidth * _progressCtrl.value;
+            return Container(height: 10,
+                decoration: BoxDecoration(color: kPrimaryDark.withOpacity(0.10), borderRadius: BorderRadius.circular(8)),
+                child: Align(alignment: Alignment.centerLeft,
+                    child: AnimatedContainer(duration: const Duration(milliseconds: 100),
+                        width: w.clamp(0.0, box.maxWidth),
+                        decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(8)))));
+          }),
+        )),
       ]),
-    );
-  }
+      const SizedBox(height: 12),
+      const Padding(padding: EdgeInsets.only(left: 4),
+          child: Text('Uredi profil', style: TextStyle(
+              color: kPrimaryDark, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.4))),
+    ]),
+  );
 
-  Widget _buildNextBtn(MediaQueryData mq) {
-    final isLast = _step == _totalSteps - 1;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 10, 24, mq.padding.bottom + 14),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // AI gumb
-        _SetupNextBtnWidget(label: isLast ? 'Spremi' : 'Nastavi', onTap: _next),
-      ]),
-    );
-  }
+  Widget _buildNextBtn(MediaQueryData mq) => Padding(
+    padding: EdgeInsets.fromLTRB(24, 10, 24, mq.padding.bottom + 14),
+    child: _SetupNextBtnWidget(
+        label: _step == _totalSteps - 1 ? 'Spremi' : 'Nastavi', onTap: _next),
+  );
 }
 
 class _SetupNextBtnWidget extends StatefulWidget {
@@ -1034,40 +853,37 @@ class _SetupNextBtnWidget extends StatefulWidget {
 class _SetupNextBtnWidgetState extends State<_SetupNextBtnWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
-  late Animation<double> _s;
-  @override void initState() {
+  late Animation<double>   _s;
+
+  @override
+  void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
     _s = Tween<double>(begin: 1.0, end: 0.95)
         .animate(CurvedAnimation(parent: _c, curve: Curves.easeIn));
   }
+
   @override void dispose() { _c.dispose(); super.dispose(); }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _c.forward(),
-      onTapUp: (_) { _c.reverse(); widget.onTap(); },
-      onTapCancel: () => _c.reverse(),
-      child: ScaleTransition(scale: _s,
-        child: Container(
-          height: 54, width: double.infinity,
-          decoration: BoxDecoration(
-            color: kPrimaryDark,
-            borderRadius: BorderRadius.circular(27),
-            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35),
-                blurRadius: 18, offset: const Offset(0, 7), spreadRadius: -3)],
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(widget.label,
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(width: 10),
-            Container(width: 26, height: 26,
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 18)),
-          ]),
-        ),
+  Widget build(BuildContext context) => GestureDetector(
+    onTapDown: (_) => _c.forward(),
+    onTapUp: (_) { _c.reverse(); widget.onTap(); },
+    onTapCancel: () => _c.reverse(),
+    child: ScaleTransition(scale: _s,
+      child: Container(
+        height: 54, width: double.infinity,
+        decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(27),
+            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.35), blurRadius: 18,
+                offset: const Offset(0, 7), spreadRadius: -3)]),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(widget.label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 10),
+          Container(width: 26, height: 26,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 18)),
+        ]),
       ),
-    );
-  }
+    ),
+  );
 }

@@ -17,20 +17,19 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                notificationService.getNotifications(userDetails.getUsername())));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteNotification(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
         notificationService.deleteNotification(id, userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.ok("Obavijest obrisana.", null));
-    }
-
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        List<NotificationResponse> notifications =
-                notificationService.getNotifications(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(notifications));
     }
 
     @PostMapping("/read")

@@ -3,7 +3,7 @@ package com.meetcute.backend.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class CreateCompanyEventRequest {
 
     @NotBlank
@@ -20,7 +20,6 @@ public class CreateCompanyEventRequest {
     private String eventDate;
 
     private String coverPhotoUrl;
-
     private String timeStart;
     private String timeEnd;
 

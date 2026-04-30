@@ -1,10 +1,6 @@
 package com.meetcute.backend.controller;
 
-import com.meetcute.backend.dto.ApiResponse;
-import com.meetcute.backend.dto.CompanyEventStatsResponse;
-import com.meetcute.backend.dto.CreateCompanyEventRequest;
-import com.meetcute.backend.dto.EventResponse;
-import com.meetcute.backend.dto.UpdateEventRequest;
+import com.meetcute.backend.dto.*;
 import com.meetcute.backend.service.CompanyEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,36 +22,33 @@ public class CompanyEventController {
     public ResponseEntity<ApiResponse<EventResponse>> createEvent(
             @Valid @RequestBody CreateCompanyEventRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        EventResponse event = companyEventService.createCompanyEvent(req, userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok("Događaj kreiran!", event));
+        return ResponseEntity.ok(ApiResponse.ok("Događaj kreiran!",
+                companyEventService.createCompanyEvent(req, userDetails.getUsername())));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<EventResponse>>> getMyEvents(
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<EventResponse> events = companyEventService.getCompanyEvents(
-                userDetails.getUsername(), userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(events));
+        String id = userDetails.getUsername();
+        return ResponseEntity.ok(ApiResponse.ok(companyEventService.getCompanyEvents(id, id)));
     }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<List<CompanyEventStatsResponse>>> getStats(
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<CompanyEventStatsResponse> stats = companyEventService.getEventStats(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.ok(stats));
+        return ResponseEntity.ok(ApiResponse.ok(
+                companyEventService.getEventStats(userDetails.getUsername())));
     }
 
-    // ── NOVO: Uredi company event ─────────────────────────────────────────────
     @PutMapping("/{eventId}")
     public ResponseEntity<ApiResponse<EventResponse>> updateEvent(
             @PathVariable String eventId,
             @RequestBody UpdateEventRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
-        EventResponse event = companyEventService.updateCompanyEvent(eventId, userDetails.getUsername(), req);
-        return ResponseEntity.ok(ApiResponse.ok("Događaj ažuriran!", event));
+        return ResponseEntity.ok(ApiResponse.ok("Događaj ažuriran!",
+                companyEventService.updateCompanyEvent(eventId, userDetails.getUsername(), req)));
     }
 
-    // ── NOVO: Obriši company event ────────────────────────────────────────────
     @DeleteMapping("/{eventId}")
     public ResponseEntity<ApiResponse<Void>> deleteEvent(
             @PathVariable String eventId,

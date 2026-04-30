@@ -15,7 +15,6 @@ import 'theme_state.dart';
 import 'onboarding_screen.dart' show globalProfileData;
 import 'dart:io';
 
-
 const Color kPrimaryDark   = Color(0xFF700D25);
 const Color kPrimaryLight  = Color(0xFFF2E8E9);
 const Color kGradientStart = Color(0xFF938083);
@@ -24,21 +23,21 @@ const Color kGoldLock      = Color(0xFFE8C21A);
 const Color kSurface       = Color(0xFFF5EDEF);
 const Color kCardBg        = Colors.white;
 
-const double kNavIconSize  = 24.0;
-const double kNavPadH      = 12.0;
-const double kNavPadV      = 6.0;
-const double kNavDotSize   = 5.0;
-const double kCardRadius   = 22.0;
-const double kMenuPadH     = 18.0;
-const double kMenuPadV     = 16.0;
-const double kToggleW      = 44.0;
-const double kToggleH      = 24.0;
-const double kToggleKnob   = 18.0;
-const double kContentPadH  = 16.0;
+const double kNavIconSize    = 24.0;
+const double kNavPadH        = 12.0;
+const double kNavPadV        = 6.0;
+const double kNavDotSize     = 5.0;
+const double kCardRadius     = 22.0;
+const double kMenuPadH       = 18.0;
+const double kMenuPadV       = 16.0;
+const double kToggleW        = 44.0;
+const double kToggleH        = 24.0;
+const double kToggleKnob     = 18.0;
+const double kContentPadH    = 16.0;
 const double kHeaderFontSize = 20.0;
 const double kHeaderIconSize = 22.0;
-const double kHeaderPadH   = 20.0;
-const double kHeaderPadV   = 12.0;
+const double kHeaderPadH     = 20.0;
+const double kHeaderPadV     = 12.0;
 
 const List<_NavItem> kNavItems = [
   _NavItem(Icons.home_outlined,               Icons.home_rounded,          'Home'),
@@ -55,7 +54,6 @@ class _NavItem {
   const _NavItem(this.unselected, this.selected, this.label);
 }
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override State<HomeScreen> createState() => _HomeScreenState();
@@ -63,31 +61,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _locationEnabled = true;
-  int _selectedNavIndex = 0;
+  int  _selectedNavIndex = 0;
   static const LatLng _defaultLoc = LatLng(45.8150, 15.9819);
   LatLng _userLocation = _defaultLoc;
   final MapController _mapController = MapController();
 
-  late AnimationController _entryCtrl;
-  late AnimationController _navBarCtrl;
-  late AnimationController _blurCtrl;
-  late AnimationController _avatarCtrl;
-  late AnimationController _menuCtrl;
-  late AnimationController _markerRingCtrl;
-  late AnimationController _markerBobCtrl;
-  late AnimationController _logoGlowCtrl;
+  late AnimationController _entryCtrl, _navBarCtrl, _blurCtrl, _avatarCtrl;
+  late AnimationController _menuCtrl, _markerRingCtrl, _markerBobCtrl, _logoGlowCtrl;
   late List<AnimationController> _navTapCtrls;
   late List<AnimationController> _menuItemCtrls;
 
-  late Animation<double> _entryFade;
-  late Animation<double> _navBarSlide;
-  late Animation<double> _blurAnim;
-  late Animation<double> _avatarScale;
-  late Animation<double> _menuFade;
+  late Animation<double> _entryFade, _navBarSlide, _blurAnim, _avatarScale;
+  late Animation<double> _menuFade, _markerRing, _markerBob, _logoGlow;
   late Animation<Offset>  _menuSlide;
-  late Animation<double> _markerRing;
-  late Animation<double> _markerBob;
-  late Animation<double> _logoGlow;
 
   @override
   void initState() {
@@ -102,46 +88,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ThemeState.instance.addListener(_onBadgeChanged);
   }
 
-  void _onBadgeChanged() {
-    if (mounted) setState(() {});
-  }
+  void _onBadgeChanged() { if (mounted) setState(() {}); }
 
   void _initAnims() {
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _entryFade   = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
 
-    _navBarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _navBarCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _navBarSlide = Tween<double>(begin: 90, end: 0)
         .animate(CurvedAnimation(parent: _navBarCtrl, curve: Curves.easeOutBack));
 
     _blurCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
     _blurAnim = CurvedAnimation(parent: _blurCtrl, curve: Curves.easeInOut);
 
-    _avatarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _avatarCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _avatarScale = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _avatarCtrl, curve: Curves.elasticOut));
 
-    _menuCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-    _menuFade = CurvedAnimation(parent: _menuCtrl, curve: Curves.easeOut);
+    _menuCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    _menuFade  = CurvedAnimation(parent: _menuCtrl, curve: Curves.easeOut);
     _menuSlide = Tween<Offset>(begin: const Offset(0, 0.20), end: Offset.zero)
         .animate(CurvedAnimation(parent: _menuCtrl, curve: Curves.easeOutCubic));
 
     _markerRingCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
-    _markerRing = Tween<double>(begin: 0.0, end: 1.0)
+    _markerRing     = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _markerRingCtrl, curve: Curves.easeOut));
 
     _markerBobCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
-    _markerBob = Tween<double>(begin: 0.0, end: -7.0)
+    _markerBob     = Tween<double>(begin: 0.0, end: -7.0)
         .animate(CurvedAnimation(parent: _markerBobCtrl, curve: Curves.easeInOut));
 
     _logoGlowCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
-    _logoGlow = CurvedAnimation(parent: _logoGlowCtrl, curve: Curves.easeInOut);
+    _logoGlow     = CurvedAnimation(parent: _logoGlowCtrl, curve: Curves.easeInOut);
 
-    _navTapCtrls = List.generate(5, (_) =>
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
+    _navTapCtrls = List.generate(5,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
     _navTapCtrls[0].value = 1.0;
-    _menuItemCtrls = List.generate(3, (_) =>
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 120)));
+
+    _menuItemCtrls = List.generate(3,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 120)));
   }
 
   void _runEntry() async {
@@ -181,59 +166,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
-    Widget? screen;
-    switch (index) {
-      case 1: screen = const ChatScreen(); break;
-      case 2: screen = const NotificationsScreen(); break;
-      case 3: screen = const ProfileScreen(); break;
-      case 4: screen = const SettingsScreen(); break;
-      default: screen = null;
-    }
-    if (screen != null) {
-      Navigator.push(context, PageRouteBuilder(
-        pageBuilder: (_, a, __) => screen!,
-        transitionsBuilder: (_, a, __, child) {
-          if (index == 1) {
-            return FadeTransition(
-              opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.94, end: 1.0)
-                    .animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)),
-                child: child,
-              ),
-            );
-          }
-          return FadeTransition(opacity: a,
-            child: SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
-                  .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 380),
-      )).then((_) {
-        _navTapCtrls[index].reverse();
-        _navTapCtrls[0].forward(from: 0.0);
-        setState(() => _selectedNavIndex = 0);
-      });
-    }
-  }
-
-  void _navigateTo(Widget screen) {
+    final screen = switch (index) {
+      1 => const ChatScreen(),
+      2 => const NotificationsScreen(),
+      3 => const ProfileScreen(),
+      4 => const SettingsScreen(),
+      _ => null,
+    };
+    if (screen == null) return;
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, a, __) => screen,
-      transitionsBuilder: (_, a, __, child) => FadeTransition(
-        opacity: a,
-        child: SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-              .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-          child: child,
-        ),
-      ),
-      transitionDuration: const Duration(milliseconds: 320),
-    ));
+      transitionsBuilder: (_, a, __, child) => index == 1
+          ? FadeTransition(opacity: CurvedAnimation(parent: a, curve: Curves.easeIn),
+          child: ScaleTransition(
+              scale: Tween<double>(begin: 0.94, end: 1.0)
+                  .animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)),
+              child: child))
+          : FadeTransition(opacity: a,
+          child: SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
+                  .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+              child: child)),
+      transitionDuration: const Duration(milliseconds: 380),
+    )).then((_) {
+      _navTapCtrls[index].reverse();
+      _navTapCtrls[0].forward(from: 0.0);
+      setState(() => _selectedNavIndex = 0);
+    });
   }
+
+  void _navigateTo(Widget screen) => Navigator.push(context, PageRouteBuilder(
+    pageBuilder: (_, a, __) => screen,
+    transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
+        child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+                .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+            child: child)),
+    transitionDuration: const Duration(milliseconds: 320),
+  ));
 
   void _showPremiumDialog({bool isFilter = false}) {
     HapticFeedback.mediumImpact();
@@ -249,8 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
+              color: Colors.white, borderRadius: BorderRadius.circular(28),
               boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.22), blurRadius: 48, offset: const Offset(0, 18))],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -258,8 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   decoration: BoxDecoration(color: kGoldLock.withOpacity(0.13), shape: BoxShape.circle),
                   child: const Icon(Icons.star_rounded, color: kGoldLock, size: 32)),
               const SizedBox(height: 16),
-              const Text('Premium',
-                  style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 20)),
+              const Text('Premium', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w800, fontSize: 20)),
               const SizedBox(height: 10),
               Text('Ova funkcija je dostupna samo Premium korisnicima. Otključaj sve i pronađi svog Cutieja!',
                   textAlign: TextAlign.center,
@@ -285,40 +253,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onPressed: () {
                     Navigator.pop(context);
                     if (isFilter) {
-                      showDialog(
-                        context: context,
-                        builder: (_) => Dialog(
-                          backgroundColor: Colors.transparent,
-                          child: Container(
-                            padding: const EdgeInsets.all(28),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.20), blurRadius: 36, offset: const Offset(0, 14))],
-                            ),
-                            child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              Container(width: 60, height: 60,
-                                  decoration: BoxDecoration(color: kPrimaryLight, shape: BoxShape.circle),
-                                  child: const Icon(Icons.construction_rounded, color: kPrimaryDark, size: 30)),
-                              const SizedBox(height: 16),
-                              const Text('Uskoro!', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20)),
-                              const SizedBox(height: 10),
-                              Text('Filtriranje matcheva je još u razvoju.\nUskoro dolazi! ',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, height: 1.5)),
-                              const SizedBox(height: 24),
-                              GestureDetector(
-                                onTap: () => Navigator.pop(context),
-                                child: Container(
-                                  height: 48, width: double.infinity,
-                                  decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(24)),
-                                  child: const Center(child: Text('Ok!', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
-                                ),
-                              ),
-                            ]),
+                      showDialog(context: context, builder: (_) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        child: Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white, borderRadius: BorderRadius.circular(24),
+                            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.20), blurRadius: 36, offset: const Offset(0, 14))],
                           ),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Container(width: 60, height: 60,
+                                decoration: BoxDecoration(color: kPrimaryLight, shape: BoxShape.circle),
+                                child: const Icon(Icons.construction_rounded, color: kPrimaryDark, size: 30)),
+                            const SizedBox(height: 16),
+                            const Text('Uskoro!', style: TextStyle(color: kPrimaryDark, fontWeight: FontWeight.w900, fontSize: 20)),
+                            const SizedBox(height: 10),
+                            Text('Filtriranje matcheva je još u razvoju.\nUskoro dolazi!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: kPrimaryDark.withOpacity(0.55), fontSize: 14, height: 1.5)),
+                            const SizedBox(height: 24),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Container(
+                                height: 48, width: double.infinity,
+                                decoration: BoxDecoration(color: kPrimaryDark, borderRadius: BorderRadius.circular(24)),
+                                child: const Center(child: Text('Ok!', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
+                              ),
+                            ),
+                          ]),
                         ),
-                      );
+                      ));
                     } else {
                       _navigateTo(const OrganizeMeetupScreen());
                     }
@@ -348,27 +312,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final screenH = mq.size.height;
-    final mapH = screenH * 0.50;
+    final mq      = MediaQuery.of(context);
+    final mapH    = mq.size.height * 0.50;
+    final isDark  = ThemeState.instance.isDark;
     const avatarD = 80.0;
-    final isDark = ThemeState.instance.isDark;
-    final bgColor = isDark ? kDarkBg : kSurface;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
-      color: bgColor,
+      color: isDark ? kDarkBg : kSurface,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: FadeTransition(
           opacity: _entryFade,
           child: Stack(children: [
             Positioned(top: 0, left: 0, right: 0, height: mapH,
-              child: _buildMapCard(mq, mapH),
-            ),
+                child: _buildMapCard(mq, mapH)),
             Positioned(
-              top: mapH + avatarD / 2 + 6,
-              left: 0, right: 0, bottom: 0,
+              top: mapH + avatarD / 2 + 6, left: 0, right: 0, bottom: 0,
               child: FadeTransition(
                 opacity: _menuFade,
                 child: SlideTransition(
@@ -388,42 +348,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             Positioned(
-              top: mapH - avatarD / 2,
-              left: 0, right: 0,
-              child: Center(
-                child: ScaleTransition(
-                  scale: _avatarScale,
-                  child: GestureDetector(
-                    onTap: () => _onNavTap(3),
-                    child: Stack(alignment: Alignment.center, children: [
-                      Container(width: avatarD + 12, height: avatarD + 12,
-                          decoration: BoxDecoration(shape: BoxShape.circle,
-                              color: kPrimaryDark.withOpacity(0.08))),
-                      Container(width: avatarD + 6, height: avatarD + 6,
-                          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
-                      Container(
-                        width: avatarD,
-                        height: avatarD,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: kPrimaryLight,
-                          border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: kPrimaryDark.withOpacity(0.25),
-                              blurRadius: 22,
-                              offset: const Offset(0, 8),
-                            )
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: _buildProfileImage(),
-                        ),
+              top: mapH - avatarD / 2, left: 0, right: 0,
+              child: Center(child: ScaleTransition(
+                scale: _avatarScale,
+                child: GestureDetector(
+                  onTap: () => _onNavTap(3),
+                  child: Stack(alignment: Alignment.center, children: [
+                    Container(width: avatarD + 12, height: avatarD + 12,
+                        decoration: BoxDecoration(shape: BoxShape.circle,
+                            color: kPrimaryDark.withOpacity(0.08))),
+                    Container(width: avatarD + 6, height: avatarD + 6,
+                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+                    Container(
+                      width: avatarD, height: avatarD,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle, color: kPrimaryLight,
+                        border: Border.all(color: kPrimaryDark.withOpacity(0.15), width: 2),
+                        boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.25), blurRadius: 22, offset: const Offset(0, 8))],
                       ),
-                    ]),
-                  ),
+                      child: ClipOval(child: _buildProfileImage()),
+                    ),
+                  ]),
                 ),
-              ),
+              )),
             ),
             Positioned(bottom: 0, left: 0, right: 0, child: _buildNavBar(mq)),
           ]),
@@ -433,9 +380,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMapCard(MediaQueryData mq, double mapH) {
-    final isDark = ThemeState.instance.isDark;
-    // ── TAMNA MAPA u dark modu ─────────────────────────────────────────────
-    final tileUrl = isDark
+    final isDark   = ThemeState.instance.isDark;
+    final tileUrl  = isDark
         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
         : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
@@ -454,59 +400,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           builder: (_, child) => Stack(children: [
             child!,
             if (_blurAnim.value > 0)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: _blurAnim.value * 10, sigmaY: _blurAnim.value * 10),
-                  child: Container(
-                    color: kSurface.withOpacity(_blurAnim.value * 0.3),
-                    child: Center(
-                      child: Opacity(
-                        opacity: _blurAnim.value,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: kPrimaryDark,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.4), blurRadius: 20)],
-                          ),
-                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.visibility_off_rounded, color: Colors.white, size: 16),
-                            SizedBox(width: 8),
-                            Text('Lokacija isključena',
-                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                          ]),
-                        ),
+              Positioned.fill(child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: _blurAnim.value * 10, sigmaY: _blurAnim.value * 10),
+                child: Container(
+                  color: kSurface.withOpacity(_blurAnim.value * 0.3),
+                  child: Center(child: Opacity(
+                    opacity: _blurAnim.value,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: kPrimaryDark, borderRadius: BorderRadius.circular(30),
+                        boxShadow: [BoxShadow(color: kPrimaryDark.withOpacity(0.4), blurRadius: 20)],
                       ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.visibility_off_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
+                        Text('Lokacija isključena',
+                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                      ]),
                     ),
-                  ),
+                  )),
                 ),
-              ),
+              )),
             Positioned(top: mq.padding.top + 16, left: 16,
                 child: _AnimatedLogo(glowAnim: _logoGlow)),
-            Positioned(
-              bottom: 0, left: 0, right: 0, height: 72,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, (isDark ? kDarkBg : kSurface).withOpacity(0.7)],
-                  ),
-                ),
-              ),
-            ),
+            Positioned(bottom: 0, left: 0, right: 0, height: 72,
+                child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, (isDark ? kDarkBg : kSurface).withOpacity(0.7)],
+                )))),
           ]),
           child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _userLocation,
-              initialZoom: 15.5,
+              initialCenter: _userLocation, initialZoom: 15.5,
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-              ),
+                  flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag),
             ),
             children: [
               TileLayer(
-                urlTemplate: tileUrl, // ← TAMNA MAPA u dark modu
+                urlTemplate: tileUrl,
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.meetcute.app',
                 maxZoom: 20, retinaMode: true,
@@ -531,10 +464,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             opacity: (1 - t).clamp(0.0, 1.0),
             child: Container(
               width: 14 + t * 46, height: 14 + t * 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: kPrimaryDark.withOpacity(0.50 * (1 - t)), width: 2),
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                  border: Border.all(color: kPrimaryDark.withOpacity(0.50 * (1 - t)), width: 2)),
             ),
           );
         },
@@ -554,10 +485,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             Container(width: 3, height: 9,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [kPrimaryDark, kPrimaryDark.withOpacity(0.0)],
-                  ),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [kPrimaryDark, kPrimaryDark.withOpacity(0.0)]),
                   borderRadius: BorderRadius.circular(2),
                 )),
           ]),
@@ -566,47 +495,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ]);
   }
 
-  Widget _fallbackAvatar() {
-    return Container(
-      color: kPrimaryLight,
-      child: Icon(
-        Icons.person_rounded,
-        color: kPrimaryDark.withOpacity(0.4),
-        size: 42,
-      ),
-    );
-  }
+  Widget _fallbackAvatar() => Container(
+    color: kPrimaryLight,
+    child: Icon(Icons.person_rounded, color: kPrimaryDark.withOpacity(0.4), size: 42),
+  );
 
   Widget _buildProfileImage() {
     final photos = globalProfileData.photoPaths;
-
-    if (photos.isNotEmpty) {
-      final path = photos.first;
-
-      if (path.startsWith('http')) {
-        return Image.network(
-          path,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackAvatar(),
-        );
-      }
-
-      if (path.startsWith('assets/')) {
-        return Image.asset(
-          path,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackAvatar(),
-        );
-      } else {
-        return Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackAvatar(),
-        );
-      }
+    if (photos.isEmpty) return _fallbackAvatar();
+    final path = photos.first;
+    if (path.startsWith('http')) {
+      return Image.network(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackAvatar());
     }
-
-    return _fallbackAvatar();
+    if (path.startsWith('assets/')) {
+      return Image.asset(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackAvatar());
+    }
+    return Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackAvatar());
   }
 
   Widget _buildLocationToggle() {
@@ -621,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             color: cardBg, borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: primary.withOpacity(0.10), width: 1),
+            border: Border.all(color: primary.withOpacity(0.10)),
             boxShadow: [BoxShadow(color: primary.withOpacity(0.10), blurRadius: 14, offset: const Offset(0, 4))],
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -697,40 +601,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 380),
       decoration: BoxDecoration(
         color: cardBg, borderRadius: BorderRadius.circular(kCardRadius),
-        border: Border.all(color: primary.withOpacity(0.06), width: 1),
+        border: Border.all(color: primary.withOpacity(0.06)),
         boxShadow: [
           BoxShadow(color: primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, 8)),
           BoxShadow(color: primary.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(children: [
-        _buildMenuItem(
-          index: 0,
-          icon: Icons.calendar_today_rounded,
-          label: 'Događanja u blizini',
-          subtitle: 'Otkrij aktivnosti oko sebe',
-          isLocked: false,
-          onTap: () => _navigateTo(const EventsNearbyScreen()),
-          showDivider: true,
-        ),
-        _buildMenuItem(
-          index: 1,
-          icon: Icons.coffee_rounded,
-          label: 'Organiziraj susret',
-          subtitle: 'Stvori vlastiti događaj',
-          isLocked: true,
-          onTap: () => _showPremiumDialog(isFilter: false),
-          showDivider: true,
-        ),
-        _buildMenuItem(
-          index: 2,
-          icon: Icons.tune_rounded,
-          label: 'Filtriraj matcheve',
-          subtitle: 'Pronađi savršenu osobu',
-          isLocked: true,
-          onTap: () => _showPremiumDialog(isFilter: true),
-          showDivider: false,
-        ),
+        _buildMenuItem(index: 0, icon: Icons.calendar_today_rounded,
+            label: 'Događanja u blizini', subtitle: 'Otkrij aktivnosti oko sebe',
+            isLocked: false, onTap: () => _navigateTo(const EventsNearbyScreen()), showDivider: true),
+        _buildMenuItem(index: 1, icon: Icons.coffee_rounded,
+            label: 'Organiziraj susret', subtitle: 'Stvori vlastiti događaj',
+            isLocked: true, onTap: () => _showPremiumDialog(isFilter: false), showDivider: true),
+        _buildMenuItem(index: 2, icon: Icons.tune_rounded,
+            label: 'Filtriraj matcheve', subtitle: 'Pronađi savršenu osobu',
+            isLocked: true, onTap: () => _showPremiumDialog(isFilter: true), showDivider: false),
       ]),
     );
   }
@@ -740,9 +626,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String subtitle, required bool isLocked,
     required VoidCallback onTap, required bool showDivider,
   }) {
-    final isDark   = ThemeState.instance.isDark;
-    final primary  = isDark ? kDarkPrimary : kLightPrimary;
-    final accent   = isDark ? kPrimaryDark  : kPrimaryLight;
+    final isDark  = ThemeState.instance.isDark;
+    final primary = isDark ? kDarkPrimary : kLightPrimary;
+    final accent  = isDark ? kPrimaryDark  : kPrimaryLight;
     return Column(children: [
       GestureDetector(
         onTapDown: (_) => _menuItemCtrls[index].forward(),
@@ -784,8 +670,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   margin: const EdgeInsets.only(right: 10),
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: kGoldLock.withOpacity(0.13),
-                    borderRadius: BorderRadius.circular(9),
+                    color: kGoldLock.withOpacity(0.13), borderRadius: BorderRadius.circular(9),
                     border: Border.all(color: kGoldLock.withOpacity(0.25)),
                   ),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
@@ -833,7 +718,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(5, (i) => _buildNavItem(i)),
+          children: List.generate(5, _buildNavItem),
         ),
       ),
     );
@@ -843,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isDark     = ThemeState.instance.isDark;
     final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
-    final item = kNavItems[index];
+    final item       = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
     final notifUnread = NotificationState.instance.unreadCount;
     final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
@@ -853,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: AnimatedBuilder(
         animation: _navTapCtrls[index],
         builder: (_, __) {
-          final t = _navTapCtrls[index].value;
+          final t     = _navTapCtrls[index].value;
           final scale = isSelected ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0)) : 1.0;
           return Column(mainAxisSize: MainAxisSize.min, children: [
             Transform.scale(scale: scale,
@@ -868,7 +753,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Icon(isSelected ? item.selected : item.unselected,
                       color: isSelected ? navPrimary : navPrimary.withOpacity(0.25), size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showChatBadge)  Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
                 if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
@@ -885,24 +770,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-
-// ── ANIMATED LOGO ─────────────────────────────────────────────────────────────
-
 class _AnimatedLogo extends StatefulWidget {
   final Animation<double> glowAnim;
   const _AnimatedLogo({required this.glowAnim});
   @override State<_AnimatedLogo> createState() => _AnimatedLogoState();
 }
 
-class _AnimatedLogoState extends State<_AnimatedLogo>
-    with SingleTickerProviderStateMixin {
+class _AnimatedLogoState extends State<_AnimatedLogo> with SingleTickerProviderStateMixin {
   late AnimationController _floatCtrl;
 
   @override
   void initState() {
     super.initState();
-    _floatCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 3200))..repeat(reverse: true);
+    _floatCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3200))..repeat(reverse: true);
   }
   @override void dispose() { _floatCtrl.dispose(); super.dispose(); }
 
@@ -937,9 +817,7 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
                     color: kPrimaryDark.withOpacity(0.72),
                     border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
                   ),
-                  child: Center(
-                    child: Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain),
-                  ),
+                  child: Center(child: Image.asset('assets/images/logo.png', height: 22, fit: BoxFit.contain)),
                 ),
               ),
             ),
@@ -950,18 +828,15 @@ class _AnimatedLogoState extends State<_AnimatedLogo>
   }
 }
 
-// ── NAV BADGE ─────────────────────────────────────────────────────────────────
-
 class NavBadge extends StatelessWidget {
   final int count;
   const NavBadge({super.key, required this.count});
   @override
   Widget build(BuildContext context) {
-    final label = count > 9 ? '9+' : '$count';
     return Container(
       width: 17, height: 17,
       decoration: const BoxDecoration(color: kPrimaryDark, shape: BoxShape.circle),
-      child: Center(child: Text(label,
+      child: Center(child: Text(count > 9 ? '9+' : '$count',
           style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))),
     );
   }

@@ -10,12 +10,13 @@ import 'theme_state.dart';
 import 'app_read_state.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum NotifType { joined, cancelled, reminder, newEvent, general }
 
 class AppNotification {
   final String id;
-  final String? backendId; // ID iz baze za brisanje
+  final String? backendId;
   final NotifType type;
   final String title;
   final String body;
@@ -40,8 +41,6 @@ class AppNotification {
   });
 }
 
-// ── NOTIFICATION STATE ────────────────────────────────────────────────────────
-
 class NotificationState {
   static final NotificationState instance = NotificationState._();
   NotificationState._();
@@ -49,7 +48,6 @@ class NotificationState {
   final List<AppNotification> _notifications = [];
   final List<VoidCallback> _listeners = [];
 
-  // Set ID-eva obavijesti koje su trajno obrisane
   static const _kDeletedIds = 'deleted_notif_backend_ids';
   static final Set<String> _deletedBackendIds = {};
 
@@ -63,20 +61,19 @@ class NotificationState {
   void removeListener(VoidCallback cb) => _listeners.remove(cb);
   void _notify() { for (final cb in _listeners) cb(); }
 
-  // Učitaj obrisane ID-eve iz SharedPreferences
-  static Future<void> loadDeletedIds() async {
-    final prefs = await AppReadState.getPrefsInstance();
-    final list = prefs.getStringList(_kDeletedIds) ?? [];
-    _deletedBackendIds.addAll(list);
+  void clearLocal() {
+    _notifications.clear();
+    _notify();
   }
 
-
+  static Future<void> loadDeletedIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    _deletedBackendIds.addAll(prefs.getStringList(_kDeletedIds) ?? []);
+  }
 
   void push(AppNotification n) {
-    // Preskoci ako je trajno obrisana
     if (n.backendId != null && _deletedBackendIds.contains(n.backendId)) return;
     if (AppReadState.isNotifRead(n.id)) n.isRead = true;
-    // Preskoci duplikate
     if (_notifications.any((e) => e.id == n.id)) return;
     _notifications.insert(0, n);
     _notify();
@@ -102,11 +99,9 @@ class NotificationState {
 
     if (backendId != null) {
       _deletedBackendIds.add(backendId);
-      // Spremi trajno obrisane ID-eve
-      final prefs = await AppReadState.getPrefsInstance();
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_kDeletedIds, _deletedBackendIds.toList());
 
-      // Pošalji DELETE na backend
       if (AuthState.instance.isLoggedIn) {
         try {
           await http.delete(
@@ -128,46 +123,28 @@ class NotificationState {
   }
 
   void clear() {
-    // Obriši sve s backenda
     for (final n in _notifications) {
-      if (n.backendId != null) {
-        removeAndDeleteFromBackend(n.id, n.backendId);
-      }
+      if (n.backendId != null) removeAndDeleteFromBackend(n.id, n.backendId);
     }
     _notifications.clear();
     _notify();
   }
 
-  void onAttendanceChanged(String eventName, String location,
-      Color cardColor, bool joined) {
-    if (joined) {
-      push(AppNotification(
-        id: 'join_${eventName}_${DateTime.now().millisecondsSinceEpoch}',
-        type: NotifType.joined,
-        title: 'Prijava potvrđena! 🎉',
-        body: 'Uspješno si se prijavio/la na "$eventName". Vidimo se tamo!',
-        eventName: eventName,
-        eventLocation: location,
-        accentColor: cardColor,
-        timestamp: DateTime.now(),
-      ));
-    } else {
-      push(AppNotification(
-        id: 'cancel_${eventName}_${DateTime.now().millisecondsSinceEpoch}',
-        type: NotifType.cancelled,
-        title: 'Prijava otkazana',
-        body: 'Otkazao/la si sudjelovanje na "$eventName".',
-        eventName: eventName,
-        eventLocation: location,
-        accentColor: cardColor,
-        timestamp: DateTime.now(),
-      ));
-    }
+  void onAttendanceChanged(String eventName, String location, Color cardColor, bool joined) {
+    push(AppNotification(
+      id: '${joined ? 'join' : 'cancel'}_${eventName}_${DateTime.now().millisecondsSinceEpoch}',
+      type: joined ? NotifType.joined : NotifType.cancelled,
+      title: joined ? 'Prijava potvrđena! 🎉' : 'Prijava otkazana',
+      body: joined
+          ? 'Uspješno si se prijavio/la na "$eventName". Vidimo se tamo!'
+          : 'Otkazao/la si sudjelovanje na "$eventName".',
+      eventName: eventName,
+      eventLocation: location,
+      accentColor: cardColor,
+      timestamp: DateTime.now(),
+    ));
   }
 }
-
-
-// ── POLLING SERVICE ───────────────────────────────────────────────────────────
 
 class NotificationPollingService {
   static Timer? _timer;
@@ -195,23 +172,19 @@ class NotificationPollingService {
 
       final list = jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
 
-      bool hasNew = false;
       for (final n in list) {
         final backendId = n['id'].toString();
-
-        // Preskoci trajno obrisane
         if (NotificationState._deletedBackendIds.contains(backendId)) continue;
 
         final localId = 'backend_$backendId';
         if (NotificationState.instance._notifications.any((e) => e.id == localId)) continue;
 
-        NotifType type;
-        switch (n['type'] as String? ?? '') {
-          case 'joined_event':    type = NotifType.joined;   break;
-          case 'cancelled_event': type = NotifType.cancelled; break;
-          case 'new_event':       type = NotifType.newEvent;  break;
-          default:                type = NotifType.general;   break;
-        }
+        final type = switch (n['type'] as String? ?? '') {
+          'joined_event'    => NotifType.joined,
+          'cancelled_event' => NotifType.cancelled,
+          'new_event'       => NotifType.newEvent,
+          _                 => NotifType.general,
+        };
 
         Color accent = const Color(0xFF700D25);
         final c = n['accentColor'] as String?;
@@ -220,71 +193,47 @@ class NotificationPollingService {
         }
 
         NotificationState.instance.push(AppNotification(
-          id: localId,
-          backendId: backendId,
-          type: type,
+          id: localId, backendId: backendId, type: type,
           title: n['title'] as String? ?? '',
-          body: n['body'] as String? ?? '',
+          body:  n['body']  as String? ?? '',
           eventId: n['eventId'] as String?,
           accentColor: accent,
           timestamp: DateTime.tryParse(n['createdAt'] as String? ?? '') ?? DateTime.now(),
           isRead: n['isRead'] == true,
         ));
-        hasNew = true;
       }
     } catch (_) {}
   }
 }
 
-// ── SEED STATIC NOTIFICATIONS ─────────────────────────────────────────────────
-
 void seedStaticNotifications() {
   if (NotificationState.instance.all.isNotEmpty) return;
-
-  final now = DateTime.now();
-  final staticNotifs = [
-    AppNotification(
-      id: 'general_1',
-      type: NotifType.general,
-      title: 'Dobrodošao/la na MeetCute 💘',
-      body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude!',
-      accentColor: const Color(0xFF700D25),
-      timestamp: now.subtract(const Duration(days: 1)),
-      isRead: false,
-    ),
-  ];
-
-  for (final n in staticNotifs) {
-    if (AppReadState.isNotifRead(n.id)) n.isRead = true;
-    if (!NotificationState.instance._notifications.any((e) => e.id == n.id)) {
-      NotificationState.instance._notifications.insert(0, n);
-    }
+  final n = AppNotification(
+    id: 'general_1', type: NotifType.general,
+    title: 'Dobrodošao/la na MeetCute 💘',
+    body: 'Pronađi evente u svojoj blizini i upoznaj nove ljude!',
+    accentColor: const Color(0xFF700D25),
+    timestamp: DateTime.now().subtract(const Duration(days: 1)),
+  );
+  if (AppReadState.isNotifRead(n.id)) n.isRead = true;
+  if (!NotificationState.instance._notifications.any((e) => e.id == n.id)) {
+    NotificationState.instance._notifications.insert(0, n);
   }
 }
 
-// ── NOTIFICATIONS SCREEN ──────────────────────────────────────────────────────
-
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
-  @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  @override State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen>
     with TickerProviderStateMixin {
 
-  late AnimationController _entryCtrl;
-  late AnimationController _headerCtrl;
-  late AnimationController _listCtrl;
-  late AnimationController _navBarCtrl;
+  late AnimationController _entryCtrl, _headerCtrl, _listCtrl, _navBarCtrl;
   late List<AnimationController> _navTapCtrls;
 
-  late Animation<double> _entryFade;
-  late Animation<double> _headerFade;
-  late Animation<Offset>  _headerSlide;
-  late Animation<double> _listFade;
-  late Animation<Offset>  _listSlide;
-  late Animation<double> _navBarSlide;
+  late Animation<double> _entryFade, _headerFade, _listFade, _navBarSlide;
+  late Animation<Offset>  _headerSlide, _listSlide;
 
   int _selectedNavIndex = 2;
 
@@ -296,25 +245,25 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     ChatState.instance.addListener(_rebuild);
     ThemeState.instance.addListener(_rebuild);
 
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
 
-    _headerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
-    _headerFade = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
+    _headerCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
     _headerSlide = Tween<Offset>(begin: const Offset(0, -0.20), end: Offset.zero)
         .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    _listCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
-    _listFade = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
+    _listCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _listFade  = CurvedAnimation(parent: _listCtrl, curve: Curves.easeOut);
     _listSlide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _listCtrl, curve: Curves.easeOutCubic));
 
-    _navBarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _navBarCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _navBarSlide = Tween<double>(begin: 90, end: 0)
         .animate(CurvedAnimation(parent: _navBarCtrl, curve: Curves.easeOutBack));
 
-    _navTapCtrls = List.generate(5, (_) =>
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
+    _navTapCtrls = List.generate(5,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
     _navTapCtrls[2].value = 1.0;
 
     _start();
@@ -327,9 +276,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _listCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 100));
     _navBarCtrl.forward();
-    // Povuci s backenda
     await NotificationPollingService._poll();
-    // Označi sve kao pročitano nakon 2s
     await Future.delayed(const Duration(milliseconds: 2000));
     if (mounted) await NotificationState.instance.markAllRead();
   }
@@ -341,8 +288,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     NotificationState.instance.removeListener(_rebuild);
     ChatState.instance.removeListener(_rebuild);
     ThemeState.instance.removeListener(_rebuild);
-    _entryCtrl.dispose(); _headerCtrl.dispose(); _listCtrl.dispose();
-    _navBarCtrl.dispose();
+    _entryCtrl.dispose(); _headerCtrl.dispose();
+    _listCtrl.dispose(); _navBarCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     super.dispose();
   }
@@ -355,22 +302,21 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _navTapCtrls[index].forward(from: 0.0);
 
     if (index == 0) {
-      for (int i = 0; i < _navTapCtrls.length; i++) {
-        _navTapCtrls[i].value = 0.0;
-      }
+      for (final c in _navTapCtrls) c.value = 0.0;
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     }
 
-    Widget? screen;
-    switch (index) {
-      case 1: screen = const ChatScreen(); break;
-      case 3: screen = const ProfileScreen(); break;
-      case 4: screen = const SettingsScreen(); break;
-      default: Navigator.pop(context); return;
-    }
+    final screen = switch (index) {
+      1 => const ChatScreen(),
+      3 => const ProfileScreen(),
+      4 => const SettingsScreen(),
+      _ => null,
+    };
+    if (screen == null) { Navigator.pop(context); return; }
+
     Navigator.push(context, PageRouteBuilder(
-      pageBuilder: (_, a, __) => screen!,
+      pageBuilder: (_, a, __) => screen,
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
         child: SlideTransition(
           position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
@@ -389,29 +335,25 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    final mq     = MediaQuery.of(context);
     final notifs = NotificationState.instance.all;
     final isDark = ThemeState.instance.isDark;
-    final bgColor = isDark ? kDarkBg : kSurface;
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 380),
-      color: bgColor,
+      color: isDark ? kDarkBg : kSurface,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: FadeTransition(
           opacity: _entryFade,
           child: Column(children: [
             _buildHeader(mq),
-            Expanded(
-              child: FadeTransition(
-                opacity: _listFade,
-                child: SlideTransition(
-                  position: _listSlide,
-                  child: notifs.isEmpty ? _buildEmpty() : _buildList(notifs),
-                ),
+            Expanded(child: FadeTransition(
+              opacity: _listFade,
+              child: SlideTransition(
+                position: _listSlide,
+                child: notifs.isEmpty ? _buildEmpty() : _buildList(notifs),
               ),
-            ),
+            )),
             _buildNavBar(mq),
           ]),
         ),
@@ -437,41 +379,37 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ),
           padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 18),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary, fontSize: 28,
-                        fontWeight: FontWeight.w900, letterSpacing: -0.8),
-                    child: const Text('Obavijesti'),
-                  ),
-                  if (unread > 0) ...[
-                    const SizedBox(width: 10),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutBack,
-                      builder: (_, v, child) => Transform.scale(scale: v, child: child),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 340),
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                        decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
-                        child: Text('$unread',
-                            style: TextStyle(color: isDark ? kDarkBg : Colors.white,
-                                fontSize: 12, fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 3),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
                 AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 300),
-                  style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
-                  child: Text('${NotificationState.instance.all.length} obavijesti'),
+                  style: TextStyle(color: primary, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+                  child: const Text('Obavijesti'),
                 ),
+                if (unread > 0) ...[
+                  const SizedBox(width: 10),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutBack,
+                    builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 340),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(10)),
+                      child: Text('$unread', style: TextStyle(
+                          color: isDark ? kDarkBg : Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
               ]),
-            ),
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(color: primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
+                child: Text('${NotificationState.instance.all.length} obavijesti'),
+              ),
+            ])),
             if (NotificationState.instance.all.isNotEmpty)
               GestureDetector(
                 onTap: () { HapticFeedback.mediumImpact(); _showClearConfirm(); },
@@ -483,11 +421,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: primary.withOpacity(0.12)),
                   ),
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(color: primary.withOpacity(0.70), fontSize: 13, fontWeight: FontWeight.w600),
-                    child: const Text('Obriši sve'),
-                  ),
+                  child: Text('Obriši sve', style: TextStyle(
+                      color: primary.withOpacity(0.70), fontSize: 13, fontWeight: FontWeight.w600)),
                 ),
               ),
           ]),
@@ -564,14 +499,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final isDark  = ThemeState.instance.isDark;
     final primary = isDark ? kDarkPrimary : kLightPrimary;
     final accent  = isDark ? const Color(0xFF5A3A48) : kPrimaryLight;
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOutBack,
-          builder: (_, v, __) => Transform.scale(
-            scale: v,
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutBack,
+        builder: (_, v, __) => Transform.scale(scale: v,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 380),
               width: 100, height: 100,
@@ -582,40 +515,32 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 boxShadow: [BoxShadow(color: primary.withOpacity(0.18), blurRadius: 28, offset: const Offset(0, 10))],
               ),
               child: Icon(Icons.notifications_none_rounded, color: primary, size: 46),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 300),
-          style: TextStyle(color: primary, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-          child: const Text('Sve je čisto!'),
-        ),
-        const SizedBox(height: 8),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 300),
-          style: TextStyle(color: primary.withOpacity(isDark ? 0.65 : 0.40), fontSize: 14, height: 1.5),
-          child: const Text('Nema novih obavijesti.',
-              textAlign: TextAlign.center),
-        ),
-      ]),
-    );
+            )),
+      ),
+      const SizedBox(height: 24),
+      AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 300),
+        style: TextStyle(color: primary, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+        child: const Text('Sve je čisto!'),
+      ),
+      const SizedBox(height: 8),
+      AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 300),
+        style: TextStyle(color: primary.withOpacity(isDark ? 0.65 : 0.40), fontSize: 14, height: 1.5),
+        child: const Text('Nema novih obavijesti.', textAlign: TextAlign.center),
+      ),
+    ]));
   }
 
   Widget _buildList(List<AppNotification> notifs) {
     final sorted = [...notifs]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final now    = DateTime.now();
+    final today   = sorted.where((n) => now.difference(n.timestamp).inHours < 24).toList();
+    final earlier = sorted.where((n) => now.difference(n.timestamp).inHours >= 24).toList();
 
-    final today = <AppNotification>[];
-    final earlier = <AppNotification>[];
-    final now = DateTime.now();
-    for (final n in sorted) {
-      if (now.difference(n.timestamp).inHours < 24) today.add(n);
-      else earlier.add(n);
-    }
     return RefreshIndicator(
       onRefresh: () => NotificationPollingService._poll(),
-      color: kPrimaryDark,
-      backgroundColor: Colors.white,
+      color: kPrimaryDark, backgroundColor: Colors.white,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
@@ -624,8 +549,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             _sectionLabel('Danas'),
             const SizedBox(height: 10),
             ...today.asMap().entries.map((e) => _NotifTile(
-              key: ValueKey(e.value.id),
-              notif: e.value,
+              key: ValueKey(e.value.id), notif: e.value,
               animDelay: Duration(milliseconds: e.key * 60),
               onDismiss: () => NotificationState.instance.remove(e.value.id),
             )),
@@ -635,8 +559,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             _sectionLabel('Ranije'),
             const SizedBox(height: 10),
             ...earlier.asMap().entries.map((e) => _NotifTile(
-              key: ValueKey(e.value.id),
-              notif: e.value,
+              key: ValueKey(e.value.id), notif: e.value,
               animDelay: Duration(milliseconds: (today.length + e.key) * 60),
               onDismiss: () => NotificationState.instance.remove(e.value.id),
             )),
@@ -653,7 +576,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       Container(width: 4, height: 14,
           decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(2))),
       const SizedBox(width: 8),
-      Text(text, style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+      Text(text, style: TextStyle(
+          color: primary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
     ]);
   }
 
@@ -674,7 +598,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(5, (i) => _buildNavItem(i)),
+          children: List.generate(5, _buildNavItem),
         ),
       ),
     );
@@ -684,7 +608,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final isDark     = ThemeState.instance.isDark;
     final navPrimary = isDark ? kDarkPrimary : kLightPrimary;
     final isSelected = _selectedNavIndex == index;
-    final item = kNavItems[index];
+    final item       = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
     final notifUnread = NotificationState.instance.unreadCount;
     final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
@@ -694,7 +618,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       child: AnimatedBuilder(
         animation: _navTapCtrls[index],
         builder: (_, __) {
-          final t = _navTapCtrls[index].value;
+          final t     = _navTapCtrls[index].value;
           final scale = isSelected ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0)) : 1.0;
           return Column(mainAxisSize: MainAxisSize.min, children: [
             Transform.scale(scale: scale,
@@ -709,7 +633,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   child: Icon(isSelected ? item.selected : item.unselected,
                       color: isSelected ? navPrimary : navPrimary.withOpacity(0.25), size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showChatBadge)  Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
                 if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
@@ -725,8 +649,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 }
-
-// ── NOTIFICATION TILE ─────────────────────────────────────────────────────────
 
 class _NotifTile extends StatefulWidget {
   final AppNotification notif;
@@ -745,7 +667,7 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _entryCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
@@ -756,19 +678,14 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
-    final n = widget.notif;
-    final accent = n.accentColor ?? kPrimaryDark;
+    final n        = widget.notif;
+    final accent   = n.accentColor ?? kPrimaryDark;
     final isUnread = !n.isRead && !AppReadState.isNotifRead(n.id);
-    final isDark  = ThemeState.instance.isDark;
-
-    final cardBg     = isDark ? const Color(0xFF4A3A42) : Colors.white;
-    final titleColor = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
-    final bodyColor  = isDark
-        ? const Color(0xFFEEE0E5).withOpacity(isUnread ? 0.80 : 0.60)
-        : kPrimaryDark.withOpacity(isUnread ? 0.65 : 0.40);
-    final timeColor  = isDark
-        ? const Color(0xFFEEE0E5).withOpacity(0.45)
-        : kPrimaryDark.withOpacity(0.30);
+    final isDark   = ThemeState.instance.isDark;
+    final cardBg   = isDark ? const Color(0xFF4A3A42) : Colors.white;
+    final textCol  = isDark ? const Color(0xFFEEE0E5) : kPrimaryDark;
+    final bodyCol  = textCol.withOpacity(isUnread ? (isDark ? 0.80 : 0.65) : (isDark ? 0.60 : 0.40));
+    final timeCol  = textCol.withOpacity(0.45);
 
     return FadeTransition(
       opacity: _entryFade,
@@ -803,17 +720,14 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                 duration: const Duration(milliseconds: 100),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(20),
+                    color: cardBg, borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isUnread
-                          ? accent.withOpacity(isDark ? 0.45 : 0.20)
-                          : (isDark ? const Color(0xFFEEE0E5).withOpacity(0.12) : kPrimaryDark.withOpacity(0.06)),
+                      color: isUnread ? accent.withOpacity(isDark ? 0.45 : 0.20)
+                          : textCol.withOpacity(isDark ? 0.12 : 0.06),
                       width: isUnread ? 1.5 : 1,
                     ),
                     boxShadow: [BoxShadow(
-                      color: isUnread
-                          ? accent.withOpacity(isDark ? 0.18 : 0.10)
+                      color: isUnread ? accent.withOpacity(isDark ? 0.18 : 0.10)
                           : (isDark ? Colors.black.withOpacity(0.25) : kPrimaryDark.withOpacity(0.05)),
                       blurRadius: isUnread ? 18 : 12, offset: const Offset(0, 4),
                     )],
@@ -833,33 +747,31 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
                         child: _NotifIcon(type: n.type, accent: accent, isDark: isDark),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Expanded(child: Text(n.title,
-                                  style: TextStyle(color: titleColor, fontSize: 14.5,
-                                      fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
-                                      letterSpacing: -0.2))),
-                              const SizedBox(width: 8),
-                              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                if (isUnread) Container(width: 8, height: 8,
-                                    decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
-                                const SizedBox(height: 3),
-                                Text(_formatTime(n.timestamp),
-                                    style: TextStyle(color: timeColor, fontSize: 11.5, fontWeight: FontWeight.w500)),
-                              ]),
+                      Expanded(child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Expanded(child: Text(n.title, style: TextStyle(
+                                color: textCol, fontSize: 14.5,
+                                fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
+                                letterSpacing: -0.2))),
+                            const SizedBox(width: 8),
+                            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                              if (isUnread) Container(width: 8, height: 8,
+                                  decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                              const SizedBox(height: 3),
+                              Text(_formatTime(n.timestamp),
+                                  style: TextStyle(color: timeCol, fontSize: 11.5, fontWeight: FontWeight.w500)),
                             ]),
-                            const SizedBox(height: 4),
-                            Text(n.body, style: TextStyle(color: bodyColor, fontSize: 13, height: 1.45)),
-                            if (n.eventName != null) ...[
-                              const SizedBox(height: 8),
-                              _EventChip(name: n.eventName!, location: n.eventLocation, color: accent, isDark: isDark),
-                            ],
                           ]),
-                        ),
-                      ),
+                          const SizedBox(height: 4),
+                          Text(n.body, style: TextStyle(color: bodyCol, fontSize: 13, height: 1.45)),
+                          if (n.eventName != null) ...[
+                            const SizedBox(height: 8),
+                            _EventChip(name: n.eventName!, location: n.eventLocation, color: accent, isDark: isDark),
+                          ],
+                        ]),
+                      )),
                     ]),
                   ),
                 ),
@@ -873,9 +785,9 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
 
   String _formatTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'upravo';
+    if (diff.inMinutes < 1)  return 'upravo';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inHours < 24)   return '${diff.inHours}h';
     return '${diff.inDays}d';
   }
 }
@@ -883,22 +795,22 @@ class _NotifTileState extends State<_NotifTile> with SingleTickerProviderStateMi
 class _NotifIcon extends StatelessWidget {
   final NotifType type; final Color accent; final bool isDark;
   const _NotifIcon({required this.type, required this.accent, required this.isDark});
+
   @override
   Widget build(BuildContext context) {
-    final IconData icon;
-    switch (type) {
-      case NotifType.joined:    icon = Icons.check_circle_rounded; break;
-      case NotifType.cancelled: icon = Icons.cancel_rounded; break;
-      case NotifType.reminder:  icon = Icons.access_time_rounded; break;
-      case NotifType.newEvent:  icon = Icons.celebration_rounded; break;
-      case NotifType.general:   icon = Icons.favorite_rounded; break;
-    }
+    final icon = switch (type) {
+      NotifType.joined    => Icons.check_circle_rounded,
+      NotifType.cancelled => Icons.cancel_rounded,
+      NotifType.reminder  => Icons.access_time_rounded,
+      NotifType.newEvent  => Icons.celebration_rounded,
+      NotifType.general   => Icons.favorite_rounded,
+    };
     return Container(
       width: 44, height: 44,
       decoration: BoxDecoration(
         color: accent.withOpacity(isDark ? 0.22 : 0.12),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(isDark ? 0.35 : 0.20), width: 1),
+        border: Border.all(color: accent.withOpacity(isDark ? 0.35 : 0.20)),
       ),
       child: Icon(icon, color: accent, size: 22),
     );
@@ -908,6 +820,7 @@ class _NotifIcon extends StatelessWidget {
 class _EventChip extends StatelessWidget {
   final String name; final String? location; final Color color; final bool isDark;
   const _EventChip({required this.name, required this.location, required this.color, required this.isDark});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -915,7 +828,7 @@ class _EventChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(isDark ? 0.18 : 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(isDark ? 0.35 : 0.18), width: 1),
+        border: Border.all(color: color.withOpacity(isDark ? 0.35 : 0.18)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.event_rounded, color: color, size: 13),

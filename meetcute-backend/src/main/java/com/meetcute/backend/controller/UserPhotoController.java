@@ -31,52 +31,36 @@ public class UserPhotoController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         String userId = userDetails.getUsername();
-        User user = userRepository.getReferenceById(userId);
-
-        // Upload na Cloudinary
         var result = cloudinaryService.upload(file, "meetcute/profiles");
-
-        // Ako je primary, resetiraj ostale
-        if (isPrimary) {
-            photoRepository.resetPrimaryPhoto(userId);
-        }
-
-        // Broj postojećih slika za photo_order
         int order = photoRepository.countByUserId(userId);
 
-        UserPhoto photo = UserPhoto.builder()
-                .user(user)
+        if (isPrimary) photoRepository.resetPrimaryPhoto(userId);
+
+        photoRepository.save(UserPhoto.builder()
+                .user(userRepository.getReferenceById(userId))
                 .photoUrl(result.url())
                 .photoOrder(order)
-                .isPrimary(isPrimary || order == 0) // prva slika je automatski primary
-                .build();
+                .isPrimary(isPrimary || order == 0)
+                .build());
 
-        photoRepository.save(photo);
-
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "url", result.url(),
-                "publicId", result.publicId()
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("url", result.url(), "publicId", result.publicId())));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<String>>> getPhotos(
             @AuthenticationPrincipal UserDetails userDetails) {
-        List<String> urls = photoRepository
-                .findByUserIdOrderByPhotoOrder(userDetails.getUsername())
-                .stream()
-                .map(UserPhoto::getPhotoUrl)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.ok(urls));
+        return ResponseEntity.ok(ApiResponse.ok(
+                photoRepository.findByUserIdOrderByPhotoOrder(userDetails.getUsername())
+                        .stream()
+                        .map(UserPhoto::getPhotoUrl)
+                        .collect(Collectors.toList())));
     }
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> deleteAllPhotos(
             @AuthenticationPrincipal UserDetails userDetails) {
-        // Za potrebe brisanja i ponovnog uploada
-        List<UserPhoto> photos = photoRepository
-                .findByUserIdOrderByPhotoOrder(userDetails.getUsername());
-        photoRepository.deleteAll(photos);
+        photoRepository.deleteAll(
+                photoRepository.findByUserIdOrderByPhotoOrder(userDetails.getUsername()));
         return ResponseEntity.ok(ApiResponse.ok("Slike obrisane.", null));
     }
 }

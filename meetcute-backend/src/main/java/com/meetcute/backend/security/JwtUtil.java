@@ -26,27 +26,11 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(String userId, String username) {
-        return Jwts.builder()
-                .subject(userId)
-                .claim("username", username)
-                .claim("type", "access")
-                .claim("role", "user")
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
-                .signWith(getKey())
-                .compact();
+        return buildAccessToken(userId, username, "user");
     }
 
     public String generateAccessTokenWithRole(String subjectId, String username, String role) {
-        return Jwts.builder()
-                .subject(subjectId)
-                .claim("username", username)
-                .claim("type", "access")
-                .claim("role", role)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
-                .signWith(getKey())
-                .compact();
+        return buildAccessToken(subjectId, username, role);
     }
 
     public String generateRefreshToken(String userId) {
@@ -61,15 +45,6 @@ public class JwtUtil {
 
     public String extractUserId(String token) {
         return parseClaims(token).getSubject();
-    }
-
-    public String extractRole(String token) {
-        try {
-            Object role = parseClaims(token).get("role");
-            return role != null ? role.toString() : "user";
-        } catch (Exception e) {
-            return "user";
-        }
     }
 
     public boolean isTokenValid(String token) {
@@ -87,6 +62,18 @@ public class JwtUtil {
         } catch (Exception e) {
             return true;
         }
+    }
+
+    private String buildAccessToken(String subject, String username, String role) {
+        return Jwts.builder()
+                .subject(subject)
+                .claim("username", username)
+                .claim("type", "access")
+                .claim("role", role)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .signWith(getKey())
+                .compact();
     }
 
     private Claims parseClaims(String token) {

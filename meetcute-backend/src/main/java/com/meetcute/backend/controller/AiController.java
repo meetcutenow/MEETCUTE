@@ -16,10 +16,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiController {
 
-    @Value("${groq.api-key}")
-    private String groqApiKey;
-
-    private final RestTemplate restTemplate;
+    private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String GROQ_MODEL = "llama-3.3-70b-versatile";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final String SYSTEM_PROMPT = """
             Ti si asistent koji pomaže korisnicima ispuniti profil na MeetCute aplikaciji za upoznavanje.
@@ -56,25 +55,25 @@ public class AiController {
             Ako nešto nije rečeno, stavi null. iceBreaker treba biti kratka, zanimljiva rečenica na ISTOM jeziku kao transkripcija. height mora biti cijeli broj bez teksta (npr. 160, ne "160 cm"). Ako korisnik kaže koliko ima godina (npr. "imam 21 godinu"), izračunaj birthYear = 2025 - taj broj. birthDay i birthMonth postavi na null ako nisu izričito rečeni.
             """;
 
-    @PostMapping("/parse-profile")
-    public ResponseEntity<ApiResponse<Map>> parseProfile(
-            @RequestBody Map<String, String> req) {
+    @Value("${groq.api-key}")
+    private String groqApiKey;
 
+    private final RestTemplate restTemplate;
+
+    @PostMapping("/parse-profile")
+    public ResponseEntity<ApiResponse<Map>> parseProfile(@RequestBody Map<String, String> req) {
         String transcript = req.get("transcript");
         if (transcript == null || transcript.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Transkript je prazan."));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Transkript je prazan."));
         }
 
-        String url = "https://api.groq.com/openai/v1/chat/completions";
-
         Map<String, Object> body = Map.of(
-                "model", "llama-3.3-70b-versatile",
+                "model", GROQ_MODEL,
                 "max_tokens", 1000,
-                "messages", List.of(
-                        Map.of("role", "user", "content",
-                                SYSTEM_PROMPT + "\n\nTranskripcija korisnika: \"" + transcript + "\"")
-                )
+                "messages", List.of(Map.of(
+                        "role", "user",
+                        "content", SYSTEM_PROMPT + "\n\nTranskripcija korisnika: \"" + transcript + "\""
+                ))
         );
 
         HttpHeaders headers = new HttpHeaders();
@@ -83,29 +82,26 @@ public class AiController {
 
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
-                    Map.class
+                    GROQ_URL, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class
             );
 
-            var choices = (List<?>) response.getBody().get("choices");
-            var first = (Map<?, ?>) choices.get(0);
-            var message = (Map<?, ?>) first.get("message");
-            String text = message.get("content").toString()
-                    .replaceAll("```json|```", "").trim();
-
-            ObjectMapper mapper = new ObjectMapper();
-            Map parsed = mapper.readValue(text, Map.class);
-
+            String text = extractContent(response.getBody());
+            Map parsed = MAPPER.readValue(text, Map.class);
             return ResponseEntity.ok(ApiResponse.ok(parsed));
 
         } catch (Exception e) {
-            System.err.println("=== GROQ GREŠKA ===");
-            System.err.println("Message: " + e.getMessage());
+            System.err.printf("=== GROQ GREŠKA ===%nMessage: %s%n", e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Greška pri pozivu Groq AI: " + e.getMessage()));
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractContent(Map<?, ?> responseBody) {
+        var first = (Map<?, ?>) ((List<?>) responseBody.get("choices")).get(0);
+        return ((Map<?, ?>) first.get("message"))
+                .get("content").toString()
+                .replaceAll("```json|```", "").trim();
     }
 }

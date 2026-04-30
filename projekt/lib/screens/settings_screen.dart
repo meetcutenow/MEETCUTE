@@ -13,12 +13,10 @@ import 'onboarding_screen.dart' show OnboardingScreen, RegistrationState;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  @override State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen>
-    with TickerProviderStateMixin {
+class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStateMixin {
 
   int _selectedNavIndex = 4;
 
@@ -27,145 +25,41 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final List<AnimationController> _navTapCtrls;
   late final List<AnimationController> _rowCtrls;
   late final Animation<double> _entryFade;
-  late final Animation<Offset> _entrySlide;
+  late final Animation<Offset>  _entrySlide;
   late final Animation<double> _navBarSlide;
-
   late final AnimationController _toggleCtrl;
-  late final Animation<double> _toggleKnob;
-
   late final AnimationController _aboutCtrl;
 
   @override
   void initState() {
     super.initState();
-
     ThemeState.instance.addListener(_onTheme);
     NotificationState.instance.addListener(_onBadge);
     ChatState.instance.addListener(_onBadge);
 
-    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 560));
+    _entryCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 560));
     _entryFade  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _entrySlide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
 
-    _navBarCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
+    _navBarCtrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
     _navBarSlide = Tween<double>(begin: 80, end: 0)
         .animate(CurvedAnimation(parent: _navBarCtrl, curve: Curves.easeOutBack));
 
-    _navTapCtrls = List.generate(5, (_) =>
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
+    _navTapCtrls = List.generate(5,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 450)));
     _navTapCtrls[4].value = 1.0;
 
-    _rowCtrls = List.generate(6, (_) =>
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 480)));
+    _rowCtrls = List.generate(6,
+            (_) => AnimationController(vsync: this, duration: const Duration(milliseconds: 480)));
 
     _toggleCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 320),
       value: ThemeState.instance.isDark ? 1.0 : 0.0,
     );
-    _toggleKnob = CurvedAnimation(parent: _toggleCtrl, curve: Curves.easeOutBack);
-
     _aboutCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 440));
 
     _runEntry();
-  }
-
-  // ── ISPRAVKA: logout ne briše profil podatke ──────────────────────────────
-  void _logout() {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.85, end: 1.0),
-          duration: const Duration(milliseconds: 340),
-          curve: Curves.easeOutBack,
-          builder: (_, v, child) => Transform.scale(scale: v, child: child),
-          child: Container(
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: _card,
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: [BoxShadow(
-                color: _primary.withOpacity(0.20),
-                blurRadius: 36, offset: const Offset(0, 14),
-              )],
-            ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 56, height: 56,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD93025).withOpacity(0.10),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.logout_rounded, color: Color(0xFFD93025), size: 28),
-              ),
-              const SizedBox(height: 14),
-              Text('Odjava',
-                  style: TextStyle(color: _primary, fontWeight: FontWeight.w800, fontSize: 18)),
-              const SizedBox(height: 8),
-              Text('Sigurno se želiš odjaviti?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 13.5)),
-              const SizedBox(height: 22),
-              Row(children: [
-                Expanded(child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: _primary.withOpacity(0.20))),
-                  ),
-                  child: Text('Odustani',
-                      style: TextStyle(color: _primary.withOpacity(0.65), fontSize: 14)),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD93025),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    elevation: 0,
-                  ),
-                  onPressed: () async {
-                    Navigator.pop(context);
-
-                    // ── Obriši SAMO token ─────────────────────────────────────
-                    await AuthState.instance.clear();
-
-                    // ── Resetiraj login flag — profil podaci OSTAJU ───────────
-                    RegistrationState.instance.isRegistered = false;
-                    // NE brišemo: globalProfileData, username, displayName
-                    // NE brišemo: ProfileStorage (SharedPreferences profil)
-                    // NE brišemo: AppReadState (pročitano ostaje pročitano)
-
-                    HapticFeedback.mediumImpact();
-                    NotificationPollingService.stop();
-
-                    if (!mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
-                      PageRouteBuilder(
-                        pageBuilder: (_, a, __) => const OnboardingScreen(),
-                        transitionsBuilder: (_, a, __, child) => FadeTransition(
-                          opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
-                          child: child,
-                        ),
-                        transitionDuration: const Duration(milliseconds: 500),
-                      ),
-                          (route) => false,
-                    );
-                  },
-                  child: const Text('Odjavi se',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                )),
-              ]),
-            ]),
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _runEntry() async {
@@ -186,14 +80,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     ThemeState.instance.removeListener(_onTheme);
     NotificationState.instance.removeListener(_onBadge);
     ChatState.instance.removeListener(_onBadge);
-    _entryCtrl.dispose(); _navBarCtrl.dispose(); _toggleCtrl.dispose();
-    _aboutCtrl.dispose();
+    _entryCtrl.dispose(); _navBarCtrl.dispose();
+    _toggleCtrl.dispose(); _aboutCtrl.dispose();
     for (final c in _navTapCtrls) c.dispose();
     for (final c in _rowCtrls) c.dispose();
     super.dispose();
   }
 
-  bool get _dark => ThemeState.instance.isDark;
+  bool  get _dark    => ThemeState.instance.isDark;
   Color get _bg      => _dark ? kDarkBg      : kSurface;
   Color get _card    => _dark ? kDarkCard    : Colors.white;
   Color get _primary => _dark ? kDarkPrimary : kPrimaryDark;
@@ -202,7 +96,78 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _toggleDark() {
     HapticFeedback.selectionClick();
     ThemeState.instance.toggle();
-    ThemeState.instance.isDark ? _toggleCtrl.forward() : _toggleCtrl.reverse();
+    _dark ? _toggleCtrl.forward() : _toggleCtrl.reverse();
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.85, end: 1.0),
+          duration: const Duration(milliseconds: 340),
+          curve: Curves.easeOutBack,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            padding: const EdgeInsets.all(26),
+            decoration: BoxDecoration(
+              color: _card, borderRadius: BorderRadius.circular(26),
+              boxShadow: [BoxShadow(color: _primary.withOpacity(0.20), blurRadius: 36, offset: const Offset(0, 14))],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: const Color(0xFFD93025).withOpacity(0.10), shape: BoxShape.circle),
+                  child: const Icon(Icons.logout_rounded, color: Color(0xFFD93025), size: 28)),
+              const SizedBox(height: 14),
+              Text('Odjava', style: TextStyle(color: _primary, fontWeight: FontWeight.w800, fontSize: 18)),
+              const SizedBox(height: 8),
+              Text('Sigurno se želiš odjaviti?', textAlign: TextAlign.center,
+                  style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 13.5)),
+              const SizedBox(height: 22),
+              Row(children: [
+                Expanded(child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: _primary.withOpacity(0.20))),
+                  ),
+                  child: Text('Odustani', style: TextStyle(color: _primary.withOpacity(0.65), fontSize: 14)),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD93025), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 13), elevation: 0,
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    NotificationState.instance.clearLocal();
+                    NotificationPollingService.stop();
+                    await AuthState.instance.clear();
+                    RegistrationState.instance.isRegistered = false;
+                    HapticFeedback.mediumImpact();
+                    if (!mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      PageRouteBuilder(
+                        pageBuilder: (_, a, __) => const OnboardingScreen(),
+                        transitionsBuilder: (_, a, __, child) => FadeTransition(
+                            opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: child),
+                        transitionDuration: const Duration(milliseconds: 500),
+                      ),
+                          (route) => false,
+                    );
+                  },
+                  child: const Text('Odjavi se', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                )),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   void _onNavTap(int index) {
@@ -210,9 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     HapticFeedback.selectionClick();
 
     if (index == 0) {
-      for (int i = 0; i < _navTapCtrls.length; i++) {
-        _navTapCtrls[i].value = 0.0;
-      }
+      for (final c in _navTapCtrls) c.value = 0.0;
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     }
@@ -221,15 +184,16 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() => _selectedNavIndex = index);
     _navTapCtrls[index].forward(from: 0.0);
 
-    Widget? screen;
-    switch (index) {
-      case 1: screen = const ChatScreen(); break;
-      case 2: screen = const NotificationsScreen(); break;
-      case 3: screen = const ProfileScreen(); break;
-      default: return;
-    }
+    final screen = switch (index) {
+      1 => const ChatScreen(),
+      2 => const NotificationsScreen(),
+      3 => const ProfileScreen(),
+      _ => null,
+    };
+    if (screen == null) return;
+
     Navigator.push(context, PageRouteBuilder(
-      pageBuilder: (_, a, __) => screen!,
+      pageBuilder: (_, a, __) => screen,
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a,
         child: SlideTransition(
           position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero)
@@ -269,154 +233,120 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildHeader(MediaQueryData mq) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 380),
-      color: _card,
-      padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 22),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _buildHeader(MediaQueryData mq) => AnimatedContainer(
+    duration: const Duration(milliseconds: 380),
+    color: _card,
+    padding: EdgeInsets.only(top: mq.padding.top + 18, left: 20, right: 20, bottom: 22),
+    child: Row(children: [
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: _primary, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+          child: const Text('Postavke'),
+        ),
+        const SizedBox(height: 2),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: _primary.withOpacity(0.38), fontSize: 13, fontWeight: FontWeight.w500),
+          child: const Text('Personaliziraj MeetCute'),
+        ),
+      ])),
+      _HeartDeco(primary: _primary, accent: _accent),
+    ]),
+  );
+
+  Widget _buildBody(MediaQueryData mq) => SingleChildScrollView(
+    physics: const BouncingScrollPhysics(),
+    padding: EdgeInsets.fromLTRB(18, 22, 18, mq.padding.bottom + 16),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel('Izgled', 0),
+      const SizedBox(height: 10),
+      _buildDarkModeRow(1),
+      const SizedBox(height: 24),
+      _sectionLabel('Račun', 2),
+      const SizedBox(height: 10),
+      _buildTapRow(ctrl: _rowCtrls[3], icon: Icons.lock_rounded,
+          label: 'Promjena lozinke', subtitle: 'Ažuriraj svoju lozinku',
+          onTap: () => ChangePasswordDialog.show(context, isCompany: false)),
+      const SizedBox(height: 8),
+      _buildTapRow(ctrl: _rowCtrls[3], icon: Icons.logout_rounded,
+          label: 'Odjava', subtitle: 'Vidimo se uskoro!',
+          danger: true, onTap: _logout),
+      const SizedBox(height: 24),
+      _sectionLabel('O nama', 4),
+      const SizedBox(height: 10),
+      _buildTapRow(ctrl: _rowCtrls[5], icon: Icons.favorite_rounded,
+          label: 'O MeetCute', subtitle: 'Naša priča', onTap: _showAboutDialog),
+      const SizedBox(height: 10),
+      _buildContactRow(),
+      const SizedBox(height: 32),
+    ]),
+  );
+
+  Widget _sectionLabel(String text, int rowIdx) => FadeTransition(
+    opacity: CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOut),
+    child: SlideTransition(
+      position: Tween<Offset>(begin: const Offset(-0.04, 0), end: Offset.zero)
+          .animate(CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOutCubic)),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 11.5,
+              fontWeight: FontWeight.w700, letterSpacing: 1.2),
+          child: Text(text.toUpperCase()),
+        ),
+      ),
+    ),
+  );
+
+  Widget _buildDarkModeRow(int rowIdx) => FadeTransition(
+    opacity: CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOut),
+    child: SlideTransition(
+      position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+          .animate(CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOutCubic)),
+      child: GestureDetector(
+        onTap: _toggleDark,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 340),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: _card, borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _primary.withOpacity(0.08), width: 1),
+            boxShadow: [BoxShadow(color: _primary.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 5))],
+          ),
+          child: Row(children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 340),
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(13)),
+              child: Icon(_dark ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded, color: _primary, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: _primary, fontSize: 26,
-                    fontWeight: FontWeight.w900, letterSpacing: -0.8),
-                child: const Text('Postavke'),
+                style: TextStyle(color: _primary, fontSize: 15.5, fontWeight: FontWeight.w700),
+                child: const Text('Tamni mod'),
               ),
               const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: _primary.withOpacity(0.38), fontSize: 13,
-                    fontWeight: FontWeight.w500),
-                child: const Text('Personaliziraj MeetCute'),
+                style: TextStyle(color: _primary.withOpacity(0.42), fontSize: 12.5),
+                child: Text(_dark ? 'Upaljeno' : 'Ugašeno'),
               ),
-            ]),
-          ),
-          _HeartDeco(primary: _primary, accent: _accent),
-        ]),
-      ]),
-    );
-  }
-
-  Widget _buildBody(MediaQueryData mq) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(18, 22, 18, mq.padding.bottom + 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionLabel('Izgled', 0),
-        const SizedBox(height: 10),
-        _buildDarkModeRow(1),
-        const SizedBox(height: 24),
-        _sectionLabel('Račun', 2),
-        const SizedBox(height: 10),
-        _buildTapRow(
-          ctrl: _rowCtrls[3],
-          icon: Icons.lock_rounded,
-          label: 'Promjena lozinke',
-          subtitle: 'Ažuriraj svoju lozinku',
-          onTap: () => ChangePasswordDialog.show(context, isCompany: false),
-        ),
-        const SizedBox(height: 8),
-        _buildTapRow(
-          ctrl: _rowCtrls[3],
-          icon: Icons.logout_rounded,
-          label: 'Odjava',
-          subtitle: 'Vidimo se uskoro!',
-          danger: true,
-          onTap: _logout,
-        ),
-        const SizedBox(height: 24),
-        _sectionLabel('O nama', 4),
-        const SizedBox(height: 10),
-        _buildTapRow(
-          ctrl: _rowCtrls[5],
-          icon: Icons.favorite_rounded,
-          label: 'O MeetCute',
-          subtitle: 'Naša priča',
-          onTap: _showAboutDialog,
-        ),
-        const SizedBox(height: 10),
-        _buildContactRow(),
-        const SizedBox(height: 32),
-      ]),
-    );
-  }
-
-  Widget _sectionLabel(String text, int rowIdx) {
-    return FadeTransition(
-      opacity: CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOut),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(-0.04, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOutCubic)),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 300),
-            style: TextStyle(color: _primary.withOpacity(0.45), fontSize: 11.5,
-                fontWeight: FontWeight.w700, letterSpacing: 1.2),
-            child: Text(text.toUpperCase()),
-          ),
+            ])),
+            _DarkToggle(value: _dark, primary: _primary, accent: _accent, onTap: _toggleDark),
+          ]),
         ),
       ),
-    );
-  }
-
-  Widget _buildDarkModeRow(int rowIdx) {
-    return FadeTransition(
-      opacity: CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOut),
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
-            .animate(CurvedAnimation(parent: _rowCtrls[rowIdx], curve: Curves.easeOutCubic)),
-        child: GestureDetector(
-          onTap: _toggleDark,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 340),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: _card, borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _primary.withOpacity(0.08), width: 1),
-              boxShadow: [BoxShadow(
-                color: _primary.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 5),
-              )],
-            ),
-            child: Row(children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 340),
-                width: 44, height: 44,
-                decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(13)),
-                child: Icon(_dark ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded,
-                    color: _primary, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 300),
-                  style: TextStyle(color: _primary, fontSize: 15.5, fontWeight: FontWeight.w700),
-                  child: const Text('Tamni mod'),
-                ),
-                const SizedBox(height: 2),
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 300),
-                  style: TextStyle(color: _primary.withOpacity(0.42), fontSize: 12.5),
-                  child: Text(_dark ? 'Upaljeno' : 'Ugašeno'),
-                ),
-              ])),
-              _DarkToggle(value: _dark, primary: _primary, accent: _accent, onTap: _toggleDark),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 
   Widget _buildTapRow({
-    required AnimationController ctrl,
-    required IconData icon,
-    required String label,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool danger = false,
+    required AnimationController ctrl, required IconData icon,
+    required String label, required String subtitle,
+    required VoidCallback onTap, bool danger = false,
   }) {
     final color = danger ? const Color(0xFFD93025) : _primary;
     return FadeTransition(
@@ -434,43 +364,41 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildContactRow() {
-    return FadeTransition(
-      opacity: CurvedAnimation(parent: _rowCtrls[5], curve: Curves.easeOut),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 340),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: _card, borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _primary.withOpacity(0.08)),
-          boxShadow: [BoxShadow(color: _primary.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4))],
-        ),
-        child: Row(children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 340),
-            width: 44, height: 44,
-            decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(13)),
-            child: Icon(Icons.mail_outline_rounded, color: _primary, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: TextStyle(color: _primary, fontSize: 15.5, fontWeight: FontWeight.w700),
-              child: const Text('Upiti i podrška'),
-            ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 12.5),
-              child: const Text('meetcutenow@gmail.com'),
-            ),
-          ])),
-          Icon(Icons.copy_outlined, color: _primary.withOpacity(0.25), size: 18),
-        ]),
+  Widget _buildContactRow() => FadeTransition(
+    opacity: CurvedAnimation(parent: _rowCtrls[5], curve: Curves.easeOut),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 340),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: _card, borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _primary.withOpacity(0.08)),
+        boxShadow: [BoxShadow(color: _primary.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4))],
       ),
-    );
-  }
+      child: Row(children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 340),
+          width: 44, height: 44,
+          decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(13)),
+          child: Icon(Icons.mail_outline_rounded, color: _primary, size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(color: _primary, fontSize: 15.5, fontWeight: FontWeight.w700),
+            child: const Text('Upiti i podrška'),
+          ),
+          const SizedBox(height: 2),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(color: _primary.withOpacity(0.55), fontSize: 12.5),
+            child: const Text('meetcutenow@gmail.com'),
+          ),
+        ])),
+        Icon(Icons.copy_outlined, color: _primary.withOpacity(0.25), size: 18),
+      ]),
+    ),
+  );
 
   void _showAboutDialog() {
     HapticFeedback.mediumImpact();
@@ -486,61 +414,49 @@ class _SettingsScreenState extends State<SettingsScreen>
           scale: Tween<double>(begin: 0.82, end: 1.0).animate(curved),
           child: FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: MediaQuery.of(ctx).padding.top + 16,
-                    horizontal: 0,
-                  ),
-            child: Center(child: _AboutCard(
-              primary: _primary, accent: _accent, card: _card,
-              onClose: () => Navigator.of(ctx).pop(),
+            child: Center(child: Padding(
+              padding: EdgeInsets.symmetric(vertical: MediaQuery.of(ctx).padding.top + 16),
+              child: _AboutCard(primary: _primary, accent: _accent, card: _card,
+                  onClose: () => Navigator.of(ctx).pop()),
             )),
-                ),
-              ),
           ),
         );
       },
     );
   }
 
-  Widget _buildNavBar(MediaQueryData mq) {
-    return AnimatedBuilder(
-      animation: _navBarSlide,
-      builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 340),
-        decoration: BoxDecoration(
-          color: _card,
-          border: Border(top: BorderSide(color: _primary.withOpacity(0.06), width: 1)),
-          boxShadow: [BoxShadow(color: _primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, -5))],
-        ),
-        padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(5, (i) => _buildNavItem(i)),
-        ),
+  Widget _buildNavBar(MediaQueryData mq) => AnimatedBuilder(
+    animation: _navBarSlide,
+    builder: (_, child) => Transform.translate(offset: Offset(0, _navBarSlide.value), child: child),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 340),
+      decoration: BoxDecoration(
+        color: _card,
+        border: Border(top: BorderSide(color: _primary.withOpacity(0.06), width: 1)),
+        boxShadow: [BoxShadow(color: _primary.withOpacity(0.10), blurRadius: 28, offset: const Offset(0, -5))],
       ),
-    );
-  }
+      padding: EdgeInsets.only(bottom: mq.padding.bottom + 4, top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(5, _buildNavItem),
+      ),
+    ),
+  );
 
   Widget _buildNavItem(int index) {
     final isSelected = _selectedNavIndex == index;
-    final item = kNavItems[index];
+    final item        = kNavItems[index];
     final chatUnread  = ChatState.instance.totalUnread;
     final notifUnread = NotificationState.instance.unreadCount;
     final showChatBadge  = index == 1 && !isSelected && chatUnread > 0;
     final showNotifBadge = index == 2 && !isSelected && notifUnread > 0;
-
     return GestureDetector(
       onTap: () => _onNavTap(index),
       child: AnimatedBuilder(
         animation: _navTapCtrls[index],
         builder: (_, __) {
-          final t = _navTapCtrls[index].value;
-          final scale = isSelected
-              ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0))
-              : 1.0;
+          final t     = _navTapCtrls[index].value;
+          final scale = isSelected ? 1.0 + 0.16 * Curves.elasticOut.transform(t.clamp(0.0, 1.0)) : 1.0;
           return Column(mainAxisSize: MainAxisSize.min, children: [
             Transform.scale(scale: scale,
               child: Stack(clipBehavior: Clip.none, children: [
@@ -554,14 +470,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   child: Icon(isSelected ? item.selected : item.unselected,
                       color: isSelected ? _primary : _primary.withOpacity(0.30), size: kNavIconSize),
                 ),
-                if (showChatBadge) Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
+                if (showChatBadge)  Positioned(top: 2, right: 4, child: NavBadge(count: chatUnread)),
                 if (showNotifBadge) Positioned(top: 2, right: 4, child: NavBadge(count: notifUnread)),
               ]),
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: isSelected ? kNavDotSize : 0,
-              height: isSelected ? kNavDotSize : 0,
+              width: isSelected ? kNavDotSize : 0, height: isSelected ? kNavDotSize : 0,
               margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(color: _primary, shape: BoxShape.circle),
             ),
@@ -572,52 +487,38 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-// ── DARK TOGGLE ───────────────────────────────────────────────────────────────
-
 class _DarkToggle extends StatelessWidget {
   final bool value;
   final Color primary, accent;
   final VoidCallback onTap;
-  const _DarkToggle({required this.value, required this.primary,
-    required this.accent, required this.onTap});
+  const _DarkToggle({required this.value, required this.primary, required this.accent, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic,
-        width: 52, height: 29,
-        decoration: BoxDecoration(
-          color: value ? primary : primary.withOpacity(0.18),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic,
+      width: 52, height: 29,
+      decoration: BoxDecoration(
+        color: value ? primary : primary.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack,
+        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               width: 23, height: 23,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
+              decoration: BoxDecoration(shape: BoxShape.circle,
                 color: value ? accent : Colors.white,
-                boxShadow: [BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                )],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 6, offset: const Offset(0, 2))],
               ),
-            ),
-          ),
-        ),
+            )),
       ),
-    );
-  }
+    ),
+  );
 }
-
-// ── TAP CARD ──────────────────────────────────────────────────────────────────
 
 class _TapCard extends StatefulWidget {
   final Color card, primary, accent, iconColor;
@@ -632,58 +533,58 @@ class _TapCard extends StatefulWidget {
 
 class _TapCardState extends State<_TapCard> with SingleTickerProviderStateMixin {
   late AnimationController _press;
-  @override void initState() {
+
+  @override
+  void initState() {
     super.initState();
     _press = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
   }
-  @override void dispose() { _press.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _press.forward(),
-      onTapUp: (_) { _press.reverse(); widget.onTap(); },
-      onTapCancel: () => _press.reverse(),
-      child: AnimatedBuilder(
-        animation: _press,
-        builder: (_, child) => Transform.scale(scale: 1.0 - _press.value * 0.025, child: child),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 340),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          decoration: BoxDecoration(
-            color: widget.card, borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: widget.primary.withOpacity(0.08)),
-            boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 5))],
-          ),
-          child: Row(children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 340),
-              width: 44, height: 44,
-              decoration: BoxDecoration(color: widget.accent, borderRadius: BorderRadius.circular(13)),
-              child: Icon(widget.icon, color: widget.iconColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: widget.iconColor, fontSize: 15.5, fontWeight: FontWeight.w700),
-                child: Text(widget.label),
-              ),
-              const SizedBox(height: 2),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                style: TextStyle(color: widget.primary.withOpacity(0.42), fontSize: 12.5),
-                child: Text(widget.subtitle),
-              ),
-            ])),
-            Icon(Icons.chevron_right_rounded, color: widget.primary.withOpacity(0.28), size: 22),
-          ]),
-        ),
-      ),
-    );
-  }
-}
 
-// ── HEART DECO ────────────────────────────────────────────────────────────────
+  @override void dispose() { _press.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTapDown: (_) => _press.forward(),
+    onTapUp: (_) { _press.reverse(); widget.onTap(); },
+    onTapCancel: () => _press.reverse(),
+    child: AnimatedBuilder(
+      animation: _press,
+      builder: (_, child) => Transform.scale(scale: 1.0 - _press.value * 0.025, child: child),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: widget.card, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: widget.primary.withOpacity(0.08)),
+          boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 5))],
+        ),
+        child: Row(children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 340),
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: widget.accent, borderRadius: BorderRadius.circular(13)),
+            child: Icon(widget.icon, color: widget.iconColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: widget.iconColor, fontSize: 15.5, fontWeight: FontWeight.w700),
+              child: Text(widget.label),
+            ),
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: TextStyle(color: widget.primary.withOpacity(0.42), fontSize: 12.5),
+              child: Text(widget.subtitle),
+            ),
+          ])),
+          Icon(Icons.chevron_right_rounded, color: widget.primary.withOpacity(0.28), size: 22),
+        ]),
+      ),
+    ),
+  );
+}
 
 class _HeartDeco extends StatefulWidget {
   final Color primary, accent;
@@ -693,36 +594,36 @@ class _HeartDeco extends StatefulWidget {
 
 class _HeartDecoState extends State<_HeartDeco> with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
-  @override void initState() {
+
+  @override
+  void initState() {
     super.initState();
     _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
       ..repeat(reverse: true);
   }
-  @override void dispose() { _pulse.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (_, __) => Transform.scale(
-        scale: 1.0 + _pulse.value * 0.08,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 340),
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: widget.accent, borderRadius: BorderRadius.circular(13),
-            boxShadow: [BoxShadow(
-              color: widget.primary.withOpacity(0.15 + _pulse.value * 0.10),
-              blurRadius: 14 + _pulse.value * 6, offset: const Offset(0, 4),
-            )],
-          ),
-          child: Icon(Icons.settings_rounded, color: widget.primary, size: 22),
-        ),
-      ),
-    );
-  }
-}
 
-// ── ABOUT CARD ────────────────────────────────────────────────────────────────
+  @override void dispose() { _pulse.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _pulse,
+    builder: (_, __) => Transform.scale(
+      scale: 1.0 + _pulse.value * 0.08,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: widget.accent, borderRadius: BorderRadius.circular(13),
+          boxShadow: [BoxShadow(
+            color: widget.primary.withOpacity(0.15 + _pulse.value * 0.10),
+            blurRadius: 14 + _pulse.value * 6, offset: const Offset(0, 4),
+          )],
+        ),
+        child: Icon(Icons.settings_rounded, color: widget.primary, size: 22),
+      ),
+    ),
+  );
+}
 
 class _AboutCard extends StatefulWidget {
   final Color primary, accent, card;
@@ -741,7 +642,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _sparkleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..repeat();
-    _floatCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
+    _floatCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
     final rng = math.Random(42);
     for (int i = 0; i < 8; i++) {
       _sparkles.add(_Sparkle(x: rng.nextDouble(), y: rng.nextDouble() * 0.5,
@@ -757,14 +658,11 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
       color: Colors.transparent,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: 28,
-          vertical: MediaQuery.of(context).padding.top + 16,
-        ),
+            horizontal: 28, vertical: MediaQuery.of(context).padding.top + 16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 380),
           decoration: BoxDecoration(
-            color: widget.card,
-            borderRadius: BorderRadius.circular(28),
+            color: widget.card, borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(color: widget.primary.withOpacity(0.22), blurRadius: 40, offset: const Offset(0, 16)),
               BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 20, offset: const Offset(0, 6)),
@@ -777,8 +675,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 AnimatedBuilder(
                   animation: _sparkleCtrl,
-                  builder: (_, __) => SizedBox(
-                    height: 110,
+                  builder: (_, __) => SizedBox(height: 110,
                     child: Stack(children: [
                       Positioned.fill(child: AnimatedContainer(
                         duration: const Duration(milliseconds: 380),
@@ -788,7 +685,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                         )),
                       )),
                       ..._sparkles.map((s) {
-                        final t = ((_sparkleCtrl.value + s.phase) % 1.0);
+                        final t       = ((_sparkleCtrl.value + s.phase) % 1.0);
                         final opacity = math.sin(t * math.pi).clamp(0.0, 1.0);
                         return Positioned(left: s.x * 300, top: s.y * 110,
                             child: Opacity(opacity: opacity * 0.7,
@@ -796,22 +693,16 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                       }),
                       AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
                           Positioned(left: 24, top: 18 + _floatCtrl.value * 8,
-                              child: Icon(Icons.favorite_rounded,
-                                  color: widget.accent.withOpacity(0.30), size: 22))),
+                              child: Icon(Icons.favorite_rounded, color: widget.accent.withOpacity(0.30), size: 22))),
                       AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
                           Positioned(right: 28, top: 28 - _floatCtrl.value * 6,
-                              child: Icon(Icons.favorite_rounded,
-                                  color: widget.accent.withOpacity(0.22), size: 16))),
-                      Center(child: AnimatedBuilder(animation: _floatCtrl,
-                          builder: (_, __) => Transform.translate(
-                            offset: Offset(0, -4 + _floatCtrl.value * 8),
-                            child: Container(width: 64, height: 64,
-                              decoration: BoxDecoration(color: widget.accent.withOpacity(0.18),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: widget.accent.withOpacity(0.35), width: 2)),
-                              child: Icon(Icons.favorite_rounded, color: widget.accent, size: 32),
-                            ),
-                          ))),
+                              child: Icon(Icons.favorite_rounded, color: widget.accent.withOpacity(0.22), size: 16))),
+                      Center(child: AnimatedBuilder(animation: _floatCtrl, builder: (_, __) =>
+                          Transform.translate(offset: Offset(0, -4 + _floatCtrl.value * 8),
+                              child: Container(width: 64, height: 64,
+                                  decoration: BoxDecoration(color: widget.accent.withOpacity(0.18), shape: BoxShape.circle,
+                                      border: Border.all(color: widget.accent.withOpacity(0.35), width: 2)),
+                                  child: Icon(Icons.favorite_rounded, color: widget.accent, size: 32))))),
                     ]),
                   ),
                 ),
@@ -866,8 +757,7 @@ class _AboutCardState extends State<_AboutCard> with TickerProviderStateMixin {
                         height: 48,
                         decoration: BoxDecoration(
                           color: widget.primary, borderRadius: BorderRadius.circular(24),
-                          boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.30),
-                              blurRadius: 16, offset: const Offset(0, 6))],
+                          boxShadow: [BoxShadow(color: widget.primary.withOpacity(0.30), blurRadius: 16, offset: const Offset(0, 6))],
                         ),
                         child: Center(child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 300),
