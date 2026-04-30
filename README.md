@@ -118,8 +118,9 @@ Kopirati ga i preimenovati u `application.properties`:
 cp application.properties.template application.properties
 
 
-
+---
 Urediti sljedeće vrijednosti:
+---
 
 
 
