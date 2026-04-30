@@ -170,13 +170,6 @@ flutter run
 
 VAZNO za fizički uredaj: u kodu treba zamijeniti `localhost` s IP adresom racunala u lokalnoj mreži. Na Android emulatoru koristi `10.0.2.2` umjesto `localhost`.
 
-Datoteke gdje treba promijeniti URL:
-- lib/main.dart
-- lib/screens/ai_profile_screen.dart
-- lib/screens/events_nearby.dart
-- lib/screens/notifications_screen.dart
-- lib/services/cloudinary_service.dart
-
 
 # 5. Whisper server
 
