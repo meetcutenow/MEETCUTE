@@ -49,9 +49,8 @@ Whisper Server (Railway) - AI izrada profila
 
 ----
 
---- 
-Web Ograničenja 
----
+ 
+!Web Ograničenja 
 
 1. Funkcija "Popuni profil glasom" nije dostupna u web pregledniku. Aplikacija koristi record paket koji za snimanje audio zapisa koristi lokalni datotečni sustav
  (dart:io) i sprema .wav datoteku na uređaju. Funkcija je u potpunosti dostupna u mobilnoj verziji aplikacije (Android/iOS).
