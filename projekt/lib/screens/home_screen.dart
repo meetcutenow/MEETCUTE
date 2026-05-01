@@ -9,7 +9,7 @@ import 'chat_screen.dart' show ChatScreen, ChatState;
 import 'profile_screen.dart';
 import 'events_nearby.dart';
 import 'organize_meetup.dart' show OrganizeMeetupScreen;
-import 'notifications_screen.dart' show NotificationsScreen, NotificationState, seedStaticNotifications;
+import 'notifications_screen.dart' show NotificationsScreen, NotificationState;
 import 'settings_screen.dart' show SettingsScreen;
 import 'theme_state.dart';
 import 'onboarding_screen.dart' show globalProfileData;
@@ -82,7 +82,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initAnims();
     _runEntry();
     _fetchLocation();
-    seedStaticNotifications();
     NotificationState.instance.addListener(_onBadgeChanged);
     ChatState.instance.addListener(_onBadgeChanged);
     ThemeState.instance.addListener(_onBadgeChanged);

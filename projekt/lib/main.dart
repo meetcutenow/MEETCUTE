@@ -11,6 +11,7 @@ import 'package:meetcute/screens/app_read_state.dart';
 import 'package:meetcute/screens/company_auth_state.dart';
 import 'package:meetcute/screens/company_home_screen.dart';
 import 'package:meetcute/services/profile_storage.dart';
+import 'package:meetcute/services/api_http.dart';
 
 import 'package:meetcute/screens/profile_setup_screen.dart' show ProfileSetupData;
 import 'package:meetcute/screens/onboarding_screen.dart'
@@ -42,38 +43,36 @@ void main() async {
 
   if (isLoggedIn) {
     RegistrationState.instance.isRegistered = true;
-    RegistrationState.instance.username =
-        AuthState.instance.username ?? '';
-    RegistrationState.instance.displayName =
-        AuthState.instance.displayName ?? '';
+    RegistrationState.instance.username = AuthState.instance.username ?? '';
+    RegistrationState.instance.displayName = AuthState.instance.displayName ?? '';
 
     try {
       final resp = await http
           .get(
         Uri.parse('$_base/users/me'),
         headers: {
-          'Authorization':
-          'Bearer ${AuthState.instance.accessToken}',
+          'Authorization': 'Bearer ${AuthState.instance.accessToken}',
         },
       )
           .timeout(const Duration(seconds: 8));
 
+      if (resp.statusCode == 401) {
+        await AuthState.instance.clear();
+        runApp(const MeetCuteApp(startLoggedIn: false, startAsCompany: false));
+        return;
+      }
+
       if (resp.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(resp.bodyBytes))['data']
-        as Map<String, dynamic>;
+        final data =
+        jsonDecode(utf8.decode(resp.bodyBytes))['data'] as Map<String, dynamic>;
 
         final user = data;
-        final profile =
-            data['profile'] as Map<String, dynamic>? ?? {};
-        final photos =
-        List<String>.from(data['photoUrls'] ?? []);
-        final interests =
-        List<String>.from(data['interests'] ?? []);
+        final profile = data['profile'] as Map<String, dynamic>? ?? {};
+        final photos = List<String>.from(data['photoUrls'] ?? []);
+        final interests = List<String>.from(data['interests'] ?? []);
 
-        RegistrationState.instance.displayName =
-            user['displayName'] ?? '';
-        RegistrationState.instance.username =
-            user['username'] ?? '';
+        RegistrationState.instance.displayName = user['displayName'] ?? '';
+        RegistrationState.instance.username = user['username'] ?? '';
 
         globalProfileData = ProfileSetupData(
           photoPaths: photos,
@@ -84,10 +83,8 @@ void main() async {
           gender: profile['gender'],
           hairColor: profile['hairColor'],
           eyeColor: profile['eyeColor'],
-          piercing:
-          profile['hasPiercing'] == true ? 'da' : 'ne',
-          tattoo:
-          profile['hasTattoo'] == true ? 'da' : 'ne',
+          piercing: profile['hasPiercing'] == true ? 'da' : 'ne',
+          tattoo: profile['hasTattoo'] == true ? 'da' : 'ne',
           interests: interests,
           iceBreaker: profile['iceBreaker'] ?? '',
           seekingGender: profile['seekingGender'],
@@ -111,17 +108,13 @@ void main() async {
       final resp = await http
           .get(
         Uri.parse('$_base/events'),
-        headers: {
-          'Authorization':
-          'Bearer ${AuthState.instance.accessToken}'
-        },
+        headers: {'Authorization': 'Bearer ${AuthState.instance.accessToken}'},
       )
           .timeout(const Duration(seconds: 8));
 
       if (resp.statusCode == 200) {
-        final list = jsonDecode(utf8.decode(resp.bodyBytes))['data']
-        as List? ??
-            [];
+        final list =
+            jsonDecode(utf8.decode(resp.bodyBytes))['data'] as List? ?? [];
 
         for (final e in list) {
           if (e['isAttending'] == true) {
@@ -173,6 +166,7 @@ class MeetCuteApp extends StatelessWidget {
     return MaterialApp(
       title: 'MeetCute',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
         useMaterial3: true,

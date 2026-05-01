@@ -20,7 +20,8 @@ spring.jpa.show-sql=false
 
 # JWT
 jwt.secret=TVOJ_JWT_SECRET
-jwt.expiration=86400000
+jwt.access-token-expiration=604800000
+jwt.refresh-token-expiration=2592000000
 
 # Cloudinary
 cloudinary.cloud-name=TVOJ_CLOUD_NAME

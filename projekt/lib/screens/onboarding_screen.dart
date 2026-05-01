@@ -12,7 +12,7 @@ import 'company_register_screen.dart';
 import 'profile_setup_screen.dart'
     show ProfileSetupData, ProfileStep1, ProfileStep2, ProfileStep3, ProfileStep4;
 import 'notifications_screen.dart'
-    show NotificationState, AppNotification, NotifType;
+    show seedWelcomeNotification;
 import '../services/profile_storage.dart';
 
 class RegistrationState {
@@ -25,8 +25,7 @@ class RegistrationState {
 
 ProfileSetupData globalProfileData = ProfileSetupData(photoPaths: [], iceBreaker: '');
 
-const Color _bordo      = Color(0xFF700D25);
-const Color _bordoLight = Color(0xFFF2E8E9);
+const Color _bordo = Color(0xFF700D25);
 const String _base = 'http://localhost:8080/api';
 
 class OnboardingScreen extends StatefulWidget {
@@ -732,13 +731,7 @@ class _RegProfileState extends State<RegistrationProfileSetupScreen> with Ticker
         await ProfileStorage.saveRegistration(reg.username, reg.displayName);
 
         final name = reg.displayName.isNotEmpty ? reg.displayName : reg.username;
-        NotificationState.instance.push(AppNotification(
-          id: 'welcome_${DateTime.now().millisecondsSinceEpoch}',
-          type: NotifType.general,
-          title: 'Dobrodošao/la na MeetCute, $name!',
-          body: 'Tvoj profil je spreman.',
-          accentColor: _bordo, timestamp: DateTime.now(),
-        ));
+        await seedWelcomeNotification(name, AuthState.instance.accessToken!);
 
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(

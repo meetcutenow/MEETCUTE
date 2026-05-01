@@ -52,8 +52,7 @@ class ChatConversation {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  bool get hasUnread =>
-      lastMessage != null && !lastMessage!.isMe && !AppReadState.isConvRead(id);
+  bool get hasUnread => false;
 }
 
 class ChatState extends ChangeNotifier {
