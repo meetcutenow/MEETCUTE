@@ -135,7 +135,7 @@ spring.datasource.password=TVOJA_MYSQL_LOZINKA
 
 jwt.secret=BILO_KOJI_RANDOM_STRING_MINIMALNO_32_ZNAKA
 
-jwt.access-token-expiration=86400000
+jwt.access-token-expiration=604800000
 
 jwt.refresh-token-expiration=2592000000
 
