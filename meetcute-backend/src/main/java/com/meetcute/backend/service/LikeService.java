@@ -13,17 +13,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Procesira Like (❤️) i Dislike (✕) akcije korisnika na predloženim profilima.
- *
- * Tok:
- *  - Korisnik vidi profil → pritisne ❤️ ili ✕
- *  - Like se bilježi u Redis (like:{userId}:{targetId})
- *  - Dislike se bilježi u Redis (dislike:{userId}:{targetId})
- *  - Ako postoji mutual like → automatski se kreira Match + Conversation
- *  - Mutual like → vraća LikeResponse s matched=true i fotama oboje
- *  - Bez mutual like / dislike → vraća LikeResponse s matched=false
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -52,12 +41,9 @@ public class LikeService {
         }
     }
 
-    // ─── Like (❤️) ────────────────────────────────────────────────────
-
     private LikeResponse handleLike(String userId, String targetId) {
         presence.recordLike(userId, targetId);
 
-        // Provjeri mutual like
         if (presence.hasLiked(targetId, userId)) {
             Match match = createMatch(userId, targetId);
 
@@ -66,7 +52,6 @@ public class LikeService {
             String otherName  = userRepository.findById(targetId)
                     .map(User::getDisplayName).orElse("Korisnik");
 
-            // Konverzacija se NE kreira ovdje - kreira se tek kad oboje pristanu na chat
             MatchResponse matchResp = MatchResponse.builder()
                     .matchId(match.getId())
                     .otherUserId(targetId)
@@ -89,18 +74,13 @@ public class LikeService {
                     .build();
         }
 
-        // Like zabilježen, čekamo mutual
         return LikeResponse.builder().matched(false).build();
     }
-
-    // ─── Dislike (✕) ─────────────────────────────────────────────────
 
     private LikeResponse handleDislike(String userId, String targetId) {
         presence.recordDislike(userId, targetId);
         return LikeResponse.builder().matched(false).build();
     }
-
-    // ─── Interni helperi ──────────────────────────────────────────────
 
     private Match createMatch(String userAId, String userBId) {
         String a = userAId.compareTo(userBId) < 0 ? userAId : userBId;

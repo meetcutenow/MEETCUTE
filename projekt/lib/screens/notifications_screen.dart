@@ -1118,7 +1118,7 @@ class _NotifTileState extends State<_NotifTile>
                                             color: accent,
                                             isDark: isDark),
                                       ],
-                                      // Da/Ne gumbi za chat consent
+
                                       if (showConsentButtons) ...[
                                         const SizedBox(height: 12),
                                         _ChatConsentButtons(

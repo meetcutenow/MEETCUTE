@@ -5,8 +5,6 @@ import 'home_screen.dart' show kPrimaryDark, kPrimaryLight, kSurface;
 import 'theme_state.dart';
 import '../services/api_service.dart';
 
-// ─── Ekran koji prikazuje obližnji profil za like/dislike ──────────────────────
-
 class ProximityMatchScreen extends StatefulWidget {
   final NearbyUserData user;
   const ProximityMatchScreen({super.key, required this.user});
@@ -49,7 +47,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
       if (!mounted) return;
 
       if (result != null && result.matched) {
-        // Zamijeni ovaj screen s match result screenom
+
         Navigator.pushReplacement(context, PageRouteBuilder(
           pageBuilder: (_, a, __) => MatchResultScreen(
             matched: true,
@@ -63,7 +61,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
           transitionDuration: const Duration(milliseconds: 400),
         ));
       } else {
-        // No match - pokazi zao nam je ili samo zatvori
+
         if (!liked) {
           Navigator.pushReplacement(context, PageRouteBuilder(
             pageBuilder: (_, a, __) => const MatchResultScreen(
@@ -77,7 +75,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
             transitionDuration: const Duration(milliseconds: 400),
           ));
         } else {
-          // Liked ali nema mutual match još - samo zatvori i čekaj
+
           Navigator.pop(context, {'liked': true, 'matched': false});
         }
       }
@@ -105,7 +103,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
           child: SafeArea(
             child: Column(
               children: [
-                // ─── Header ────────────────────────────────────────
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Row(
@@ -132,7 +130,6 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                   ),
                 ),
 
-                // ─── Profile Card ───────────────────────────────────
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -140,7 +137,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
                         children: [
-                          // Photo
+
                           Container(
                             height: mq.size.height * 0.42,
                             decoration: BoxDecoration(
@@ -157,7 +154,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                                 fit: StackFit.expand,
                                 children: [
                                   _buildPhoto(widget.user.primaryPhoto),
-                                  // Gradient overlay s imenom
+
                                   Positioned(
                                     bottom: 0, left: 0, right: 0,
                                     child: Container(
@@ -188,7 +185,6 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                           ),
                           const SizedBox(height: 20),
 
-                          // Info card (identično slici)
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
@@ -202,7 +198,7 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Ice breaker
+
                                 if (widget.user.iceBreaker != null &&
                                     widget.user.iceBreaker!.isNotEmpty) ...[
                                   Text('Želim da mi priđeš...',
@@ -218,7 +214,6 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                                   const Divider(height: 24),
                                 ],
 
-                                // Interesi
                                 if (widget.user.interests.isNotEmpty) ...[
                                   Text('Interesi',
                                       style: TextStyle(
@@ -247,7 +242,6 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                                   const Divider(height: 24),
                                 ],
 
-                                // Osobni podaci
                                 Text('Osobni podaci',
                                     style: TextStyle(
                                         color: kPrimaryDark,
@@ -270,21 +264,20 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
                   ),
                 ),
 
-                // ─── Action Buttons (X i srce) ──────────────────────
                 Padding(
                   padding: EdgeInsets.only(
                       bottom: mq.padding.bottom + 24, left: 60, right: 60),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // X button
+
                       _ActionButton(
                         onTap: _reacting ? null : () => _react(false),
                         child: const Icon(Icons.close, color: Colors.white, size: 28),
                         color: kPrimaryDark,
                         size: 64,
                       ),
-                      // Srce button
+
                       _ActionButton(
                         onTap: _reacting ? null : () => _react(true),
                         child: _reacting
@@ -342,8 +335,6 @@ class _ProximityMatchScreenState extends State<ProximityMatchScreen>
   }
 }
 
-// ─── Action Button widget ─────────────────────────────────────────────────────
-
 class _ActionButton extends StatefulWidget {
   final VoidCallback? onTap;
   final Widget child;
@@ -400,8 +391,6 @@ class _ActionButtonState extends State<_ActionButton>
     );
   }
 }
-
-// ─── Match Result Screen (IMATE MATCH / ŽAO NAM JE) ──────────────────────────
 
 class MatchResultScreen extends StatefulWidget {
   final bool matched;
@@ -470,7 +459,6 @@ class _MatchResultScreenState extends State<MatchResultScreen>
       children: [
         const Spacer(),
 
-        // Logo
         Image.asset('assets/images/logo.png', height: 60,
             color: Colors.white.withOpacity(0.9),
             errorBuilder: (_, __, ___) => const Text('MeetCute',
@@ -478,7 +466,6 @@ class _MatchResultScreenState extends State<MatchResultScreen>
                     fontWeight: FontWeight.w900, fontSize: 28))),
         const SizedBox(height: 40),
 
-        // Slike oboje (identično slici 3)
         ScaleTransition(
           scale: _photoScale,
           child: Row(
@@ -492,7 +479,6 @@ class _MatchResultScreenState extends State<MatchResultScreen>
         ),
         const SizedBox(height: 40),
 
-        // IMATE MATCH tekst
         const Text(
           'IMATE MATCH',
           style: TextStyle(
@@ -522,7 +508,6 @@ class _MatchResultScreenState extends State<MatchResultScreen>
 
         const Spacer(),
 
-        // Gumbi
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           child: Column(
@@ -555,7 +540,7 @@ class _MatchResultScreenState extends State<MatchResultScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Logo
+
         Image.asset('assets/images/logo.png', height: 70,
             color: Colors.white.withOpacity(0.9),
             errorBuilder: (_, __, ___) => const Text('MeetCute',
@@ -563,7 +548,6 @@ class _MatchResultScreenState extends State<MatchResultScreen>
                     fontWeight: FontWeight.w900, fontSize: 28))),
         const SizedBox(height: 48),
 
-        // ŽAO NAM JE
         const Text(
           'ŽAO NAM JE',
           style: TextStyle(

@@ -89,7 +89,6 @@ class _OrganizeMeetupScreenState extends State<OrganizeMeetupScreen>
     Color(0xFF6DD5E8), Color(0xFFFFD166), Color(0xFF95D5B2), Color(0xFFFFB3C6),
   ];
 
-  // ── Shared theme helpers ───────────────────────────────────────────────────
   Color get _primary => ThemeState.instance.isDark ? const Color(0xFFBF8997) : kPrimaryDark;
   Color get _cardBg  => ThemeState.instance.isDark ? const Color(0xFF393737) : Colors.white;
 

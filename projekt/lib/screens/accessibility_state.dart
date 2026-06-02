@@ -5,7 +5,7 @@ class AccessibilityState {
   static final AccessibilityState instance = AccessibilityState._();
   AccessibilityState._();
 
-  static final fontSizeStep = ValueNotifier<int>(1); // 0=malo, 1=normalno, 2=veliko
+  static final fontSizeStep = ValueNotifier<int>(1);
   static final dyslexia     = ValueNotifier<bool>(false);
 
   static Future<void> loadFromStorage() async {

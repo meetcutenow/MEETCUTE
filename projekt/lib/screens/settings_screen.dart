@@ -255,22 +255,19 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
     padding: EdgeInsets.fromLTRB(18, 22, 18, mq.padding.bottom + 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-      // ── Izgled ─────────────────────────────────────────────────────────────
       _sectionLabel('Izgled', 0),
       const SizedBox(height: 10),
-      // Dark mode row
+
       const _DarkModeCard(),
 
       const SizedBox(height: 28),
 
-      // ── Pristupačnost ──────────────────────────────────────────────────────
       _sectionLabel('Pristupačnost', 2),
       const SizedBox(height: 10),
       const _A11yPanel(),
 
       const SizedBox(height: 28),
 
-      // ── Račun ──────────────────────────────────────────────────────────────
       _sectionLabel('Račun', 8),
       const SizedBox(height: 10),
       _buildTapRow(ctrl: _rowCtrls[8], icon: Icons.lock_rounded,
@@ -283,7 +280,6 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
 
       const SizedBox(height: 28),
 
-      // ── O nama ─────────────────────────────────────────────────────────────
       _sectionLabel('O nama', 9),
       const SizedBox(height: 10),
       _buildTapRow(ctrl: _rowCtrls[9], icon: Icons.favorite_rounded,
@@ -455,10 +451,6 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _DarkModeCard — samostalan StatefulWidget koji sluša ThemeState
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _DarkModeCard extends StatefulWidget {
   const _DarkModeCard();
   @override State<_DarkModeCard> createState() => _DarkModeCardState();
@@ -518,11 +510,6 @@ class _DarkModeCardState extends State<_DarkModeCard> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _A11yPanel — kao CARNET: gumbi A A A, Disleksija, Kontrast, Poništi
-// ValueListenableBuilder garantira rebuild bez ikakvog listenera
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _A11yPanel extends StatelessWidget {
   const _A11yPanel();
 
@@ -552,7 +539,6 @@ class _A11yPanel extends StatelessWidget {
             style: TextStyle(color: primary.withOpacity(0.45), fontSize: 12, height: 1.4)),
         const SizedBox(height: 16),
 
-        // ── Veličina fonta ──────────────────────────────────────────────────
         Text('Veličina fonta', style: TextStyle(color: primary.withOpacity(0.55), fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         ValueListenableBuilder<int>(
@@ -573,7 +559,6 @@ class _A11yPanel extends StatelessWidget {
         Divider(color: primary.withOpacity(0.08), height: 1),
         const SizedBox(height: 16),
 
-        // ── Disleksija ──────────────────────────────────────────────────────
         ValueListenableBuilder<bool>(
           valueListenable: AccessibilityState.dyslexia,
           builder: (_, dys, __) => _A11yRow(
@@ -591,7 +576,6 @@ class _A11yPanel extends StatelessWidget {
         Divider(color: primary.withOpacity(0.08), height: 1),
         const SizedBox(height: 12),
 
-        // ── Poništi ─────────────────────────────────────────────────────────
         GestureDetector(
           onTap: () { HapticFeedback.selectionClick(); AccessibilityState.reset(); },
           child: Container(
@@ -670,7 +654,7 @@ class _A11yRow extends StatelessWidget {
             fontWeight: active ? FontWeight.w800 : FontWeight.w600)),
         Text(subtitle, style: TextStyle(color: primary.withOpacity(0.42), fontSize: 12)),
       ])),
-      // Switch — samo ValueNotifier, garantirano se rebuilda
+
       AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         width: 46, height: 26,
@@ -697,12 +681,6 @@ class _A11yRow extends StatelessWidget {
     ]),
   );
 }
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _Toggle — čisti toggle switch widget
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _Toggle extends StatelessWidget {
   final bool value;
@@ -739,10 +717,6 @@ class _Toggle extends StatelessWidget {
     ),
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Ostatak widgeta (TapCard, HeartDeco, AboutCard...)
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _TapCard extends StatefulWidget {
   final Color card, primary, accent, iconColor;

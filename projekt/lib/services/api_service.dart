@@ -72,13 +72,11 @@ class ApiService {
     throw ApiException(msg, resp.statusCode);
   }
 
-
   Future<AuthResult> register(RegisterPayload payload) async {
     final resp = await _post('/auth/register', payload.toJson(), auth: false);
     return _saveTokens(resp);
   }
 
-  /// Učitaj token iz diska pri pokretanju
   Future<void> _loadToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -86,7 +84,6 @@ class ApiService {
     } catch (_) {}
   }
 
-  /// Spremi token na disk
   Future<void> _saveToken(String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -94,7 +91,6 @@ class ApiService {
     } catch (_) {}
   }
 
-  /// Obrisi token s diska
   Future<void> _clearToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -246,8 +242,6 @@ class ApiService {
   Future<void> markAllNotificationsRead() async {
     await _post('/notifications/read', {});
   }
-
-  // ─── Proximity / Matching ─────────────────────────────────────
 
   Future<bool> setActiveStatus(bool active, {double? lat, double? lng}) async {
     final resp = await _post('/proximity/active', {

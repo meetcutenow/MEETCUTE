@@ -33,7 +33,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateMixin {
 
-  // Nav bar — profile tab (index 3) is always active
   static const int _profileNavIndex = 3;
   late List<AnimationController> _navTapCtrls;
 
@@ -70,8 +69,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   List<int> _mapInterestIds(List<String> names) =>
       names.map((x) => _interestIds[x]).whereType<int>().toList();
 
-  // ── Theme / accessibility helpers ────────────────────────────────────────
-
   bool  get _dark    => ThemeState.instance.isDark;
   Color get _bg      => _dark ? kDarkBg      : Colors.white;
   Color get _card    => _dark ? kDarkCard    : Colors.white;
@@ -80,7 +77,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   Color get _textSub => _dark ? kDarkTextSub : kPrimaryDark;
   Color get _divider => _primary.withOpacity(_dark ? 0.18 : 0.10);
 
-  // high-contrast overrides
   Color get _hcBg      => _bg;
   Color get _hcCard    => _card;
   Color get _hcPrimary => _primary;
@@ -106,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         CurvedAnimation(parent: _entryCtrl,
             curve: const Interval(0.28, 1.0, curve: Curves.easeOutCubic)));
 
-    // Nav bar setup
     NotificationState.instance.addListener(_onBadgeChanged);
     ChatState.instance.addListener(_onBadgeChanged);
     ThemeState.instance.addListener(_onThemeChanged);
@@ -150,8 +145,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   void _onBadgeChanged() => setState(() {});
   void _onThemeChanged() => setState(() {});
 
-  // ── Drag sheet ────────────────────────────────────────────────────────────
-
   void _onDragStart(DragStartDetails _) {
     _dragBase = _sheetFrac;
     HapticFeedback.selectionClick();
@@ -179,8 +172,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
       ..addStatusListener((s) { if (s == AnimationStatus.completed) ctrl.dispose(); })
       ..forward();
   }
-
-  // ── Navigation bar ────────────────────────────────────────────────────────
 
   void _onNavTap(int index) {
     if (index == _profileNavIndex) return;
@@ -274,8 +265,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     );
   }
 
-  // ── Profile edit ──────────────────────────────────────────────────────────
-
   void _openSetup() {
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, a, __) => ProfileSetupScreen(
@@ -351,8 +340,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     ));
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   String get _displayName {
     final reg  = RegistrationState.instance;
     final name = reg.displayName.isNotEmpty ? reg.displayName
@@ -391,8 +378,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     child: Icon(Icons.person_rounded, size: 110, color: Colors.white.withOpacity(0.18)),
   );
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final mq       = MediaQuery.of(context);
@@ -400,7 +385,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     final sheetTop = screenH * (1.0 - _sheetFrac);
     final photos   = _photos;
 
-    // gradient overlay colours adapt to dark mode
     final gradMid  = _dark ? kDarkBg.withOpacity(0.30) : kPrimaryDark.withOpacity(0.22);
     final gradBot  = _dark ? kDarkBg.withOpacity(0.65) : kPrimaryDark.withOpacity(0.52);
 
@@ -411,7 +395,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         bottomNavigationBar: _buildNavBar(mq),
         body: Stack(children: [
 
-          // ── Photo pager ──────────────────────────────────────────────────
           Positioned(top: 0, left: 0, right: 0, height: sheetTop + 2,
             child: FadeTransition(
               opacity: _photoFade,
@@ -425,7 +408,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             ),
           ),
 
-          // ── Gradient overlay ─────────────────────────────────────────────
           Positioned(left: 0, right: 0, top: sheetTop - 180, height: 210,
             child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -435,7 +417,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             ))),
           ),
 
-          // ── Photo dots ───────────────────────────────────────────────────
           Positioned(left: 0, right: 0, bottom: screenH - sheetTop + 52,
             child: IgnorePointer(child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -451,7 +432,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             )),
           ),
 
-          // ── Display name ─────────────────────────────────────────────────
           Positioned(left: 0, right: 0, bottom: screenH - sheetTop + 14,
             child: IgnorePointer(child: Text(_displayName, textAlign: TextAlign.center,
               style: TextStyle(
@@ -465,7 +445,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             )),
           ),
 
-          // ── Draggable info card ───────────────────────────────────────────
           Positioned(top: sheetTop, left: 0, right: 0, bottom: 0,
             child: FadeTransition(
               opacity: _cardFade,
@@ -530,8 +509,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     );
   }
 }
-
-// ── Card body ──────────────────────────────────────────────────────────────────
 
 class _CardBody extends StatelessWidget {
   final List<Animation<double>> chipFade;
@@ -648,8 +625,6 @@ class _CardBody extends StatelessWidget {
   }
 }
 
-// ── Chip ───────────────────────────────────────────────────────────────────────
-
 class _Chip extends StatefulWidget {
   final String label, emoji;
   final bool dark;
@@ -704,8 +679,6 @@ class _ChipState extends State<_Chip> with SingleTickerProviderStateMixin {
   );
 }
 
-// ── Data row ──────────────────────────────────────────────────────────────────
-
 class _DataRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
@@ -734,8 +707,6 @@ class _DataRow extends StatelessWidget {
     ]),
   );
 }
-
-// ── Edit button ───────────────────────────────────────────────────────────────
 
 class _EditBtn extends StatefulWidget {
   final VoidCallback onTap;

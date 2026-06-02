@@ -184,7 +184,6 @@ class _MeetCuteAppState extends State<MeetCuteApp> {
       home = const OnboardingScreen();
     }
 
-    // ValueListenableBuilder reagira ODMAH na svaku promjenu ValueNotifiera
     return ValueListenableBuilder<bool>(
       valueListenable: AccessibilityState.dyslexia,
       builder: (_, dys, __) => ValueListenableBuilder<int>(
@@ -208,11 +207,10 @@ class _MeetCuteAppState extends State<MeetCuteApp> {
                   seedColor: const Color(0xFF700D25),
                   brightness: dark ? Brightness.dark : Brightness.light,
                 ),
-                // Eksplicitno postavi fontFamily na SVAKI TextStyle u temi
+
                 textTheme: Typography.material2021().black.apply(fontFamily: fontFamily),
               ),
-              // builder se poziva za SVAKI screen u Navigator stacku
-              // Theme.of(context) se nasljeđuje svugdje, uključujući AnimatedDefaultTextStyle
+
               builder: (ctx, child) {
                 final currentTheme = Theme.of(ctx);
                 return Theme(

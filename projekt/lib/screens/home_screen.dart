@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _initAnims();
     _runEntry();
     _fetchLocation();
-    // Ako je toggle aktivan pri pokretanju, odmah sinkroniziraj i skeniraj
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _onAppStart());
     NotificationState.instance.addListener(_onBadgeChanged);
     ChatState.instance.addListener(_onBadgeChanged);
@@ -161,13 +161,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
-  /// Poziva se kad se app otvori - sinkronizira status i počne skenirati
   Future<void> _onAppStart() async {
     if (!AuthState.instance.isLoggedIn) return;
     if (_locationEnabled) {
       await _syncActiveStatus(true);
       await _startProximityScan();
-      // Periodički scan svakih 30 sekundi dok je toggle aktivan
+
       _scanTimer?.cancel();
       _scanTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         if (_locationEnabled && mounted) _startProximityScan();
@@ -181,10 +180,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() => _locationEnabled = newState);
     newState ? _blurCtrl.reverse() : _blurCtrl.forward();
 
-    // Sinkroniziraj aktivni status s Redisom na backendu
     _syncActiveStatus(newState);
 
-    // Ako aktiviran, počni skenirati blizinu i timer
     if (newState) {
       _startProximityScan();
       _scanTimer?.cancel();
@@ -220,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _userLocation.latitude, _userLocation.longitude);
       if (!mounted) { _scanInProgress = false; return; }
       if (candidates.isNotEmpty) {
-        // Prikaži prvog kandidata - čekaj da korisnik reagira pa tek onda dozvoli novi scan
+
         await Navigator.push(context, PageRouteBuilder(
           pageBuilder: (_, a, __) => ProximityMatchScreen(user: candidates.first),
           transitionsBuilder: (_, a, __, child) =>
@@ -233,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   )),
           transitionDuration: const Duration(milliseconds: 380),
         ));
-        // Korisnik se vratio - čekaj malo pa dozvoli sljedeći scan
+
         await Future.delayed(const Duration(seconds: 3));
       }
     } catch (_) {}

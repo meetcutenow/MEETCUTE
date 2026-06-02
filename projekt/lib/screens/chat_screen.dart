@@ -41,7 +41,7 @@ class ChatConversation {
   final String name;
   final String? otherUserPhoto;
   final List<ChatMessage> messages;
-  final bool unread; // ima novih poruka koje korisnik nije vidio
+  final bool unread;
 
   const ChatConversation({required this.id, required this.name,
     this.otherUserPhoto, required this.messages, this.unread = false});
@@ -72,18 +72,14 @@ class ChatState extends ChangeNotifier {
   static final ChatState instance = ChatState._();
   ChatState._();
 
-  // Konverzacije dolaze s backendu, ne hardkodirane
   List<ChatConversation> conversations = [];
   bool _loaded = false;
 
   int get totalUnread => conversations.where((c) => c.hasUnread).length;
 
-  // Pamti zadnji poznati message ID po konverzaciji
-  // Kad backend vrati noviji ID koji nije moj → unread
   final Map<String, int> _lastKnownMsgId = {};
   final Map<String, String> _lastKnownSenderId = {};
 
-  /// Učitaj konverzacije s backendu
   Future<void> loadConversations() async {
     try {
       final api = ApiService();
@@ -96,24 +92,22 @@ class ChatState extends ChangeNotifier {
         final newLastMsgAt = c.lastMessageAt != null
             ? DateTime.tryParse(c.lastMessageAt!) : null;
 
-        // Čuvaj postojeće poruke
         final List<ChatMessage> keepMessages = (existing != null && existing.messages.length > 1)
             ? List<ChatMessage>.from(existing.messages)
             : (c.lastMessage != null ? <ChatMessage>[
           ChatMessage(text: c.lastMessage, isMe: false, sentAt: newLastMsgAt)
         ] : <ChatMessage>[]);
 
-        // Unread: backend ima noviju poruku od zadnje poznate, i nije moja
         final lastId = _lastKnownMsgId[c.id] ?? 0;
         final lastSender = _lastKnownSenderId[c.id];
-        bool isUnread = existing?.unread ?? false; // čuvaj stanje
+        bool isUnread = existing?.unread ?? false;
 
         if (c.lastMessageId != null && c.lastMessageId! > lastId) {
-          // Nova poruka stigla
+
           if (c.lastMessageSenderId != null && c.lastMessageSenderId != myId) {
-            isUnread = true; // tuđa poruka → unread
+            isUnread = true;
           }
-          // Ažuriraj poznati ID
+
           _lastKnownMsgId[c.id] = c.lastMessageId!;
           _lastKnownSenderId[c.id] = c.lastMessageSenderId ?? '';
         }
@@ -133,7 +127,7 @@ class ChatState extends ChangeNotifier {
 
   Future<void> markRead(String conversationId) async {
     await AppReadState.markConvRead(conversationId);
-    // Makni unread badge
+
     final idx = conversations.indexWhere((c) => c.id == conversationId);
     if (idx != -1) {
       final old = conversations[idx];
@@ -195,7 +189,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     NotificationState.instance.addListener(_onStateChanged);
     ThemeState.instance.addListener(_onStateChanged);
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text.toLowerCase()));
-    // Učitaj konverzacije s backendu i osvježavaj svakih 5 sekundi
+
     ChatState.instance.loadConversations();
     _startConvRefresh();
 
@@ -788,14 +782,14 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
           .indexWhere((c) => c.id == widget.convo.id);
       if (idx == -1) return;
       final old = ChatState.instance.conversations[idx];
-      // Samo ažuriraj ako server ima više poruka od lokalnih
+
       if (messages.length >= old.messages.length) {
         ChatState.instance.conversations[idx] = ChatConversation(
             id: old.id, name: old.name,
             otherUserPhoto: old.otherUserPhoto,
             messages: messages);
       }
-      // Postavi _lastMessageId na zadnju poruku
+
       if (data.isNotEmpty) {
         _lastMessageId = data.last['id'] as int? ?? 0;
       }
@@ -806,13 +800,12 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
       }
     } catch (_) {}
 
-    // Pokreni polling za real-time
     _connectWebSocket();
   }
 
   void _connectWebSocket() {
-    // Polling svakih 2 sekunde za real-time efekt
-    _stompClient = null; // nije korišten
+
+    _stompClient = null;
     _startPolling();
   }
 
@@ -839,7 +832,6 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
 
       final myId = AuthState.instance.userId;
 
-      // Pronađi samo nove poruke (id > _lastMessageId)
       final newMessages = data.where((m) {
         final id = m['id'] as int? ?? 0;
         return id > _lastMessageId;
@@ -847,13 +839,11 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
 
       if (newMessages.isEmpty) return;
 
-      // Ažuriraj zadnji poznati ID
       _lastMessageId = (data.last['id'] as int? ?? _lastMessageId);
 
-      // Dodaj samo tuđe nove poruke (vlastite su već optimistično dodane)
       for (final m in newMessages) {
         final senderId = m['senderId'] as String?;
-        if (senderId == myId) continue; // preskoči vlastite
+        if (senderId == myId) continue;
 
         _addMessage(ChatMessage(
           text: m['body'] as String?,
@@ -891,15 +881,13 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     HapticFeedback.lightImpact();
     _textCtrl.clear();
 
-    // Pošalji preko WebSocket — server će broadcastirati svima
-    // uključujući i mene, pa NEMA optimističnog dodavanja u UI
     if (_stompClient != null && _stompClient!.connected) {
       _stompClient!.send(
         destination: '/app/chat/\${widget.convo.id}',
         body: jsonEncode({'body': text}),
       );
     } else {
-      // Fallback na HTTP ako WebSocket nije spojen
+
       _addMessage(ChatMessage(text: text, isMe: true, sentAt: DateTime.now()));
       try {
         final token = AuthState.instance.accessToken;
@@ -929,7 +917,7 @@ class _ConvoState extends State<ChatConversationScreen> with TickerProviderState
     ChatState.instance.conversations[idx] = ChatConversation(
         id: old.id, name: old.name,
         otherUserPhoto: old.otherUserPhoto,
-        unread: false, // trenutno gledam chat, nije unread
+        unread: false,
         messages: List<ChatMessage>.from(old.messages)..add(msg));
     setState(() {});
     ChatState.instance.notifyListeners();

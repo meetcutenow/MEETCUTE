@@ -56,7 +56,7 @@ public class ProximityMatchService {
     }
 
     private boolean myPreferencesSatisfied(UserProfile seeker, UserProfile target) {
-        if (seeker == null || target == null) return true; // bez profila → ne filtriramo
+        if (seeker == null || target == null) return true;
 
         String seeking = seeker.getSeekingGender();
         if (seeking != null && !seeking.equalsIgnoreCase("sve") && !seeking.isBlank()) {
