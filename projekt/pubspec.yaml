@@ -1,0 +1,47 @@
+name: meetcute
+description: MeetCute - Location-based social meetup app
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  stomp_dart_client: ^0.4.4
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  geolocator: ^11.0.0
+  image_picker: ^1.0.7
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.2
+  cupertino_icons: ^1.0.8
+  http_parser: ^4.0.2
+  record: ^4.4.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
+    - assets/fonts/OpenDyslexic-Regular.otf
+    - assets/fonts/OpenDyslexic-Bold.otf
+    - assets/fonts/OpenDyslexic-Italic.otf
+
+  fonts:
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic-Regular.otf
+          weight: 400
+        - asset: assets/fonts/OpenDyslexic-Bold.otf
+          weight: 700
+        - asset: assets/fonts/OpenDyslexic-Italic.otf
+          weight: 400
+          style: italic

@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class ThemeState extends ChangeNotifier {
+  static final ThemeState instance = ThemeState._();
+  ThemeState._();
+
+  static const _kDark = 'theme_is_dark';
+
+  bool _isDark = false;
+  bool get isDark => _isDark;
+
+  static Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    instance._isDark = prefs.getBool(_kDark) ?? false;
+  }
+
+  Future<void> toggle() async {
+    _isDark = !_isDark;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDark, _isDark);
+  }
+}
+
+const Color kLightBg      = Color(0xFFF5EDEF);
+const Color kLightCard    = Color(0xFFFFFFFF);
+const Color kLightCardEl  = Color(0xFFF2E8E9);
+const Color kLightPrimary = Color(0xFF700D25);
+const Color kLightAccent  = Color(0xFFF2E8E9);
+const Color kLightText    = Color(0xFF1C0A10);
+const Color kLightTextSub = Color(0xFF8C6A72);
+
+const Color kDarkBg      = Color(0xFF0D0608);
+const Color kDarkCard    = Color(0xFF1E1618);
+const Color kDarkCardEl  = Color(0xFF2E2224);
+const Color kDarkPrimary = Color(0xFFE8A0B0);
+const Color kDarkAccent  = Color(0xFFFFCAD4);
+const Color kDarkText    = Color(0xFFF5E8EC);
+const Color kDarkTextSub = Color(0xFFBFA8AE);
+
+extension AppColors on ThemeState {
+  Color get bg      => isDark ? kDarkBg      : kLightBg;
+  Color get card    => isDark ? kDarkCard    : kLightCard;
+  Color get cardEl  => isDark ? kDarkCardEl  : kLightCardEl;
+  Color get primary => isDark ? kDarkPrimary : kLightPrimary;
+  Color get accent  => isDark ? kDarkAccent  : kLightAccent;
+  Color get text    => isDark ? kDarkText    : kLightText;
+  Color get textSub => isDark ? kDarkTextSub : kLightTextSub;
+  Color get badgeFg => isDark ? kDarkBg      : Colors.white;
+}
