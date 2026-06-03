@@ -16,7 +16,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiController {
 
-    private static final String GROQ_URL = "https:
+    private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
     private static final String GROQ_MODEL = "llama-3.3-70b-versatile";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
